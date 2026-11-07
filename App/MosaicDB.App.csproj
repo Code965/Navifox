@@ -6,7 +6,14 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\Assets\NaviFoxBrand\navifox-dark.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-  </PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>NaviFox</Product>
+    <Company>NaviFox</Company>
+    <!-- Sorgente aggiornamenti predefinita (cartella, \\server\condivisione, URL o repository GitHub); lo script di release la sovrascrive. -->
+    <NavifoxUpdateSource Condition="'$(NavifoxUpdateSource)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\releases'))</NavifoxUpdateSource>  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="NavifoxUpdateSource" Value="$(NavifoxUpdateSource)" />
+  </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="..\Assets\NaviFoxBrand\**\*.*" Link="Assets\NaviFoxBrand\%(RecursiveDir)%(Filename)%(Extension)" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />

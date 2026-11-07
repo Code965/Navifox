@@ -20,6 +20,19 @@
   <Style Selector="Button.toolbar-primary:pointerover, Button.welcome-button:pointerover, Button.accent:pointerover, Button.small-accent:pointerover">
     <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
   </Style>
+  <Style Selector="Button.update-pill">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Padding" Value="10,3" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.update-pill:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#FF7A2F" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
   <Style Selector="Button.small-muted">
     <Setter Property="Background" Value="{DynamicResource ControlSurfaceBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource BodyTextBrush}" />

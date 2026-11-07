@@ -519,7 +519,12 @@ public partial class OptionsViewModel : ObservableObject
         _monitorInterval = settings.MonitorInterval;
         _recordHistory = settings.RecordHistory;
         _queryMaxRows = settings.QueryMaxRows;
+        _checkUpdatesOnStartup = settings.CheckUpdatesOnStartup;
+        _updateSource = settings.UpdateSource;
     }
+
+    public string CurrentVersion => $"Versione installata: {UpdateService.CurrentVersion}";
+    public string DefaultUpdateSource => string.IsNullOrWhiteSpace(UpdateService.DefaultSource) ? "Nessuna sorgente predefinita" : $"Vuoto = {UpdateService.DefaultSource}";
 
     public event Action<bool>? CloseRequested;
     public IReadOnlyList<string> Themes { get; } = ["Sistema", "Chiaro", "Scuro"];
@@ -531,6 +536,8 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private string _monitorInterval;
     [ObservableProperty] private bool _recordHistory;
     [ObservableProperty] private decimal? _queryMaxRows;
+    [ObservableProperty] private bool _checkUpdatesOnStartup;
+    [ObservableProperty] private string _updateSource;
 
     [RelayCommand]
     private void Save()
@@ -542,6 +549,8 @@ public partial class OptionsViewModel : ObservableObject
         settings.MonitorInterval = MonitorInterval;
         settings.RecordHistory = RecordHistory;
         settings.QueryMaxRows = (int)Math.Clamp(QueryMaxRows ?? 1000, 1, 1_000_000);
+        settings.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
+        settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;
         settings.Save();
         CloseRequested?.Invoke(true);
     }

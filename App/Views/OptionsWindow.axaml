@@ -35,6 +35,15 @@
           <Grid ColumnDefinitions="160,*"><TextBlock Text="Aggiornamento" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding Intervals}" SelectedItem="{Binding MonitorInterval, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid>
         </StackPanel>
       </Border>
+      <Border Classes="card" Padding="14">
+        <StackPanel Spacing="10">
+          <TextBlock Text="AGGIORNAMENTI" Classes="field-label" />
+          <CheckBox Classes="crit-check" Content="Controlla gli aggiornamenti all'avvio" IsChecked="{Binding CheckUpdatesOnStartup, Mode=TwoWay}" />
+          <Grid ColumnDefinitions="160,*"><TextBlock Text="Sorgente" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding UpdateSource, Mode=TwoWay}" Watermark="Cartella, \\server\condivisione, URL o GitHub" /></Grid>
+          <TextBlock Text="{Binding DefaultUpdateSource}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="160,-4,0,0" />
+          <TextBlock Text="{Binding CurrentVersion}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" />
+        </StackPanel>
+      </Border>
     </StackPanel>
     <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,10">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">

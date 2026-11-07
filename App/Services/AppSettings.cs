@@ -18,6 +18,10 @@ public sealed class AppSettings
     public int QueryMaxRows { get; set; } = 1000;
     public bool ShowTreeOnStartup { get; set; } = true;
     public bool ShowInfoOnStartup { get; set; } = true;
+    /// <summary>Controlla gli aggiornamenti all'avvio.</summary>
+    public bool CheckUpdatesOnStartup { get; set; } = true;
+    /// <summary>Sorgente aggiornamenti; vuota = quella incorporata nella release.</summary>
+    public string UpdateSource { get; set; } = string.Empty;
 
     public static void Load()
     {

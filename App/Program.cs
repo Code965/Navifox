@@ -1,11 +1,17 @@
 using Avalonia;
+using Velopack;
 
 namespace MosaicDB.App;
 
 internal static class Program
 {
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args)
+    {
+        // Deve essere la prima istruzione: gestisce installazione, disinstallazione e riavvio dopo un aggiornamento.
+        VelopackApp.Build().Run();
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UsePlatformDetect()

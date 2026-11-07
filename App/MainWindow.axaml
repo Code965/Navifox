@@ -73,7 +73,11 @@
             <MenuItem Header="Chiudi scheda" Command="{Binding CloseCurrentTabCommand}" InputGesture="Ctrl+W" />
             <MenuItem Header="Chiudi tutte le schede" Command="{Binding CloseAllTabsCommand}" />
           </MenuItem>
-          <MenuItem Header="Aiuto"><MenuItem Header="Informazioni su Navifox" IsEnabled="False" /></MenuItem>
+          <MenuItem Header="Aiuto">
+            <MenuItem Header="Verifica aggiornamenti…" Command="{Binding CheckUpdatesCommand}"><MenuItem.Icon><c:NfIcon Kind="download" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Informazioni su Navifox" Command="{Binding ShowAboutCommand}"><MenuItem.Icon><c:NfIcon Kind="info" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+          </MenuItem>
         </Menu>
         <Button Grid.Column="2" Classes="tb-icon" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="Tema chiaro / scuro">
           <c:NfIcon Kind="sun-moon" />
@@ -215,6 +219,9 @@
       <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="20">
         <StackPanel Orientation="Horizontal" Spacing="6"><Ellipse Width="7" Height="7" Fill="#45A989" VerticalAlignment="Center" /><TextBlock Text="{Binding ConnectionCount}" Foreground="#5C6878" /><TextBlock Text="connessioni attive" Foreground="#8A97A6" /></StackPanel>
         <TextBlock Grid.Column="1" Text="{Binding ActiveContext}" Foreground="#5C6878" />
+        <Button Grid.Column="2" Classes="update-pill" HorizontalAlignment="Right" IsVisible="{Binding IsUpdateReady}" Command="{Binding ApplyUpdateCommand}" Margin="0,-4">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="download" Width="13" Height="13" /><TextBlock Text="{Binding UpdateLabel}" /></StackPanel>
+        </Button>
         <TextBlock Grid.Column="3" Text="{Binding StatusMessage}" Foreground="#718092" TextTrimming="CharacterEllipsis" MaxWidth="600" />
         <TextBlock Grid.Column="4" Text="{Binding ElapsedTime}" Foreground="#8A97A6" />
         <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="2" Margin="-8,-4">

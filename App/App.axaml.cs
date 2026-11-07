@@ -30,6 +30,7 @@ public partial class App : Application
             registrations.AddSingleton<ConnectionDialogService>();
             registrations.AddSingleton<IDialogService, DialogService>();
             registrations.AddSingleton<AutomationService>();
+            registrations.AddSingleton<UpdateService>();
             registrations.AddTransient<ConnectionDialogViewModel>();
             registrations.AddTransient<MainWindowViewModel>();
             registrations.AddTransient<MainWindow>();
@@ -58,7 +59,11 @@ public partial class App : Application
     {
         var window = _services!.GetRequiredService<MainWindow>();
         _services.GetRequiredService<IWindowLocator>().MainWindow = window;
-        if (window.DataContext is MainWindowViewModel viewModel) viewModel.ApplySettings();
+        if (window.DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.ApplySettings();
+            window.Opened += (_, _) => _ = viewModel.CheckUpdatesOnStartupAsync();
+        }
         return window;
     }
 
