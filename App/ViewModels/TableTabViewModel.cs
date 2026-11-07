@@ -421,6 +421,26 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     [RelayCommand]
     private void ToggleFieldPanel() => IsFieldPanelOpen = !IsFieldPanelOpen;
 
+    /// <summary>Editor di campo in basso (sotto la griglia) invece che a destra; la scelta vale per tutte le tabelle.</summary>
+    [ObservableProperty] private bool _isFieldPanelBottom = Services.AppSettings.Current.FieldPanelPosition == "bottom";
+    public string FieldPanelPositionGlyph => IsFieldPanelBottom ? "panel-right" : "panel-bottom";
+    public string FieldPanelPositionTip => IsFieldPanelBottom ? "Sposta il pannello a destra" : "Sposta il pannello in basso";
+
+    partial void OnIsFieldPanelBottomChanged(bool value)
+    {
+        OnPropertyChanged(nameof(FieldPanelPositionGlyph));
+        OnPropertyChanged(nameof(FieldPanelPositionTip));
+        Services.AppSettings.Current.FieldPanelPosition = value ? "bottom" : "right";
+        Services.AppSettings.Current.Save();
+    }
+
+    [RelayCommand]
+    private void SetFieldPanelPosition(string? position)
+    {
+        IsFieldPanelBottom = position == "bottom" || (position == "toggle" && !IsFieldPanelBottom);
+        IsFieldPanelOpen = true;
+    }
+
     [RelayCommand]
     private void SetFieldMode(string? mode)
     {

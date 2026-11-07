@@ -22,8 +22,18 @@ public sealed class AppSettings
     public bool CheckUpdatesOnStartup { get; set; } = true;
     /// <summary>Modalità sicura: conferma prima di UPDATE/DELETE senza WHERE, DROP e TRUNCATE.</summary>
     public bool SafeMode { get; set; } = true;
+    /// <summary>Editor di campo della griglia: "right" (a destra) o "bottom" (in basso), con le dimensioni scelte.</summary>
+    public string FieldPanelPosition { get; set; } = "right";
+    public double FieldPanelWidth { get; set; } = 340;
+    public double FieldPanelHeight { get; set; } = 220;
     /// <summary>Chiave API Anthropic cifrata con DPAPI (Assistente SQL).</summary>
     public string? AnthropicApiKeyProtected { get; set; }
+    /// <summary>Fornitore dell'assistente SQL (vedi SqlAssistant.Providers).</summary>
+    public string AssistantProvider { get; set; } = "Anthropic (Claude)";
+    /// <summary>Chiavi API cifrate (DPAPI), modello e indirizzo per ciascun fornitore.</summary>
+    public Dictionary<string, string> AssistantKeys { get; set; } = [];
+    public Dictionary<string, string> AssistantModels { get; set; } = [];
+    public Dictionary<string, string> AssistantBaseUrls { get; set; } = [];
     /// <summary>Sorgente aggiornamenti; vuota = quella incorporata nella release.</summary>
     public string UpdateSource { get; set; } = string.Empty;
     /// <summary>File SQL aperti di recente (File › Apri recenti).</summary>

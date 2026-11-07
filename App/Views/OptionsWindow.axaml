@@ -41,9 +41,20 @@
       </Border>
       <Border Classes="card" Padding="14">
         <StackPanel Spacing="10">
-          <TextBlock Text="ASSISTENTE SQL (CLAUDE)" Classes="field-label" />
-          <Grid ColumnDefinitions="160,*"><TextBlock Text="Chiave API Anthropic" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding AnthropicApiKey, Mode=TwoWay}" PasswordChar="•" Watermark="sk-ant-…" /></Grid>
-          <TextBlock Text="Salvata cifrata solo su questo computer. All'assistente vengono inviati la query e la struttura del database, mai i dati delle righe." FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="160,-4,0,0" />
+          <TextBlock Text="ASSISTENTE SQL" Classes="field-label" />
+          <Grid ColumnDefinitions="160,*"><TextBlock Text="Fornitore" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding AssistantProviders}" SelectedItem="{Binding AssistantProvider, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid>
+          <Grid ColumnDefinitions="160,*" IsVisible="{Binding AssistantShowsUrl}"><TextBlock Text="Indirizzo API" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding AssistantBaseUrl, Mode=TwoWay}" Watermark="https://…/v1" /></Grid>
+          <Grid ColumnDefinitions="160,*" IsVisible="{Binding AssistantShowsKey}"><TextBlock Text="Chiave API" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding AssistantKey, Mode=TwoWay}" PasswordChar="•" Watermark="{Binding AssistantKeyWatermark}" /></Grid>
+          <Grid ColumnDefinitions="160,*,Auto" ColumnSpacing="6">
+            <TextBlock Text="Modello" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding AssistantModelList}" Text="{Binding AssistantModel, Mode=TwoWay}" HorizontalAlignment="Stretch" PlaceholderText="Scrivi o carica l'elenco" />
+            <Button Grid.Column="2" Classes="small-muted" Content="Carica modelli" Command="{Binding LoadAssistantModelsCommand}" IsEnabled="{Binding !AssistantBusy}" />
+          </Grid>
+          <Grid ColumnDefinitions="160,*,Auto" ColumnSpacing="6">
+            <TextBlock Grid.Column="1" Text="{Binding AssistantStatus}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="small-muted" Content="Prova" Command="{Binding TestAssistantCommand}" IsEnabled="{Binding !AssistantBusy}" ToolTip.Tip="Invia una breve domanda di prova" />
+          </Grid>
+          <TextBlock Text="{Binding AssistantPrivacy}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="160,-4,0,0" />
         </StackPanel>
       </Border>
       <Border Classes="card" Padding="14">

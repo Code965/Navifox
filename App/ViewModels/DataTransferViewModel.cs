@@ -678,7 +678,106 @@ public partial class OptionsViewModel : ObservableObject
         _safeMode = settings.SafeMode;
         _restoreSession = settings.RestoreSession;
         _updateSource = settings.UpdateSource;
-        _anthropicApiKey = SqlAssistant.ApiKey ?? string.Empty;
+        _assistantProvider = SqlAssistant.Current;
+        LoadAssistantFields();
+    }
+
+    // ───────────── Assistente SQL: qualsiasi fornitore, anche locale ─────────────
+
+    public IReadOnlyList<AssistantProvider> AssistantProviders => SqlAssistant.Providers;
+    public System.Collections.ObjectModel.ObservableCollection<string> AssistantModelList { get; } = [];
+    [ObservableProperty] private AssistantProvider _assistantProvider;
+    [ObservableProperty] private string _assistantKey = string.Empty;
+    [ObservableProperty] private string _assistantModel = string.Empty;
+    [ObservableProperty] private string _assistantBaseUrl = string.Empty;
+    [ObservableProperty] private string _assistantStatus = string.Empty;
+    [ObservableProperty] private bool _assistantBusy;
+
+    /// <summary>Valori modificati per ogni fornitore (si può cambiare fornitore e tornare indietro senza perderli).</summary>
+    private readonly Dictionary<string, (string Key, string Model, string Url)> _assistantDrafts = [];
+    private bool _loadingAssistant;
+
+    public bool AssistantShowsUrl => !AssistantProvider.IsAnthropic;
+    public bool AssistantShowsKey => !AssistantProvider.IsLocal;
+    public string AssistantKeyWatermark => AssistantProvider.KeyHint ?? (AssistantProvider.NeedsKey ? "Chiave API" : "Facoltativa");
+    public string AssistantPrivacy => AssistantProvider.IsLocal
+        ? "Modello in locale: le richieste restano su questo computer."
+        : "Le chiavi sono salvate cifrate solo su questo computer. Al fornitore vengono inviati la query e la struttura del database, mai i dati delle righe.";
+
+    partial void OnAssistantProviderChanging(AssistantProvider value) => RememberAssistantDraft();
+
+    partial void OnAssistantProviderChanged(AssistantProvider value)
+    {
+        LoadAssistantFields();
+        OnPropertyChanged(nameof(AssistantShowsUrl));
+        OnPropertyChanged(nameof(AssistantShowsKey));
+        OnPropertyChanged(nameof(AssistantKeyWatermark));
+        OnPropertyChanged(nameof(AssistantPrivacy));
+    }
+
+    private void RememberAssistantDraft()
+    {
+        if (_loadingAssistant || AssistantProvider is null) return;
+        _assistantDrafts[AssistantProvider.Name] = (AssistantKey, AssistantModel, AssistantBaseUrl);
+    }
+
+    private void LoadAssistantFields()
+    {
+        _loadingAssistant = true;
+        var provider = AssistantProvider;
+        if (_assistantDrafts.TryGetValue(provider.Name, out var draft))
+            (AssistantKey, AssistantModel, AssistantBaseUrl) = draft;
+        else
+        {
+            AssistantKey = SqlAssistant.ApiKey(provider) ?? string.Empty;
+            AssistantModel = SqlAssistant.Model(provider);
+            AssistantBaseUrl = SqlAssistant.BaseUrl(provider);
+        }
+        AssistantModelList.Clear();
+        if (!string.IsNullOrWhiteSpace(AssistantModel)) AssistantModelList.Add(AssistantModel);
+        AssistantStatus = string.Empty;
+        _loadingAssistant = false;
+    }
+
+    [RelayCommand]
+    private async Task LoadAssistantModelsAsync()
+    {
+        AssistantBusy = true;
+        AssistantStatus = "Caricamento dei modelli…";
+        try
+        {
+            var models = await SqlAssistant.ListModelsAsync(AssistantProvider, AssistantKey, AssistantBaseUrl, CancellationToken.None);
+            var current = AssistantModel;
+            AssistantModelList.Clear();
+            foreach (var model in models) AssistantModelList.Add(model);
+            AssistantModel = models.Contains(current) ? current : models.FirstOrDefault() ?? current;
+            AssistantStatus = models.Count == 0 ? "Nessun modello disponibile." : $"{models.Count} modelli disponibili.";
+        }
+        catch (Exception exception) { AssistantStatus = exception.Message; }
+        finally { AssistantBusy = false; }
+    }
+
+    /// <summary>Breve domanda di prova con le impostazioni attuali (salvate temporaneamente).</summary>
+    [RelayCommand]
+    private async Task TestAssistantAsync()
+    {
+        var settings = AppSettings.Current;
+        var backup = (settings.AssistantProvider, new Dictionary<string, string>(settings.AssistantKeys), new Dictionary<string, string>(settings.AssistantModels),
+            new Dictionary<string, string>(settings.AssistantBaseUrls), settings.AnthropicApiKeyProtected);
+        AssistantBusy = true;
+        AssistantStatus = "Prova in corso…";
+        try
+        {
+            SqlAssistant.Save(AssistantProvider, AssistantKey, AssistantModel, AssistantBaseUrl);
+            var answer = await SqlAssistant.AskAsync("Rispondi solo con: SELECT 1;", Navifox.Core.Models.DatabaseKind.MySql, null, _ => { }, CancellationToken.None);
+            AssistantStatus = $"Funziona · {SqlAssistant.Model(AssistantProvider)} ha risposto: {answer.Trim().Replace('\n', ' ')[..Math.Min(80, answer.Trim().Length)]}";
+        }
+        catch (Exception exception) { AssistantStatus = exception.Message; }
+        finally
+        {
+            (settings.AssistantProvider, settings.AssistantKeys, settings.AssistantModels, settings.AssistantBaseUrls, settings.AnthropicApiKeyProtected) = backup;
+            AssistantBusy = false;
+        }
     }
 
     public string CurrentVersion => $"Versione installata: {UpdateService.CurrentVersion}";
@@ -698,7 +797,6 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private bool _safeMode;
     [ObservableProperty] private bool _restoreSession;
     [ObservableProperty] private string _updateSource;
-    [ObservableProperty] private string _anthropicApiKey;
 
     [RelayCommand]
     private void Save()
@@ -714,8 +812,16 @@ public partial class OptionsViewModel : ObservableObject
         settings.SafeMode = SafeMode;
         settings.RestoreSession = RestoreSession;
         settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;
-        // Se la chiave è quella della variabile d'ambiente non la si duplica nelle impostazioni.
-        SqlAssistant.SetApiKey(AnthropicApiKey == Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ? null : AnthropicApiKey);
+        // Fornitore dell'assistente: si salvano anche le modifiche fatte agli altri fornitori durante la sessione.
+        RememberAssistantDraft();
+        foreach (var (name, draft) in _assistantDrafts)
+        {
+            var provider = SqlAssistant.Provider(name);
+            if (provider != AssistantProvider) SqlAssistant.Save(provider, draft.Key, draft.Model, draft.Url);
+        }
+        // Se la chiave è quella di una variabile d'ambiente non la si duplica nelle impostazioni.
+        var envKey = Environment.GetEnvironmentVariable(AssistantProvider.IsAnthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY");
+        SqlAssistant.Save(AssistantProvider, AssistantKey == envKey ? null : AssistantKey, AssistantModel, AssistantBaseUrl);
         settings.Save();
         CloseRequested?.Invoke(true);
     }

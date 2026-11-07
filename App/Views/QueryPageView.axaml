@@ -35,7 +35,7 @@
               <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="code" Classes="objbar-icon" /><TextBlock Text="Snippet" /><c:NfIcon Kind="chevron-down" Width="11" Height="11" /></StackPanel>
             </Button>
             <Border Classes="toolbar-sep" />
-            <Button x:Name="AssistantButton" Classes="objbar" ToolTip.Tip="Assistente SQL (Claude): spiega, genera, ottimizza e corregge le query">
+            <Button x:Name="AssistantButton" Classes="objbar" ToolTip.Tip="Assistente SQL (Claude, OpenAI, Gemini, modelli locali…): spiega, genera, ottimizza e corregge le query">
               <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="star" Classes="objbar-icon" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="Assistente" /><c:NfIcon Kind="chevron-down" Width="11" Height="11" /></StackPanel>
               <Button.Flyout>
                 <MenuFlyout Placement="BottomEdgeAlignedLeft">

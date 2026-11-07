@@ -130,14 +130,66 @@ public sealed class SqlEditor : TextEditor
         }
         if (!force && prefix.Length > 0 && !items.Any(item => item.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))) return;
 
+        OpenCompletion(wordStart, offset, items, prefix);
+    }
+
+    /// <summary>
+    /// Finestra di completamento moderna: riquadro arrotondato con ombra, campo in alto con il testo digitato,
+    /// lettere corrispondenti evidenziate, icone colorate per tipo e dettaglio allineato a destra.
+    /// </summary>
+    private void OpenCompletion(int start, int end, IReadOnlyList<SqlCompletionItem> items, string? prefix = null)
+    {
         _completion?.Close();
-        var window = new CompletionWindow(TextArea) { StartOffset = wordStart, EndOffset = offset, MinWidth = 300, CloseWhenCaretAtBeginning = true };
+        var window = new CompletionWindow(TextArea) { StartOffset = start, EndOffset = end, CloseWhenCaretAtBeginning = true, Width = 400, MaxHeight = 360 };
         window.Classes.Add("nf-completion");
-        foreach (var item in items) window.CompletionList.CompletionData.Add(item);
-        window.Closed += (_, _) => _completion = null;
+        var filter = new CompletionFilter();
+        foreach (var item in items)
+        {
+            item.Filter = filter;
+            window.CompletionList.CompletionData.Add(item);
+        }
+        var list = window.CompletionList;
+        list.MaxHeight = 280;
+        var typed = new TextBlock { Classes = { "completion-typed" } };
+        var hint = new TextBlock { Classes = { "completion-hint" }, Text = "↑↓ per scegliere · Invio o Tab per inserire · Esc per chiudere" };
+        var header = new Border
+        {
+            Classes = { "completion-search" },
+            Child = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                Children = { new NfIcon { Kind = "search", Width = 12, Height = 12, Classes = { "completion-search-icon" } }, typed },
+            },
+        };
+        Grid.SetColumn(typed, 1);
+        window.Child = null;
+        var panel = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(header, Dock.Top);
+        DockPanel.SetDock(hint, Dock.Bottom);
+        panel.Children.Add(header);
+        panel.Children.Add(hint);
+        panel.Children.Add(list);
+        window.Child = new Border { Classes = { "completion-popup" }, Child = panel };
+
+        void Update()
+        {
+            var caret = Math.Max(window.StartOffset, Math.Min(CaretOffset, Document.TextLength));
+            var text = Document.GetText(window.StartOffset, caret - window.StartOffset);
+            typed.Text = text.Length == 0 ? "Digita per filtrare…" : text;
+            typed.Classes.Set("empty", text.Length == 0);
+            filter.Prefix = text;
+        }
+        void OnCaret(object? sender, EventArgs e) => Update();
+        TextArea.Caret.PositionChanged += OnCaret;
+        window.Closed += (_, _) =>
+        {
+            TextArea.Caret.PositionChanged -= OnCaret;
+            _completion = null;
+        };
         _completion = window;
+        Update();
         window.Show();
-        if (prefix.Length > 0) window.CompletionList.SelectItem(prefix);
+        if (!string.IsNullOrEmpty(prefix)) window.CompletionList.SelectItem(prefix);
     }
 
     private string? QualifierBefore(int wordStart)
@@ -159,13 +211,8 @@ public sealed class SqlEditor : TextEditor
             _otherSchemas[database] = schema;
         }
         if (schema is null || CaretOffset < wordStart || QualifierBefore(wordStart) != database) return;
-        _completion?.Close();
-        var window = new CompletionWindow(TextArea) { StartOffset = wordStart, EndOffset = CaretOffset, MinWidth = 340, CloseWhenCaretAtBeginning = true };
-        foreach (var name in schema.Tables.Keys.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
-            window.CompletionList.CompletionData.Add(new SqlCompletionItem(name, database, schema.Views.Contains(name) ? "eye" : "table", 0));
-        window.Closed += (_, _) => _completion = null;
-        _completion = window;
-        window.Show();
+        OpenCompletion(wordStart, CaretOffset, schema.Tables.Keys.OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .Select(name => new SqlCompletionItem(name, database, schema.Views.Contains(name) ? "eye" : "table", 0)).ToList());
     }
 
     private List<SqlCompletionItem> BuildItems(int wordStart)
@@ -223,7 +270,9 @@ public sealed class SqlEditor : TextEditor
         }
         if (!tableContext)
         {
-            items.AddRange(Keywords.Select(keyword => new SqlCompletionItem(keyword, keyword.Contains('(') || keyword is "COUNT" or "SUM" or "AVG" or "MIN" or "MAX" or "COALESCE" or "CAST" ? "funzione" : "parola chiave", "keyword", 3)));
+            items.AddRange(Keywords.Select(keyword => keyword.Contains('(') || keyword is "COUNT" or "SUM" or "AVG" or "MIN" or "MAX" or "COALESCE" or "CAST"
+                ? new SqlCompletionItem(keyword, "funzione", "function", 3)
+                : new SqlCompletionItem(keyword, "parola chiave", "keyword", 3)));
             if (CompletionSource is { } source) items.AddRange(source.OtherNames.Select(name => new SqlCompletionItem(name, "database", "database", 4)));
         }
         return items
@@ -320,26 +369,82 @@ public sealed class SqlEditor : TextEditor
     }
 }
 
-/// <summary>Voce dell'elenco di completamento con icona lineare e descrizione.</summary>
+/// <summary>Testo digitato nella finestra di completamento (le voci evidenziano le lettere corrispondenti).</summary>
+public sealed class CompletionFilter
+{
+    private string _prefix = string.Empty;
+    public event Action? Changed;
+    public string Prefix
+    {
+        get => _prefix;
+        set
+        {
+            if (_prefix == value) return;
+            _prefix = value;
+            Changed?.Invoke();
+        }
+    }
+}
+
+/// <summary>Voce dell'elenco di completamento: icona colorata per tipo, nome con le lettere digitate evidenziate, dettaglio a destra.</summary>
 public sealed class SqlCompletionItem(string text, string description, string icon, int rank) : ICompletionData
 {
+    private Grid? _content;
+    private TextBlock? _name;
+
     public string Text { get; } = text;
     public int Rank { get; } = rank;
-    public object Description { get; } = description;
+    public string Detail { get; } = description;
+    /// <summary>Nessun suggerimento a comparsa: il dettaglio è già nella riga.</summary>
+    public object? Description => null;
     public double Priority => -Rank;
     public Avalonia.Media.IImage? Image => null;
+    public CompletionFilter? Filter { get; set; }
 
-    public object Content { get; } = new StackPanel
+    public object Content => _content ??= BuildContent();
+
+    private Grid BuildContent()
     {
-        Orientation = Avalonia.Layout.Orientation.Horizontal,
-        Spacing = 7,
-        Children =
+        _name = new TextBlock { Classes = { "completion-name" } };
+        var detail = new TextBlock { Text = Detail, Classes = { "completion-detail" } };
+        var grid = new Grid
         {
-            new NfIcon { Kind = icon, Width = 13, Height = 13, Classes = { "completion-icon" } },
-            new TextBlock { Text = text, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center },
-            new TextBlock { Text = description, FontSize = 11, Opacity = 0.55, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) },
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            Children =
+            {
+                new NfIcon { Kind = icon, Width = 14, Height = 14, Classes = { "completion-icon", "kind-" + icon } },
+                _name,
+                detail,
+            }
+        };
+        Grid.SetColumn(_name, 1);
+        Grid.SetColumn(detail, 2);
+        UpdateName();
+        if (Filter is { } filter)
+        {
+            filter.Changed += UpdateName;
+            grid.DetachedFromVisualTree += (_, _) => filter.Changed -= UpdateName;
+            grid.AttachedToVisualTree += (_, _) => { filter.Changed -= UpdateName; filter.Changed += UpdateName; UpdateName(); };
         }
-    };
+        return grid;
+    }
+
+    private void UpdateName()
+    {
+        if (_name is null) return;
+        var prefix = Filter?.Prefix ?? string.Empty;
+        var index = prefix.Length == 0 ? -1 : Text.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+        _name.Inlines ??= [];
+        _name.Inlines.Clear();
+        if (index < 0)
+        {
+            _name.Inlines.Add(new Avalonia.Controls.Documents.Run(Text));
+            return;
+        }
+        if (index > 0) _name.Inlines.Add(new Avalonia.Controls.Documents.Run(Text[..index]));
+        _name.Inlines.Add(new Avalonia.Controls.Documents.Run(Text.Substring(index, prefix.Length)) { Classes = { "completion-match" } });
+        if (index + prefix.Length < Text.Length) _name.Inlines.Add(new Avalonia.Controls.Documents.Run(Text[(index + prefix.Length)..]));
+    }
 
     public void Complete(TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs) =>
         textArea.Document.Replace(completionSegment, Text);

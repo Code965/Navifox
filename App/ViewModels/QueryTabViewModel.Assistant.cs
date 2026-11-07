@@ -50,17 +50,20 @@ public partial class QueryTabViewModel
         AssistantSql = null;
         if (!SqlAssistant.IsConfigured)
         {
-            AssistantText = "Per usare l'assistente serve una chiave API di Anthropic.\n\nApri Strumenti › Opzioni › Assistente SQL e incollala (viene salvata cifrata solo su questo computer), oppure imposta la variabile d'ambiente ANTHROPIC_API_KEY.\n\nLe richieste includono la query e la struttura del database (nomi di tabelle e colonne), mai i dati delle righe.";
+            AssistantText = $"L'assistente non è ancora configurato: {SqlAssistant.MissingConfiguration(SqlAssistant.Current)}.\n\n"
+                + "Apri Strumenti › Opzioni › Assistente SQL e scegli il fornitore: Claude (Anthropic), OpenAI, Google Gemini, Mistral, Groq, OpenRouter, DeepSeek, xAI, "
+                + "un servizio compatibile OpenAI oppure un modello in locale con Ollama o LM Studio (nessuna chiave, i dati restano sul computer).\n\n"
+                + "Le richieste includono la query e la struttura del database (nomi di tabelle e colonne), mai i dati delle righe.";
             return;
         }
         AssistantBusy = true;
-        AssistantText = "Sto pensando…";
+        AssistantText = $"Sto pensando… ({SqlAssistant.Description})";
         _assistantRun = new CancellationTokenSource();
         try
         {
             var prompt = await buildPrompt();
             if (prompt is null) { AssistantText = string.Empty; return; }
-            var answer = await SqlAssistant.AskAsync(prompt, IsMySql, null,
+            var answer = await SqlAssistant.AskAsync(prompt, _profile.Kind, null,
                 partial => Avalonia.Threading.Dispatcher.UIThread.Post(() => AssistantText = partial), _assistantRun.Token);
             AssistantText = answer;
             AssistantSql = SqlAssistant.ExtractSql(answer);

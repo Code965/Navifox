@@ -56,7 +56,37 @@ public partial class TablePageView : UserControl
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.SearchHit += OnSearchHit;
         RebuildColumns();
+        LayoutFieldPanel();
     }
+
+    /// <summary>
+    /// Posiziona l'editor di campo a destra o in basso. Le dimensioni scelte trascinando il divisore si ricordano
+    /// (anche quando il pannello viene chiuso o spostato).
+    /// </summary>
+    private void LayoutFieldPanel()
+    {
+        if (_viewModel is null) return;
+        var settings = Services.AppSettings.Current;
+        // Dimensione attuale (se il pannello è aperto) prima di ricostruire le righe/colonne.
+        if (_fieldPanelBottomApplied is { } wasBottom && FieldPanel.IsVisible)
+        {
+            if (wasBottom && DataArea.RowDefinitions[3].ActualHeight > 60) settings.FieldPanelHeight = DataArea.RowDefinitions[3].ActualHeight;
+            if (!wasBottom && DataArea.ColumnDefinitions[2].ActualWidth > 120) settings.FieldPanelWidth = DataArea.ColumnDefinitions[2].ActualWidth;
+        }
+        var open = _viewModel.IsFieldPanelOpen;
+        var bottom = _viewModel.IsFieldPanelBottom;
+        _fieldPanelBottomApplied = bottom;
+        DataArea.ColumnDefinitions = new ColumnDefinitions(bottom || !open ? "*,0,0" : $"*,4,{Math.Clamp(settings.FieldPanelWidth, 160, 900).ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        DataArea.RowDefinitions = new RowDefinitions(!bottom || !open ? "Auto,*,0,0" : $"Auto,*,4,{Math.Clamp(settings.FieldPanelHeight, 90, 700).ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        Grid.SetColumn(FieldSplitter, bottom ? 0 : 1);
+        Grid.SetRow(FieldSplitter, bottom ? 2 : 1);
+        Grid.SetColumn(FieldPanel, bottom ? 0 : 2);
+        Grid.SetRow(FieldPanel, bottom ? 3 : 1);
+        FieldSplitter.ResizeDirection = bottom ? GridResizeDirection.Rows : GridResizeDirection.Columns;
+        FieldPanel.BorderBrush = null;
+    }
+
+    private bool? _fieldPanelBottomApplied;
 
     private void OnColumnsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildColumns();
 
@@ -64,6 +94,7 @@ public partial class TablePageView : UserControl
     {
         if (e.PropertyName is nameof(TableTabViewModel.IsSortActive) or nameof(TableTabViewModel.IsFilterActive) or nameof(TableTabViewModel.SqlPreview)) RefreshHeaders();
         if (e.PropertyName == nameof(TableTabViewModel.CanEdit)) RebuildColumns();
+        if (e.PropertyName is nameof(TableTabViewModel.IsFieldPanelOpen) or nameof(TableTabViewModel.IsFieldPanelBottom)) LayoutFieldPanel();
         if (e.PropertyName == nameof(TableTabViewModel.IsSearchOpen) && _viewModel?.IsSearchOpen == true)
             Avalonia.Threading.Dispatcher.UIThread.Post(() => SearchBox.Focus(), Avalonia.Threading.DispatcherPriority.Input);
         if (e.PropertyName == nameof(TableTabViewModel.CurrentRow) && _viewModel?.IsFormView == true && !ReferenceEquals(ResultGrid.SelectedItem, _viewModel.CurrentRow))

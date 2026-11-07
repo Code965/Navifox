@@ -18,7 +18,7 @@
 Navifox è un'applicazione desktop per **esplorare, progettare, interrogare e amministrare** database relazionali.
 Unisce in un'interfaccia moderna (tema chiaro e scuro, palette arancione) gli strumenti di tutti i giorni:
 albero delle connessioni, griglia dati modificabile, editor SQL con autocompletamento, progettazione delle tabelle,
-modello ER, trasferimento e sincronizzazione dei dati, backup, monitor del server e un assistente SQL basato su Claude.
+modello ER, trasferimento e sincronizzazione dei dati, backup, monitor del server e un assistente SQL basato sull'intelligenza artificiale (Claude, OpenAI, Gemini o modelli locali).
 
 È scritto in C# con [.NET 10](https://dotnet.microsoft.com/) e [Avalonia](https://avaloniaui.net/), interamente in italiano.
 
@@ -49,25 +49,31 @@ Le connessioni possono passare da un **tunnel SSH** (password o chiave privata, 
 - Selezione di righe e colonne (anche con Maiusc + frecce), copia come TSV, **INSERT** o **UPDATE**.
 - **Vista modulo**, editor di campo testo / esadecimale / JSON / immagine.
 - Chiavi esterne: scelta del valore dalla tabella collegata e apertura dei record riferiti.
+- Editor del valore del campo **a destra o in basso**, a scelta.
 - Ricerca nei dati della tabella e **ricerca in tutto il database**.
 - Import (CSV, testo delimitato, Excel, JSON) ed export (CSV, testo, HTML, Excel, SQL, XML, JSON, Markdown), stampa.
 
 ### Editor SQL
-- Evidenziazione, autocompletamento di tabelle e colonne, formattazione, snippet.
+- Evidenziazione, **autocompletamento** di tabelle, colonne e parole chiave con le lettere digitate evidenziate, formattazione, snippet.
 - Esecuzione di tutto, della selezione o dell'istruzione corrente; **EXPLAIN**; più risultati per script.
 - **Query Builder** visuale, console, registro cronologia, **query salvate** nella libreria.
 - **Grafici** dai risultati: barre, linee, area, torta.
 - **Modalità sicura**: conferma per `UPDATE`/`DELETE` senza `WHERE`, `DROP` e `TRUNCATE`.
 
-### Assistente SQL (Claude)
-Con una chiave API di [Anthropic](https://www.anthropic.com/) l'assistente, che conosce la struttura del database collegato:
+### Assistente SQL con l'intelligenza artificiale
+L'assistente conosce la struttura del database collegato e:
 - **spiega** una query;
 - **scrive l'SQL** a partire da una richiesta in italiano;
 - **suggerisce indici** e riscritture partendo dal piano di esecuzione;
 - **corregge** l'ultimo errore.
 
+Funziona con il fornitore che preferisci (Strumenti › Opzioni › Assistente SQL): **Claude** (Anthropic), **OpenAI**,
+**Google Gemini**, **Mistral**, **Groq**, **OpenRouter**, **DeepSeek**, **xAI**, qualsiasi servizio compatibile con l'API OpenAI
+e i **modelli in locale** con [Ollama](https://ollama.com/) o [LM Studio](https://lmstudio.ai/), senza chiave e senza inviare nulla fuori dal computer.
+Il pulsante «Carica modelli» legge l'elenco dei modelli direttamente dal fornitore.
+
 Vengono inviate solo la query e la struttura (nomi di tabelle e colonne), mai i dati delle righe.
-La chiave è salvata cifrata sul computer (oppure letta da `ANTHROPIC_API_KEY`).
+Le chiavi sono salvate cifrate sul computer, una per fornitore.
 
 ### Struttura del database
 - **Progetta tabella**: campi, indici, chiavi esterne, trigger, opzioni, commenti, con anteprima delle istruzioni SQL.

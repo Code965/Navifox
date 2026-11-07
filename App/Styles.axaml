@@ -805,13 +805,99 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
   </Style>
-  <!-- Autocompletamento SQL -->
-  <Style Selector="c|NfIcon.completion-icon">
-    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+  <!-- Autocompletamento SQL: riquadro arrotondato con ombra, campo con il testo digitato, icone colorate per tipo -->
+  <Style Selector="Border.completion-popup">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="Margin" Value="4,4,10,12" />
+    <Setter Property="BoxShadow" Value="0 6 18 0 #33000000" />
+    <Setter Property="ClipToBounds" Value="False" />
+  </Style>
+  <Style Selector="Border.completion-search">
+    <Setter Property="Background" Value="{DynamicResource InsetBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="Margin" Value="0,0,0,5" />
+  </Style>
+  <Style Selector="c|NfIcon.completion-search-icon">
+    <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+    <Setter Property="Margin" Value="0,0,7,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.completion-typed">
+    <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.completion-typed.empty">
+    <Setter Property="FontFamily" Value="{DynamicResource ContentControlThemeFontFamily}" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+  </Style>
+  <Style Selector="TextBlock.completion-hint">
+    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+    <Setter Property="Margin" Value="4,5,4,0" />
+  </Style>
+  <Style Selector="cc|CompletionList">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="cc|CompletionList ListBox, cc|CompletionListBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="cc|CompletionList ListBoxItem">
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Margin" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="cc|CompletionList ListBoxItem /template/ ContentPresenter">
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="cc|CompletionList ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
   </Style>
   <Style Selector="cc|CompletionList ListBoxItem:selected /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
   </Style>
+  <Style Selector="TextBlock.completion-name">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="9,0,12,0" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="Run.completion-match">
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+  </Style>
+  <Style Selector="TextBlock.completion-detail">
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="MaxWidth" Value="170" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="c|NfIcon.completion-icon">
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="c|NfIcon.completion-icon.kind-table"><Setter Property="Foreground" Value="#0090FF" /></Style>
+  <Style Selector="c|NfIcon.completion-icon.kind-eye"><Setter Property="Foreground" Value="#6E56CF" /></Style>
+  <Style Selector="c|NfIcon.completion-icon.kind-column"><Setter Property="Foreground" Value="#30A46C" /></Style>
+  <Style Selector="c|NfIcon.completion-icon.kind-key"><Setter Property="Foreground" Value="#E5A000" /></Style>
+  <Style Selector="c|NfIcon.completion-icon.kind-function"><Setter Property="Foreground" Value="#12A594" /></Style>
+  <Style Selector="c|NfIcon.completion-icon.kind-database"><Setter Property="Foreground" Value="#8B8D98" /></Style>
   <!-- Schede di contenuto, Server Monitor -->
   <Style Selector="Border.card">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
