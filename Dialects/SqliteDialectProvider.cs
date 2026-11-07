@@ -33,6 +33,7 @@ public sealed class SqliteDialectProvider : AdoDialectProvider
         try
         {
             await OpenAsync(connection, cancellationToken);
+            ActivityRecording.Register(connection, profile);
             return connection;
         }
         catch

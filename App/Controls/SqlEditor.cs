@@ -273,8 +273,10 @@ public sealed class SqlEditor : TextEditor
             items.AddRange(Keywords.Select(keyword => keyword.Contains('(') || keyword is "COUNT" or "SUM" or "AVG" or "MIN" or "MAX" or "COALESCE" or "CAST"
                 ? new SqlCompletionItem(keyword, "funzione", "function", 3)
                 : new SqlCompletionItem(keyword, "parola chiave", "keyword", 3)));
-            if (CompletionSource is { } source) items.AddRange(source.OtherNames.Select(name => new SqlCompletionItem(name, "database", "database", 4)));
         }
+        // Un nome dopo FROM/JOIN/UPDATE/INTO può essere sia una tabella sia il database che la contiene.
+        if (CompletionSource is { } source)
+            items.AddRange(source.OtherNames.Select(name => new SqlCompletionItem(name, "database", "database", tableContext ? 1 : 4)));
         return items
             .GroupBy(item => item.Text, StringComparer.OrdinalIgnoreCase).Select(group => group.OrderBy(item => item.Rank).First())
             .OrderBy(item => item.Rank).ThenBy(item => item.Text, StringComparer.OrdinalIgnoreCase).ToList();

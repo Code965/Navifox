@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Navifox.App.Services;
 using Navifox.Core;
 using Navifox.Core.Models;
+using Navifox.Dialects;
 
 namespace Navifox.App.ViewModels;
 
@@ -158,7 +159,11 @@ public partial class DataTransferViewModel : ObservableObject
         if (value == 3) OnPropertyChanged(nameof(Summary));
     }
 
-    partial void OnSourceDatabaseChanged(string? value) => OnPropertyChanged(nameof(SourceSubtitle));
+    partial void OnSourceDatabaseChanged(string? value)
+    {
+        OnPropertyChanged(nameof(SourceSubtitle));
+        _ = LoadTablesAsync(value);
+    }
     partial void OnTargetDatabaseChanged(string? value) => OnPropertyChanged(nameof(TargetSubtitle));
 
     [RelayCommand]
@@ -310,7 +315,6 @@ public partial class DataTransferViewModel : ObservableObject
         _ = LoadDatabasesAsync(false);
         _ = LoadInfoAsync(false);
     }
-    partial void OnSourceDatabaseChanging(string? value) => _ = LoadTablesAsync(value);
 
     private static string SchemaFor(ConnectionProfile profile, string database) => profile.Kind.DefaultSchema(database);
 
@@ -435,10 +439,14 @@ public partial class DataTransferViewModel : ObservableObject
         var sourceSchema = SchemaFor(source, sourceDb);
         var targetSchema = SchemaFor(target, targetDb);
         var errors = 0;
+        var tableErrors = 0;
         var postData = new List<string>();
         AddLog($"Trasferimento {source.Name}/{sourceDb} → {target.Name}/{targetDb}: {selected.Length} tabelle");
+        ActivityRecording.ActivityOperation? activity = null;
         try
         {
+            activity = ActivityRecording.BeginOperation(target, targetDb, "Trasferimento dati",
+                $"{source.Name}/{sourceDb} → {target.Name}/{targetDb}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nCrea struttura: {CreateTables}; copia dati: {CopyData}; continua con errori: {ContinueOnError}");
             await using var from = await _databaseAccess.OpenAsync(source, sourceDb, token);
             await using var to = await _databaseAccess.OpenAsync(target, targetDb, token);
             var tracker = await PrepareProgressAsync(provider, from, sourceSchema, selected, token);
@@ -516,6 +524,7 @@ public partial class DataTransferViewModel : ObservableObject
                 catch (Exception exception)
                 {
                     errors++;
+                    tableErrors++;
                     table.State = "errore";
                     tracker.FinishTable(i, 0);
                     AddError($"{table.Name}: {exception.Message}");
@@ -527,18 +536,19 @@ public partial class DataTransferViewModel : ObservableObject
             foreach (var statement in postData)
             {
                 try { await Run(statement); }
-                catch (Exception exception) when (ContinueOnError) { AddError($"Vincolo non applicato: {exception.Message}"); }
+                catch (Exception exception) when (ContinueOnError) { errors++; AddError($"Vincolo non applicato: {exception.Message}"); }
             }
             if (mysql) await Run("SET FOREIGN_KEY_CHECKS = 1");
             Progress = 100;
             ProgressText = $"100% · {tracker.DoneRows:N0} righe · {selected.Length} tabelle · {tracker.Elapsed}";
-            StatusMessage = $"Completato: {selected.Length - errors} tabelle, {tracker.DoneRows:N0} righe in {tracker.Elapsed}{(errors > 0 ? $", {errors} errori" : string.Empty)}.";
+            StatusMessage = $"Completato: {selected.Length - tableErrors} tabelle, {tracker.DoneRows:N0} righe in {tracker.Elapsed}{(errors > 0 ? $", {errors} errori" : string.Empty)}.";
             if (errors > 0) AddError(StatusMessage); else AddOk(StatusMessage);
             SqlHistory.Record(target.Name, targetDb, $"-- Trasferimento dati da {source.Name}/{sourceDb}: {selected.Length} tabelle, {tracker.DoneRows} righe", TimeSpan.Zero, errors > 0 ? $"{errors} errori" : null);
+            activity?.Complete(errors > 0 ? StatusMessage : null);
         }
-        catch (OperationCanceledException) { StatusMessage = "Trasferimento interrotto."; AddError(StatusMessage); }
-        catch (Exception exception) { StatusMessage = $"Trasferimento interrotto: {exception.Message}"; AddError(StatusMessage); }
-        finally { IsRunning = false; }
+        catch (OperationCanceledException error) { activity?.Fail(error); StatusMessage = "Trasferimento interrotto."; AddError(StatusMessage); }
+        catch (Exception exception) { activity?.Fail(exception); StatusMessage = $"Trasferimento interrotto: {exception.Message}"; AddError(StatusMessage); }
+        finally { activity?.Dispose(); IsRunning = false; }
     }
 
     /// <summary>Conta le righe da copiare (per la percentuale per riga) e prepara il calcolo di velocità e tempo stimato.</summary>
@@ -581,12 +591,14 @@ public partial class DataTransferViewModel : ObservableObject
         var mysql = provider.UsesMySqlScriptSyntax;
         var schema = SchemaFor(source, sourceDb);
         AddLog($"Esportazione di {selected.Length} tabelle in {TargetFile}");
+        ActivityRecording.ActivityOperation? activity = null;
         try
         {
+            activity = ActivityRecording.BeginOperation(source, sourceDb, "Esportazione dati", $"{source.Name}/{sourceDb} → {TargetFile}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nStruttura: {CreateTables}; dati: {CopyData}");
             await using var connection = await _databaseAccess.OpenAsync(source, sourceDb, token);
             var tracker = await PrepareProgressAsync(provider, connection, schema, selected, token);
             await using var writer = new StreamWriter(TargetFile, false, new System.Text.UTF8Encoding(false));
-            await writer.WriteAsync(provider.DumpHeader(sourceDb));
+            await ActivityRecording.WriteScriptAsync(writer, provider.DumpHeader(sourceDb));
             var postData = new List<string>();
             for (var i = 0; i < selected.Length; i++)
             {
@@ -600,10 +612,10 @@ public partial class DataTransferViewModel : ObservableObject
                 if (CreateTables)
                 {
                     var ddl = await provider.GetDdlAsync(connection, sourceDb, schema, table.Name, false, token);
-                    var drop = $"DROP TABLE IF EXISTS {name}{(mysql ? string.Empty : " CASCADE")};";
+                    var drop = $"DROP TABLE IF EXISTS {name}{(source.Kind == DatabaseKind.PostgreSql ? " CASCADE" : string.Empty)};";
                     AddSql(drop);
                     AddSql(ddl.Create);
-                    await writer.WriteAsync($"\n-- Tabella {name}\n{drop}\n{ddl.Create}\n");
+                    await ActivityRecording.WriteScriptAsync(writer, $"\n-- Tabella {name}\n{drop}\n{ddl.Create}\n");
                     postData.AddRange(ddl.PostData);
                 }
                 long rows = 0;
@@ -616,7 +628,7 @@ public partial class DataTransferViewModel : ObservableObject
                     {
                         rows += batch.Count;
                         AddSql($"{head} … {batch.Count:N0} righe  →  {tracker.TableLabel(i, rows)}");
-                        await writer.WriteAsync(provider.BuildInsert(schema, table.Name, columns, batch));
+                        await ActivityRecording.WriteScriptAsync(writer, provider.BuildInsert(schema, table.Name, columns, batch));
                         batch.Clear();
                         tracker.Advance(i, rows);
                         table.State = tracker.TableLabel(i, rows);
@@ -637,26 +649,28 @@ public partial class DataTransferViewModel : ObservableObject
             if (postData.Count > 0)
             {
                 foreach (var statement in postData) AddSql(statement);
-                await writer.WriteAsync("\n" + string.Join("\n", postData) + "\n");
+                await ActivityRecording.WriteScriptAsync(writer, "\n" + string.Join("\n", postData) + "\n");
             }
-            await writer.WriteAsync(provider.DumpFooter());
+            await ActivityRecording.WriteScriptAsync(writer, provider.DumpFooter());
+            await writer.FlushAsync();
             Progress = 100;
             ProgressText = $"100% · {tracker.DoneRows:N0} righe · {selected.Length} tabelle · {tracker.Elapsed}";
             StatusMessage = $"Completato: {selected.Length} tabelle, {tracker.DoneRows:N0} righe in {Path.GetFileName(TargetFile)}.";
             AddOk(StatusMessage);
+            activity?.Complete();
         }
-        catch (OperationCanceledException) { StatusMessage = "Esportazione interrotta."; AddError(StatusMessage); }
-        catch (Exception exception) { StatusMessage = $"Esportazione non riuscita: {exception.Message}"; AddError(StatusMessage); }
-        finally { IsRunning = false; }
+        catch (OperationCanceledException error) { activity?.Fail(error); StatusMessage = "Esportazione interrotta."; AddError(StatusMessage); }
+        catch (Exception exception) { activity?.Fail(exception); StatusMessage = $"Esportazione non riuscita: {exception.Message}"; AddError(StatusMessage); }
+        finally { activity?.Dispose(); IsRunning = false; }
     }
 
     /// <summary>Righe per ogni INSERT multiplo.</summary>
     private const int BatchSize = 1000;
 
-    private void AddLog(string message) => Log.Add(new TransferLogEntry(DateTime.Now, "info", message));
+    private void AddLog(string message) { Log.Add(new TransferLogEntry(DateTime.Now, "info", message)); ActivityRecording.Note(message); }
     private void AddSql(string sql) => Log.Add(new TransferLogEntry(DateTime.Now, "sql", sql.Trim()));
-    private void AddOk(string message) => Log.Add(new TransferLogEntry(DateTime.Now, "ok", message));
-    private void AddError(string message) => Log.Add(new TransferLogEntry(DateTime.Now, "error", message));
+    private void AddOk(string message) { Log.Add(new TransferLogEntry(DateTime.Now, "ok", message)); ActivityRecording.Note(message); }
+    private void AddError(string message) { Log.Add(new TransferLogEntry(DateTime.Now, "error", message)); ActivityRecording.Note(message, "Failed"); }
 
     /// <summary>Testo completo del registro (pulsante «Copia registro»).</summary>
     public string LogText => string.Join(Environment.NewLine, Log.Select(entry => entry.ToString()));

@@ -139,7 +139,7 @@
             </MenuItem>
             <MenuItem Header="Trova nel database/schema…" Command="{Binding OpenFindCommand}" CommandParameter="{x:Null}" InputGesture="Ctrl+Shift+F"><MenuItem.Icon><c:NfIcon Kind="search" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <Separator />
-            <MenuItem Header="Registro cronologia…" Command="{Binding OpenHistoryCommand}" InputGesture="Ctrl+L"><MenuItem.Icon><c:NfIcon Kind="history" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Registro attività…" Command="{Binding OpenHistoryCommand}" InputGesture="Ctrl+L"><MenuItem.Icon><c:NfIcon Kind="history" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Automazione…" Command="{Binding OpenAutomationCommand}"><MenuItem.Icon><c:NfIcon Kind="workflow" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <Separator />
             <MenuItem Header="Opzioni…" Command="{Binding OpenOptionsCommand}"><MenuItem.Icon><c:NfIcon Kind="settings" Classes="menu-icon" /></MenuItem.Icon></MenuItem>

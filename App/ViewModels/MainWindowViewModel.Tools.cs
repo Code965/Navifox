@@ -85,12 +85,13 @@ public partial class MainWindowViewModel
     {
         OpenOrSelect<HistoryTabViewModel>(_ => true, () => new HistoryTabViewModel(entry =>
         {
-            var profile = Profiles.FirstOrDefault(p => p.Name == entry.Connection) ?? Profiles.FirstOrDefault();
-            if (profile is null) return;
+            var profile = Profiles.FirstOrDefault(p => p.Id == entry.ProfileId) ??
+                (entry.ProfileId == Guid.Empty ? Profiles.FirstOrDefault(p => p.Name == entry.Connection) : null);
+            if (profile is null) { StatusMessage = "La connessione originale non è disponibile. Puoi copiare o esportare l’attività."; return; }
             var tab = new QueryTabViewModel(_databaseAccess, profile, entry.Database, false, Profiles.ToArray(), _dialogs) { SqlText = entry.Sql };
             OpenTabs.Add(tab);
             SelectedTab = tab;
-        }));
+        }, _dialogs));
     }
 
     [RelayCommand]

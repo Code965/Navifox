@@ -6,58 +6,6 @@ using Navifox.Core.Models;
 
 namespace Navifox.App.ViewModels;
 
-/// <summary>Strumenti › Registro cronologia.</summary>
-public partial class HistoryTabViewModel : WorkspaceTabViewModel
-{
-    private readonly Action<SqlHistoryEntry> _openInQuery;
-
-    public HistoryTabViewModel(Action<SqlHistoryEntry> openInQuery)
-    {
-        _openInQuery = openInQuery;
-        SqlHistory.Entries.CollectionChanged += (_, _) => ApplyFilter();
-        ApplyFilter();
-    }
-
-    public override string TabTitle => "Registro cronologia";
-    public override string TabGlyph => "history";
-    public ObservableCollection<SqlHistoryEntry> Visible { get; } = [];
-    [ObservableProperty] private string _filterText = string.Empty;
-    [ObservableProperty] private bool _onlyErrors;
-    [ObservableProperty] private string _countLabel = string.Empty;
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(OpenInQueryCommand), nameof(CopyCommand))]
-    private SqlHistoryEntry? _selected;
-
-    public event Action<string>? CopyRequested;
-
-    partial void OnFilterTextChanged(string value) => ApplyFilter();
-    partial void OnOnlyErrorsChanged(bool value) => ApplyFilter();
-
-    private void ApplyFilter()
-    {
-        var query = FilterText.Trim();
-        Visible.Clear();
-        foreach (var entry in SqlHistory.Entries.Where(e => (!OnlyErrors || !e.Succeeded)
-                     && (query.Length == 0 || e.Sql.Contains(query, StringComparison.OrdinalIgnoreCase) || e.Target.Contains(query, StringComparison.OrdinalIgnoreCase))))
-            Visible.Add(entry);
-        CountLabel = $"{Visible.Count:N0} di {SqlHistory.Entries.Count:N0} istruzioni";
-    }
-
-    private bool HasSelection() => Selected is not null;
-
-    [RelayCommand(CanExecute = nameof(HasSelection))]
-    private void OpenInQuery()
-    {
-        if (Selected is not null) _openInQuery(Selected);
-    }
-
-    [RelayCommand(CanExecute = nameof(HasSelection))]
-    private void Copy() => CopyRequested?.Invoke(Selected?.Sql ?? string.Empty);
-
-    [RelayCommand]
-    private void Clear() => SqlHistory.Clear();
-}
-
 public sealed record FindResult(string Table, string Column, long Matches, string Kind)
 {
     public string MatchesLabel => Kind == "dati" ? $"{Matches:N0}" : "—";

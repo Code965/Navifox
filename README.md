@@ -65,6 +65,33 @@ Le connessioni possono passare da un **tunnel SSH** (password o chiave privata, 
 - **Grafici** dai risultati: barre, linee, area, torta.
 - **Modalità sicura**: conferma per `UPDATE`/`DELETE` senza `WHERE`, `DROP` e `TRUNCATE`.
 
+Con **Salva / Ctrl+S** scegli il nome della query e la ritrovi subito in **Query salvate** sotto il database corrente.
+Navifox crea il relativo file `.sql` nella cartella dati, separato per connessione e database; i salvataggi successivi
+aggiornano la stessa query. **Salva con nome** crea una copia, mentre **Esporta file SQL** permette di scegliere un percorso esterno.
+Le query salvate dalle versioni precedenti vengono mantenute e convertite in file SQL automaticamente.
+
+### Registro attività
+
+**Strumenti › Registro attività / Ctrl+L** conserva le istruzioni eseguite da Navifox, comprese quelle generate dalla griglia,
+dalle importazioni e da Data Transfer. Ogni attività ha un numero progressivo, sessione, gruppo di operazione, connessione,
+database, SQL completo, parametri ed esito. Il registro è locale (`%APPDATA%\Navifox\activities.db`) e non viene svuotato automaticamente.
+La cronologia precedente viene importata una sola volta, mantenendo il file originale.
+
+Nei trasferimenti vengono archiviati origine, destinazione, opzioni, passaggi, tutti gli INSERT con i valori effettivi,
+vincoli, COMMIT e ROLLBACK. Sono conservati anche i blocchi SQL esportati su file, distinguendoli dai comandi eseguiti sul server.
+Puoi cercare per SQL, connessione, database, sessione o operazione, filtrare trasferimenti ed esiti da verificare,
+consultare i dettagli, caricare le attività precedenti ed esportare il registro completo dei filtri in JSON.
+
+**Esporta script operazione** prepara, nell'ordine originale, lo SQL del gruppo per la connessione e il database selezionati.
+**Script completo del database** raccoglie invece tutte le operazioni archiviate per quella destinazione, anche di sessioni diverse;
+le esportazioni su file restano commentate perché non hanno modificato il database sorgente.
+I comandi falliti, incerti, parametrici e quelli dello storico precedente restano commentati, con le informazioni necessarie
+per rivederli. Lo script va controllato prima di eseguirlo: per ricostruire un database serve anche una base iniziale compatibile
+e vanno rispettate le transazioni. Il registro copre le operazioni fatte tramite Navifox e non sostituisce un backup del server.
+
+Il comando viene registrato prima dell'esecuzione: se il registro non è scrivibile, l'operazione viene fermata e segnalata.
+Le istruzioni senza esito dopo una chiusura anomala vengono indicate come **Da verificare**, senza presumere che non abbiano modificato dati.
+
 ### Assistente SQL con l'intelligenza artificiale
 L'assistente conosce la struttura del database collegato e:
 - **spiega** una query;
@@ -120,6 +147,7 @@ Serve l'SDK [.NET 10](https://dotnet.microsoft.com/download). Puoi installarne u
 dotnet build Navifox.sln
 dotnet run --project App/Navifox.App.csproj
 dotnet test Tests/Navifox.Tests.csproj
+dotnet test AppTests/Navifox.AppTests.csproj
 ```
 
 I test di integrazione con server reali si attivano con la variabile d'ambiente `NAVIFOX_IT=1` e usano database temporanei.

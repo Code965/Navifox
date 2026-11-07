@@ -388,7 +388,7 @@ public abstract class AdoDialectProvider : IDialectProvider
     {
         var command = connection.CreateCommand();
         command.CommandText = sql;
-        return command;
+        return ActivityRecording.Wrap(command);
     }
 
     private static long? ReadInt64(DbDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? null : Convert.ToInt64(reader.GetValue(ordinal), System.Globalization.CultureInfo.InvariantCulture);

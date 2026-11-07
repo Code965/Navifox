@@ -199,7 +199,7 @@ public partial class MainWindowViewModel
           Ctrl+Maiusc+L     Mostra/nascondi pannello connessioni
           Ctrl+Maiusc+I     Mostra/nascondi pannello informazioni
           F6                Console
-          Ctrl+L            Registro cronologia
+          Ctrl+L            Registro attività
           Ctrl+Maiusc+F     Trova nel database
 
         Albero ed elenco oggetti

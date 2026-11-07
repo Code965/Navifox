@@ -39,6 +39,7 @@ public partial class App : Application
             _services = registrations.BuildServiceProvider();
             Services = _services;
             AppSettings.Load();
+            ActivityRecording.Journal = new ActivityJournal(AppPaths.File("activities.db"));
             _services.GetRequiredService<IThemeService>().Apply(AppSettings.Current.Theme);
 
             // Modalità screenshot/automazione: niente schermata di avvio.

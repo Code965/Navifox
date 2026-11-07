@@ -5,6 +5,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Navifox.App.Services;
 using Navifox.Core.Models;
+using Navifox.Core;
+using Navifox.Dialects;
 
 namespace Navifox.App.ViewModels;
 
@@ -52,28 +54,50 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     public Guid? SavedQueryId { get; private set; }
     private string? _savedQueryName;
 
-    public void AttachSavedQuery(Services.SavedQuery query)
+    public void AttachSavedQuery(SavedQuery query)
     {
         SavedQueryId = query.Id;
         _savedQueryName = query.Name;
+        FilePath = query.FilePath;
         RefreshTitle();
     }
 
     /// <summary>Salva il testo nella categoria «Query salvate» del database (aggiorna se già salvata).</summary>
     [RelayCommand]
-    private async Task SaveToLibraryAsync()
+    private Task SaveToLibraryAsync() => SaveToLibraryCoreAsync(false);
+
+    private async Task SaveToLibraryCoreAsync(bool newName)
     {
         if (_dialogs is null) return;
-        var database = SelectedDatabase ?? string.Empty;
-        var name = _savedQueryName;
-        if (SavedQueryId is null)
+        if (string.IsNullOrWhiteSpace(SelectedDatabase))
         {
-            name = await _dialogs.PromptAsync("Salva in Query salvate", $"Nome della query (in «{(database.Length == 0 ? _profile.Name : database)}»):", $"Query {_number}", "Salva");
-            if (string.IsNullOrWhiteSpace(name)) return;
+            await _dialogs.ShowMessageAsync("Salva query", "Scegli il database nella barra dell’editor per salvare la query nella sua cartella. Puoi anche usare «Esporta file SQL…».");
+            return;
         }
-        var saved = Services.LibraryStore.SaveQuery(new Services.SavedQuery { Id = SavedQueryId ?? Guid.NewGuid(), ProfileId = _profile.Id, Database = database, Name = name!.Trim(), Sql = SqlText });
-        AttachSavedQuery(saved);
-        StatusMessage = $"Query «{saved.Name}» salvata in Query salvate.";
+        try
+        {
+            var database = SelectedDatabase;
+            var attached = SavedQueryId is { } id ? LibraryStore.Query(id) : null;
+            if (attached is not null && (attached.ProfileId != _profile.Id || attached.Database != database)) attached = null;
+            var name = attached?.Name ?? _savedQueryName ?? (FilePath is { } path ? Path.GetFileNameWithoutExtension(path) : $"Query {_number}");
+            if (attached is null || newName)
+            {
+                name = await _dialogs.PromptAsync("Salva query", $"Nome della query\nPosizione: {_profile.Name} / {database} / Query salvate", name, "Salva");
+                if (string.IsNullOrWhiteSpace(name)) return;
+            }
+            name = name.Trim();
+            var sameName = LibraryStore.QueriesFor(_profile.Id, database).FirstOrDefault(q => string.Equals(q.Name, name, StringComparison.OrdinalIgnoreCase));
+            var queryId = newName ? Guid.NewGuid() : attached?.Id ?? Guid.NewGuid();
+            if (sameName is not null && sameName.Id != queryId)
+            {
+                if (!await _dialogs.ConfirmAsync("Query già presente", $"Sostituire la query «{sameName.Name}» in {_profile.Name} / {database}?", "Sostituisci")) return;
+                queryId = sameName.Id;
+            }
+            var saved = LibraryStore.SaveQuery(new SavedQuery { Id = queryId, ProfileId = _profile.Id, Database = database, Name = name, Sql = SqlText });
+            AttachSavedQuery(saved);
+            StatusMessage = $"Query «{saved.Name}» salvata in {_profile.Name} / {database} / Query salvate.";
+        }
+        catch (Exception exception) { await _dialogs.ShowMessageAsync("Salvataggio non riuscito", exception.Message, isError: true); }
     }
 
     public string? Database => SelectedDatabase;
@@ -240,19 +264,25 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     public IReadOnlyList<SqlSnippet> Snippets => SqlSnippets.All;
 
     [RelayCommand]
-    private async Task SaveAsync() => await SaveCoreAsync(FilePath);
+    private Task SaveAsync() => SaveToLibraryCoreAsync(false);
 
     [RelayCommand]
-    private async Task SaveAsAsync() => await SaveCoreAsync(null);
+    private Task SaveAsAsync() => SaveToLibraryCoreAsync(true);
+
+    [RelayCommand]
+    private Task ExportFileAsync() => SaveCoreAsync(null);
 
     private async Task SaveCoreAsync(string? path)
     {
         if (_dialogs is null) return;
         path ??= await _dialogs.PickSaveFileAsync("Salva query", $"query{_number}.sql", "sql", new FileFilter("Script SQL", "*.sql"));
         if (path is null) return;
-        await File.WriteAllTextAsync(path, SqlText, new UTF8Encoding(false));
-        FilePath = path;
-        StatusMessage = $"Salvato in {path}";
+        try
+        {
+            await File.WriteAllTextAsync(path, SqlText, new UTF8Encoding(false));
+            StatusMessage = $"Esportato in {path}";
+        }
+        catch (Exception exception) { await _dialogs.ShowMessageAsync("Esportazione non riuscita", exception.Message, isError: true); }
     }
 
     [RelayCommand]
@@ -262,7 +292,10 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         var path = await _dialogs.PickOpenFileAsync("Apri script SQL", new FileFilter("Script SQL", "*.sql"), new FileFilter("Tutti i file", "*.*"));
         if (path is null) return;
         SqlText = await File.ReadAllTextAsync(path);
+        SavedQueryId = null;
+        _savedQueryName = null;
         FilePath = path;
+        RefreshTitle();
     }
 
     [RelayCommand]
@@ -328,21 +361,26 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         IsBusy = true;
         StatusMessage = "Esecuzione…";
         var timer = Stopwatch.StartNew();
+        ActivityRecording.ActivityOperation? activity = null;
         try
         {
+            activity = ActivityRecording.BeginOperation(_profile, SelectedDatabase, console ? "Console" : "Query", "Esecuzione dall’editor SQL");
             var results = await _databaseAccess.ExecuteBatchAsync(_profile, SelectedDatabase, sql, console ? ConsoleMaxRows : MaxRows, _running.Token);
+            activity?.Complete(results.FirstOrDefault(r => r.Error is not null)?.Error?.Message);
             timer.Stop();
             if (console) WriteConsoleResults(results);
             else ShowEditorResults(results, timer.Elapsed);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException error)
         {
+            activity?.Fail(error);
             StatusMessage = "Esecuzione interrotta.";
             if (console) AppendConsole("Interrotto.\n\n");
             else Messages.Add($"[{DateTime.Now:HH:mm:ss}] Esecuzione interrotta.");
         }
         catch (Exception exception)
         {
+            activity?.Fail(exception);
             StatusMessage = $"Errore: {exception.Message}";
             RememberError(sql, exception.Message);
             if (console) AppendConsole($"ERRORE: {exception.Message}\n\n");
@@ -354,6 +392,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         }
         finally
         {
+            activity?.Dispose();
             IsBusy = false;
             _running.Dispose();
             _running = null;

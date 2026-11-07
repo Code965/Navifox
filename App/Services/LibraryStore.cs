@@ -1,18 +1,6 @@
-using System.Text.Json;
 using Navifox.Core;
 
 namespace Navifox.App.Services;
-
-/// <summary>Query salvate da Navifox (categoria «Query salvate» di ogni database).</summary>
-public sealed class SavedQuery
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid ProfileId { get; set; }
-    public string Database { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Sql { get; set; } = string.Empty;
-    public DateTimeOffset Modified { get; set; } = DateTimeOffset.Now;
-}
 
 /// <summary>Scheda riaperta all'avvio o salvata in un'area di lavoro.</summary>
 public sealed class SessionTab
@@ -38,57 +26,28 @@ public sealed class Workspace
 /// <summary>Archivio locale (%APPDATA%\Navifox): query salvate e cartella dei backup.</summary>
 public static class LibraryStore
 {
-    private static readonly string QueriesPath = AppPaths.File("saved-queries.json");
-    private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
-    private static List<SavedQuery>? _queries;
+    private static readonly SavedQueryLibrary Library = new(AppPaths.DataDirectory);
+    public static string QueryDirectory(Guid profileId, string database) => Library.QueryDirectory(profileId, database);
 
     /// <summary>Notifica le modifiche (per aggiornare l'albero).</summary>
     public static event Action<Guid, string>? QueriesChanged;
 
-    private static List<SavedQuery> Queries
-    {
-        get
-        {
-            if (_queries is not null) return _queries;
-            try { _queries = File.Exists(QueriesPath) ? JsonSerializer.Deserialize<List<SavedQuery>>(File.ReadAllText(QueriesPath)) ?? [] : []; }
-            catch { _queries = []; }
-            return _queries;
-        }
-    }
-
     public static IReadOnlyList<SavedQuery> QueriesFor(Guid profileId, string database) =>
-        Queries.Where(q => q.ProfileId == profileId && q.Database == database).OrderBy(q => q.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        Library.All().Where(q => q.ProfileId == profileId && q.Database == database).OrderBy(q => q.Name, StringComparer.OrdinalIgnoreCase).ToArray();
 
-    public static SavedQuery? Query(Guid id) => Queries.FirstOrDefault(q => q.Id == id);
+    public static SavedQuery? Query(Guid id) => Library.All().FirstOrDefault(q => q.Id == id);
 
     public static SavedQuery SaveQuery(SavedQuery query)
     {
-        var existing = Queries.FirstOrDefault(q => q.Id == query.Id);
-        if (existing is null) Queries.Add(query);
-        else
-        {
-            existing.Name = query.Name;
-            existing.Sql = query.Sql;
-            existing.Database = query.Database;
-        }
-        (existing ?? query).Modified = DateTimeOffset.Now;
-        Persist();
+        var saved = Library.Save(query);
         QueriesChanged?.Invoke(query.ProfileId, query.Database);
-        return existing ?? query;
+        return saved;
     }
 
     public static void DeleteQuery(Guid id)
     {
-        if (Queries.FirstOrDefault(q => q.Id == id) is not { } query) return;
-        Queries.Remove(query);
-        Persist();
+        if (Library.Delete(id) is not { } query) return;
         QueriesChanged?.Invoke(query.ProfileId, query.Database);
-    }
-
-    private static void Persist()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(QueriesPath)!);
-        File.WriteAllText(QueriesPath, JsonSerializer.Serialize(Queries, Json));
     }
 
     /// <summary>Cartella dei backup di un database: %APPDATA%\Navifox\backups\«connessione»\«database».</summary>

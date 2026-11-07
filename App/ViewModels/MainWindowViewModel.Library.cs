@@ -5,6 +5,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.Input;
 using Navifox.App.Services;
 using Navifox.Core.Models;
+using Navifox.Core;
 
 namespace Navifox.App.ViewModels;
 
@@ -52,8 +53,32 @@ public partial class MainWindowViewModel
 
     private void OnSavedQueriesChanged(Guid profileId, string database)
     {
-        if (_connectionNodes.TryGetValue(profileId, out _) && FindCategoryNode(profileId, database, "Query salvate") is { IsLoaded: true } category)
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = RefreshCategoryNodeAsync(category));
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            try
+            {
+                if (!_connectionNodes.TryGetValue(profileId, out var connection)) return;
+                await EnsureLoadedAsync(connection);
+                connection.IsExpanded = true;
+                var databaseNode = connection.Children.FirstOrDefault(n => n.Kind == TreeNodeKind.Database && n.Database == database);
+                if (databaseNode is not null)
+                {
+                    await EnsureLoadedAsync(databaseNode);
+                    databaseNode.IsExpanded = true;
+                    var schemaNode = databaseNode.Children.FirstOrDefault(n => n.Kind == TreeNodeKind.Schema && n.Schema == connection.Profile!.Kind.DefaultSchema(database))
+                        ?? databaseNode.Children.FirstOrDefault(n => n.Kind == TreeNodeKind.Schema);
+                    if (schemaNode is not null) { await EnsureLoadedAsync(schemaNode); schemaNode.IsExpanded = true; }
+                }
+                foreach (var category in connection.SelfAndDescendants().Where(n => n.Kind == TreeNodeKind.Category && n.Category == "Query salvate" && n.Database == database).ToArray())
+                {
+                    LoadLocalCategory(category);
+                    category.IsExpanded = true;
+                    if (ObjectsTab.Source == category) ShowCategoryObjects(category, bringToFront: false);
+                }
+                if (HasTreeFilter) ApplyTreeFilter();
+            }
+            catch (Exception exception) { StatusMessage = $"Query salvata, ma non è stato possibile aggiornare l’albero: {exception.Message}"; }
+        });
     }
 
     private TreeNodeViewModel? FindCategoryNode(Guid profileId, string database, string category) =>
@@ -71,6 +96,7 @@ public partial class MainWindowViewModel
         ?
         [
             new("Nuova query", NewQueryCommand, node, "file-code"),
+            new("Apri la cartella delle query", OpenQueryFolderCommand, node, "folder"),
             ContextAction.Separator,
             new("Aggiorna", RefreshNodeCommand, node, "refresh"),
         ]
@@ -94,6 +120,16 @@ public partial class MainWindowViewModel
         ContextAction.Separator,
         new("Aggiorna", RefreshNodeCommand, node.CategoryNode, "refresh"),
     ];
+
+    [RelayCommand]
+    private void OpenQueryFolder(TreeNodeViewModel? node)
+    {
+        if (node is not { Profile: { } profile, Database: { } database }) return;
+        var directory = LibraryStore.QueryDirectory(profile.Id, database);
+        Directory.CreateDirectory(directory);
+        try { Process.Start(new ProcessStartInfo("explorer.exe", $"\"{directory}\"") { UseShellExecute = true }); }
+        catch (Exception exception) { StatusMessage = exception.Message; }
+    }
 
     private IReadOnlyList<ContextAction> BackupActions(TreeNodeViewModel node) =>
     [
@@ -141,8 +177,8 @@ public partial class MainWindowViewModel
         var name = await _dialogs.PromptAsync("Rinomina query", "Nuovo nome:", query.Name, "Rinomina");
         if (string.IsNullOrWhiteSpace(name)) return;
         query.Name = name.Trim();
-        LibraryStore.SaveQuery(query);
-        foreach (var tab in OpenTabs.OfType<QueryTabViewModel>().Where(t => t.SavedQueryId == query.Id)) tab.AttachSavedQuery(query);
+        var saved = LibraryStore.SaveQuery(query);
+        foreach (var tab in OpenTabs.OfType<QueryTabViewModel>().Where(t => t.SavedQueryId == query.Id)) tab.AttachSavedQuery(saved);
     }
 
     [RelayCommand]

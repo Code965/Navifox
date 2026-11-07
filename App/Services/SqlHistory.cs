@@ -26,6 +26,12 @@ public static class SqlHistory
     public static void Load()
     {
         if (_loaded) return;
+        if (Navifox.Dialects.ActivityRecording.Journal is { } journal)
+        {
+            journal.ImportLegacy(FilePath);
+            _loaded = true;
+            return;
+        }
         _loaded = true;
         try
         {
@@ -42,6 +48,7 @@ public static class SqlHistory
 
     public static void Record(string connection, string? database, string sql, TimeSpan elapsed, string? error)
     {
+        if (Navifox.Dialects.ActivityRecording.Journal is not null) return;
         if (string.IsNullOrWhiteSpace(sql)) return;
         var entry = new SqlHistoryEntry(DateTime.Now, connection, database, sql.Trim(), elapsed.TotalMilliseconds, error);
         Dispatcher.UIThread.Post(() =>

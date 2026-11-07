@@ -62,7 +62,7 @@ public partial class MainWindowViewModel
         new("Sincronizzazione dati", "Confronta i dati di due database", "sync", "Comandi", () => OpenDataSyncCommand.ExecuteAsync(null)),
         new("Utenti e privilegi", "Utenti, password e permessi del server", "users", "Comandi", () => { OpenUsersCommand.Execute(null); return Task.CompletedTask; }),
         new("Trova nel database", "Cerca un valore in tutte le tabelle", "search", "Comandi", () => { OpenFindCommand.Execute(null); return Task.CompletedTask; }, "Ctrl+Maiusc+F"),
-        new("Registro cronologia", "Tutte le istruzioni eseguite", "history", "Comandi", () => { OpenHistoryCommand.Execute(null); return Task.CompletedTask; }, "Ctrl+L"),
+        new("Registro attività", "Query, trasferimenti e passaggi salvati in ordine", "history", "Comandi", () => { OpenHistoryCommand.Execute(null); return Task.CompletedTask; }, "Ctrl+L"),
         new("Modello ER", "Diagramma relazionale del database", "network", "Comandi", () => OpenModelCommand.ExecuteAsync(null)),
         new("Automazione", "Attività pianificate (dump, query, export)", "workflow", "Comandi", () => { OpenAutomationCommand.Execute(null); return Task.CompletedTask; }),
         new("Apri file SQL", "Apre uno script in una nuova query", "folder", "Comandi", () => OpenExternalSqlCommand.ExecuteAsync(null)),

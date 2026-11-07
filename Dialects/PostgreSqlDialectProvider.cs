@@ -29,6 +29,7 @@ public sealed partial class PostgreSqlDialectProvider : AdoDialectProvider
         {
             await OpenAsync(connection, cancellationToken);
             tunnel?.Attach(connection);
+            ActivityRecording.Register(connection, profile);
             return connection;
         }
         catch

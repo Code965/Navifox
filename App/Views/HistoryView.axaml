@@ -1,56 +1,46 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Navifox.App.ViewModels"
-             xmlns:s="using:Navifox.App.Services"
+             xmlns:d="using:Navifox.Dialects"
              xmlns:c="using:Navifox.App.Controls"
              x:Class="Navifox.App.Views.HistoryView"
              x:DataType="vm:HistoryTabViewModel">
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid RowDefinitions="Auto,*,5,180,Auto">
     <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
-      <Grid ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="6">
         <WrapPanel>
-          <Button Classes="objbar" Command="{Binding OpenInQueryCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="file-code" Classes="objbar-icon" /><TextBlock Text="Apri in una query" /></StackPanel>
-          </Button>
-          <Button Classes="objbar" Command="{Binding CopyCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="copy" Classes="objbar-icon" /><TextBlock Text="Copia" /></StackPanel>
-          </Button>
-          <ToggleButton Classes="objbar" IsChecked="{Binding OnlyErrors, Mode=TwoWay}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="filter" Classes="objbar-icon" /><TextBlock Text="Solo errori" /></StackPanel>
-          </ToggleButton>
-          <Border Classes="toolbar-sep" />
-          <Button Classes="objbar" Command="{Binding ClearCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Svuota" /></StackPanel>
-          </Button>
+          <Button Classes="objbar" Command="{Binding OpenInQueryCommand}" Content="Apri in una query" />
+          <Button Classes="objbar" Command="{Binding CopyCommand}" Content="Copia dettagli" />
+          <Button Classes="objbar" Command="{Binding ShowOperationCommand}" Content="Mostra operazione" ToolTip.Tip="Mostra tutti i passaggi del gruppo selezionato, inclusi quelli del trasferimento." />
+          <Button Classes="objbar" Command="{Binding ExportSqlCommand}" Content="Esporta script operazione…" ToolTip.Tip="Esporta lo SQL completo in ordine per la connessione e il database della riga selezionata. Rivedi lo script prima di eseguirlo." />
+          <Button Classes="objbar" Command="{Binding ExportDatabaseSqlCommand}" Content="Script completo del database…" ToolTip.Tip="Esporta tutto l’archivio della connessione e del database selezionati, in ordine di esecuzione. Serve una base iniziale compatibile." />
+          <Button Classes="objbar" Command="{Binding ExportJsonCommand}" Content="Esporta registro…" />
         </WrapPanel>
-        <Grid Grid.Column="1" Width="240" VerticalAlignment="Center">
-          <TextBox Text="{Binding FilterText, Mode=TwoWay}" Watermark="Cerca nella cronologia…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
-          <c:NfIcon Kind="search" Width="13" Height="13" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+          <TextBox Text="{Binding FilterText, Mode=TwoWay}" Watermark="Cerca SQL, connessione, database, sessione o operazione…" MinHeight="28" />
+          <CheckBox Grid.Column="1" Content="Trasferimenti" IsChecked="{Binding OnlyTransfers, Mode=TwoWay}" />
+          <CheckBox Grid.Column="2" Content="Errori e interruzioni" IsChecked="{Binding OnlyErrors, Mode=TwoWay}" />
+          <Button Grid.Column="3" Classes="objbar" Command="{Binding ShowAllCommand}" Content="Mostra tutto" />
+          <Button Grid.Column="4" Classes="objbar" Command="{Binding LoadMoreCommand}" Content="Mostra altre" />
         </Grid>
-      </Grid>
+      </StackPanel>
     </Border>
     <DataGrid x:Name="HistoryGrid" Grid.Row="1" Classes="nf-grid history-grid" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected, Mode=TwoWay}"
               AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single">
       <DataGrid.Columns>
-        <DataGridTextColumn Header="Ora" Binding="{Binding TimeLabel}" Width="150" x:DataType="s:SqlHistoryEntry" />
-        <DataGridTextColumn Header="Connessione" Binding="{Binding Target}" Width="190" x:DataType="s:SqlHistoryEntry" />
-        <DataGridTextColumn Header="Durata" Binding="{Binding DurationLabel}" Width="80" x:DataType="s:SqlHistoryEntry" />
-        <DataGridTemplateColumn Header="Esito" Width="70">
-          <DataGridTemplateColumn.CellTemplate>
-            <DataTemplate x:DataType="s:SqlHistoryEntry">
-              <c:NfIcon Kind="{Binding Succeeded, Converter={x:Static vm:WizardConverters.OkIcon}}" Width="13" Height="13" Classes="history-state" Classes.error="{Binding !Succeeded}" ToolTip.Tip="{Binding Error}" />
-            </DataTemplate>
-          </DataGridTemplateColumn.CellTemplate>
-        </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Istruzione" Width="*">
-          <DataGridTemplateColumn.CellTemplate>
-            <DataTemplate x:DataType="s:SqlHistoryEntry">
-              <TextBlock Text="{Binding SqlOneLine}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" VerticalAlignment="Center" Margin="6,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Sql}" />
-            </DataTemplate>
-          </DataGridTemplateColumn.CellTemplate>
-        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="#" Binding="{Binding Sequence}" Width="50" x:DataType="d:ActivityEntry" />
+        <DataGridTextColumn Header="Ora" Binding="{Binding TimeLabel}" Width="155" x:DataType="d:ActivityEntry" />
+        <DataGridTextColumn Header="Connessione / database" Binding="{Binding Target}" Width="175" x:DataType="d:ActivityEntry" />
+        <DataGridTextColumn Header="Tipo" Binding="{Binding Kind}" Width="105" x:DataType="d:ActivityEntry" />
+        <DataGridTextColumn Header="Operazione" Binding="{Binding OperationLabel}" Width="80" x:DataType="d:ActivityEntry" />
+        <DataGridTextColumn Header="Esito" Binding="{Binding StatusLabel}" Width="90" x:DataType="d:ActivityEntry" />
+        <DataGridTextColumn Header="Durata" Binding="{Binding DurationLabel}" Width="70" x:DataType="d:ActivityEntry" />
+        <DataGridTextColumn Header="SQL / passaggio" Binding="{Binding SqlOneLine}" Width="*" x:DataType="d:ActivityEntry" />
       </DataGrid.Columns>
     </DataGrid>
-    <Border Grid.Row="2" Classes="grid-statusbar"><TextBlock Text="{Binding CountLabel}" VerticalAlignment="Center" /></Border>
+    <GridSplitter Grid.Row="2" ResizeDirection="Rows" HorizontalAlignment="Stretch" />
+    <TextBox Grid.Row="3" Text="{Binding Selected.Details}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+             FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+    <Border Grid.Row="4" Classes="grid-statusbar"><TextBlock Text="{Binding CountLabel}" VerticalAlignment="Center" /></Border>
   </Grid>
 </UserControl>

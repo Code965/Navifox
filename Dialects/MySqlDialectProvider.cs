@@ -31,6 +31,7 @@ public sealed partial class MySqlDialectProvider : AdoDialectProvider
         {
             await OpenAsync(connection, cancellationToken);
             tunnel?.Attach(connection);
+            ActivityRecording.Register(connection, profile);
             return connection;
         }
         catch

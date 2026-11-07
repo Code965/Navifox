@@ -88,6 +88,10 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
     }
 
     public async Task<int> ExecuteScriptFileAsync(ConnectionProfile profile, string? database, string path, IProgress<ScriptProgress>? progress, CancellationToken cancellationToken)
+        => await Navifox.Dialects.ActivityRecording.RunOperationAsync(profile, database, "File SQL", $"Esecuzione file {path}",
+            () => ExecuteScriptFileCoreAsync(profile, database, path, progress, cancellationToken));
+
+    private async Task<int> ExecuteScriptFileCoreAsync(ConnectionProfile profile, string? database, string path, IProgress<ScriptProgress>? progress, CancellationToken cancellationToken)
     {
         var provider = Provider(profile);
         var totalBytes = new FileInfo(path).Length;

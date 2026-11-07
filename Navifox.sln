@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Navifox.App", "App\Navifox.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Navifox.Tests", "Tests\Navifox.Tests.csproj", "{6B6A69A7-8400-4E3D-AB4C-47353B340004}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Navifox.AppTests", "AppTests\Navifox.AppTests.csproj", "{6B6A69A7-8400-4E3D-AB4C-47353B340005}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{6B6A69A7-8400-4E3D-AB4C-47353B340004}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B6A69A7-8400-4E3D-AB4C-47353B340004}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B6A69A7-8400-4E3D-AB4C-47353B340004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B6A69A7-8400-4E3D-AB4C-47353B340005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B6A69A7-8400-4E3D-AB4C-47353B340005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B6A69A7-8400-4E3D-AB4C-47353B340005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B6A69A7-8400-4E3D-AB4C-47353B340005}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
