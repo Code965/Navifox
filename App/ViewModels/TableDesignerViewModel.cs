@@ -469,7 +469,12 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
     {
         if (SelectedField is not { } field) return;
         var at = Fields.IndexOf(field);
-        Fields.Move(at, at + delta);
+        var target = at + delta;
+        if (at < 0 || target < 0 || target >= Fields.Count) return;
+        // Rimuovi + inserisci invece di Move: la DataGrid di Avalonia ignora le notifiche «Move»
+        // e continuerebbe a mostrare il vecchio ordine anche se quello reale è cambiato.
+        Fields.RemoveAt(at);
+        Fields.Insert(target, field);
         SelectedField = field;
         MoveUpCommand.NotifyCanExecuteChanged();
         MoveDownCommand.NotifyCanExecuteChanged();
