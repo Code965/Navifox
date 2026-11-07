@@ -19,6 +19,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     private readonly IDatabaseAccessService _databaseAccess;
     private readonly IDialogService _dialogs;
     private readonly ConnectionProfile _profile;
+    public override ConnectionProfile? TabConnection => _profile;
     private readonly IDialectProvider _provider;
     private IReadOnlyList<ColumnInfo> _metadata = [];
     private DbConnection? _transaction;
@@ -488,6 +489,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
             RefreshPending();
             return;
         }
+        if (!await Services.SqlGuard.ConfirmProductionAsync(_dialogs, _profile, $"Stai per salvare {statements.Count} modifiche ai dati di «{TableName}».")) return;
         var ok = false;
         await RunAsync(async (connection, token) =>
         {

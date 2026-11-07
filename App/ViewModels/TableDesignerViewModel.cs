@@ -141,6 +141,7 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
 
     public override string TabTitle => $"{(IsDirty ? "● " : string.Empty)}{(string.IsNullOrWhiteSpace(TableName) ? "Senza titolo" : TableName)} @{Database} ({Profile.Name}) – Tabella";
     public override string TabGlyph => "pencil";
+    public override ConnectionProfile? TabConnection => Profile;
 
     partial void OnSelectedSectionChanged(int value)
     {
@@ -322,6 +323,7 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
             IsDirty = false;
             return;
         }
+        if (!await Services.SqlGuard.ConfirmProductionAsync(_dialogs, Profile, $"Stai per modificare la struttura di «{TableName}» ({statements.Count} istruzioni: vedi Anteprima SQL).")) return;
         IsLoading = true;
         try
         {

@@ -27,6 +27,8 @@
             <TextBlock Grid.Column="2" Text="righe" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" />
           </Grid>
           <CheckBox Classes="crit-check" Content="Registra le istruzioni nel Registro cronologia" IsChecked="{Binding RecordHistory, Mode=TwoWay}" />
+          <CheckBox Classes="crit-check" Content="Modalità sicura: conferma UPDATE/DELETE senza WHERE, DROP e TRUNCATE" IsChecked="{Binding SafeMode, Mode=TwoWay}"
+                    ToolTip.Tip="Sulle connessioni di produzione Navifox chiede sempre conferma prima di ogni modifica" />
         </StackPanel>
       </Border>
       <Border Classes="card" Padding="14">

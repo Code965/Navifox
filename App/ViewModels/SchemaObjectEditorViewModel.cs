@@ -56,6 +56,8 @@ public partial class SchemaObjectEditorViewModel : WorkspaceTabViewModel
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _statusMessage = string.Empty;
 
+    public override ConnectionProfile? TabConnection => Profile;
+
     public string KindLabel => Kind switch
     {
         SchemaObjectKind.Routine => Item?.Kind == "PROCEDURE" || (Item is null && Definition.Contains("PROCEDURE", StringComparison.OrdinalIgnoreCase)) ? "Procedura" : "Funzione",
@@ -134,6 +136,7 @@ public partial class SchemaObjectEditorViewModel : WorkspaceTabViewModel
             await _dialogs.ShowMessageAsync("Impossibile salvare", IsView ? "Indica il nome della vista e la sua SELECT." : "La definizione è vuota.", isError: true);
             return;
         }
+        if (!await SqlGuard.ConfirmProductionAsync(_dialogs, Profile, $"Stai per salvare {KindLabel.ToLowerInvariant()} «{DisplayName}».")) return;
         var plan = IsView
             ? SchemaObjectSql.BuildViewSave(IsMySql, Schema, Item?.ObjectName, ViewName.Trim(), Definition)
             : SchemaObjectSql.BuildSave(IsMySql, Schema, Kind, Item, _originalDefinition, Definition);
@@ -265,6 +268,7 @@ public partial class SequenceEditorViewModel : WorkspaceTabViewModel
 
     public override string TabTitle => $"{(IsDirty ? "● " : string.Empty)}{Name} @{Database} ({Profile.Name}) – Sequenza";
     public override string TabGlyph => "hash";
+    public override ConnectionProfile? TabConnection => Profile;
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -350,6 +354,7 @@ public partial class SequenceEditorViewModel : WorkspaceTabViewModel
             IsDirty = false;
             return;
         }
+        if (!await SqlGuard.ConfirmProductionAsync(_dialogs, Profile, $"Stai per modificare la sequenza «{Name}».")) return;
         IsLoading = true;
         try
         {

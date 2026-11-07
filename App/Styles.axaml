@@ -572,6 +572,34 @@
     <Setter Property="MinHeight" Value="20" />
   </Style>
   <!-- Pannello informazioni e interruttori pannelli -->
+  <!-- Ambiente della connessione (DEV/TEST/PROD) e campioni di colore -->
+  <Style Selector="Border.env-chip">
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="MinHeight" Value="15" />
+  </Style>
+  <Style Selector="Border.env-chip TextBlock">
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.env-chip.prod">
+    <Setter Property="Background" Value="#E5484D" />
+  </Style>
+  <Style Selector="Button.swatch">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
   <!-- Trascinamento nell'albero delle connessioni -->
   <Style Selector="TreeViewItem.drop-before /template/ Border#PART_LayoutRoot">
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />

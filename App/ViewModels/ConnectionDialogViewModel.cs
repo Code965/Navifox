@@ -34,6 +34,8 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
         Name = profile.Name;
         Folder = profile.Folder;
         IsFavorite = profile.IsFavorite;
+        Environment = profile.Environment;
+        Color = profile.Color;
         SelectedKind = profile.Kind;
         Host = profile.Host;
         PortText = profile.Port.ToString();
@@ -57,6 +59,20 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
         OnPropertyChanged(nameof(StepTitle));
     }
     [ObservableProperty] private bool _isFavorite;
+    [ObservableProperty] private string _environment = string.Empty;
+    [ObservableProperty] private string? _color;
+
+    public IReadOnlyList<string> Environments { get; } = ["", "Sviluppo", "Test", "Produzione"];
+    public IReadOnlyList<string> Colors { get; } = ["", "#E5484D", "#F76B15", "#F5B400", "#30A46C", "#12A594", "#0090FF", "#6E56CF", "#8B8D98"];
+
+    partial void OnEnvironmentChanged(string value)
+    {
+        // Produzione senza colore: rosso, per riconoscerla subito.
+        if (value == "Produzione" && string.IsNullOrEmpty(Color)) Color = "#E5484D";
+    }
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void PickColor(string? color) => Color = string.IsNullOrEmpty(color) ? null : color;
     [ObservableProperty] private DatabaseKind _selectedKind = DatabaseKind.MySql;
     [ObservableProperty] private string _host = "localhost";
     [ObservableProperty] private string _portText = "3306";
@@ -290,6 +306,7 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
     {
         Id = Editing?.Id ?? Guid.NewGuid(),
         Name = Name.Trim(), Folder = MainWindowViewModel.NormalizeFolder(Folder), IsFavorite = IsFavorite,
+        Environment = Environment ?? string.Empty, Color = string.IsNullOrEmpty(Color) ? null : Color,
         Kind = SelectedKind, Driver = SelectedDriver?.Name, Host = Host.Trim(), Port = port, UserName = UserName.Trim(), Password = Password,
         DefaultDatabase = Database.Trim(), SslMode = SelectedSslMode, AdvancedParameters = AdvancedParameters,
         ConnectionStringOverride = ConnectionStringOverride.Trim(), UseSshTunnel = UseSshTunnel,

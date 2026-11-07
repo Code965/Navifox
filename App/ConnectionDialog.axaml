@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Navifox.App.ViewModels"
+        xmlns:c="using:Navifox.App.Controls"
         x:Class="Navifox.App.ConnectionDialog"
         x:DataType="vm:ConnectionDialogViewModel"
         Title="Nuova connessione" Width="940" Height="660" MinWidth="760" MinHeight="560"
@@ -195,6 +196,30 @@
             <StackPanel Grid.Column="1" Spacing="5">
               <TextBlock Text="Crittografia SSL" Classes="field-label" />
               <ComboBox ItemsSource="{Binding SslModes}" SelectedItem="{Binding SelectedSslMode, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Ambiente" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding Environments}" SelectedItem="{Binding Environment, Mode=TwoWay}" HorizontalAlignment="Stretch" PlaceholderText="Nessuno"
+                        ToolTip.Tip="Produzione: Navifox chiede conferma prima di ogni modifica e mostra la connessione in evidenza" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Colore" Classes="field-label" />
+              <ItemsControl ItemsSource="{Binding Colors}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Button Classes="swatch" Command="{Binding $parent[ItemsControl].((vm:ConnectionDialogViewModel)DataContext).PickColorCommand}" CommandParameter="{Binding .}"
+                            Background="{Binding ., Converter={x:Static c:DialectVisuals.ColorBrushConverter}}" ToolTip.Tip="{Binding ., Converter={x:Static c:DialectVisuals.ColorNameConverter}}">
+                      <Panel>
+                        <c:NfIcon Kind="x" Width="10" Height="10" IsVisible="{Binding ., Converter={x:Static StringConverters.IsNullOrEmpty}}" Foreground="{DynamicResource MutedTextBrush}" />
+                      </Panel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Border Height="3" CornerRadius="2" Background="{Binding Color, Converter={x:Static c:DialectVisuals.ColorBrushConverter}}" Margin="0,2,0,0" />
             </StackPanel>
           </Grid>
           <CheckBox Content="Aggiungi ai preferiti" IsChecked="{Binding IsFavorite}" />

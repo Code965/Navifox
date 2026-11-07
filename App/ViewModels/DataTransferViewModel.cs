@@ -422,6 +422,8 @@ public partial class DataTransferViewModel : ObservableObject
             StatusMessage = "Seleziona almeno una tabella.";
             return;
         }
+        if (!await SqlGuard.ConfirmProductionAsync(_dialogs, target,
+                $"Il trasferimento scriverà {selected.Length} tabelle nel database «{targetDb}»{(CreateTables ? " eliminando e ricreando quelle esistenti" : string.Empty)}.")) return;
         IsRunning = true;
         Log.Clear();
         Progress = 0;
@@ -654,6 +656,7 @@ public partial class OptionsViewModel : ObservableObject
         _recordHistory = settings.RecordHistory;
         _queryMaxRows = settings.QueryMaxRows;
         _checkUpdatesOnStartup = settings.CheckUpdatesOnStartup;
+        _safeMode = settings.SafeMode;
         _updateSource = settings.UpdateSource;
     }
 
@@ -671,6 +674,7 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private bool _recordHistory;
     [ObservableProperty] private decimal? _queryMaxRows;
     [ObservableProperty] private bool _checkUpdatesOnStartup;
+    [ObservableProperty] private bool _safeMode;
     [ObservableProperty] private string _updateSource;
 
     [RelayCommand]
@@ -684,6 +688,7 @@ public partial class OptionsViewModel : ObservableObject
         settings.RecordHistory = RecordHistory;
         settings.QueryMaxRows = (int)Math.Clamp(QueryMaxRows ?? 1000, 1, 1_000_000);
         settings.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
+        settings.SafeMode = SafeMode;
         settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;
         settings.Save();
         CloseRequested?.Invoke(true);

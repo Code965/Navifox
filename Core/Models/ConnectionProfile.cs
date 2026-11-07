@@ -9,6 +9,11 @@ public sealed record ConnectionProfile
     public DatabaseKind Kind { get; init; }
     /// <summary>Driver scelto alla creazione (es. «MariaDB», «Supabase»); null = predefinito del tipo.</summary>
     public string? Driver { get; init; }
+    /// <summary>Ambiente: "" (nessuno), "Sviluppo", "Test", "Produzione". In produzione Navifox chiede conferma prima di ogni modifica.</summary>
+    public string Environment { get; init; } = string.Empty;
+    /// <summary>Colore della connessione (#RRGGBB) mostrato nell'albero e sulle schede; null = nessuno.</summary>
+    public string? Color { get; init; }
+    public bool IsProduction => Environment == "Produzione";
     public string Host { get; init; } = "localhost";
     public int Port { get; init; }
     public string UserName { get; init; } = string.Empty;

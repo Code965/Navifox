@@ -20,6 +20,8 @@ public sealed class AppSettings
     public bool ShowInfoOnStartup { get; set; } = true;
     /// <summary>Controlla gli aggiornamenti all'avvio.</summary>
     public bool CheckUpdatesOnStartup { get; set; } = true;
+    /// <summary>Modalità sicura: conferma prima di UPDATE/DELETE senza WHERE, DROP e TRUNCATE.</summary>
+    public bool SafeMode { get; set; } = true;
     /// <summary>Sorgente aggiornamenti; vuota = quella incorporata nella release.</summary>
     public string UpdateSource { get; set; } = string.Empty;
     /// <summary>File SQL aperti di recente (File › Apri recenti).</summary>

@@ -78,12 +78,14 @@ public sealed record StoredConnectionRecord(
     string SshPrivateKeyPath,
     string EncryptedSshPrivateKeyPassphrase,
     string SshHostKeyFingerprint,
-    string? Driver = null)
+    string? Driver = null,
+    string? Environment = null,
+    string? Color = null)
 {
     public static StoredConnectionRecord FromProfile(ConnectionProfile p, string password, string connectionString, string sshPassword, string sshPassphrase) => new(
         p.Id, p.Name, p.Folder, p.IsFavorite, p.Kind, p.Host, p.Port, p.UserName, password, p.DefaultDatabase,
         p.SslMode, p.AdvancedParameters, connectionString, p.UseSshTunnel, p.SshHost, p.SshPort, p.SshUserName,
-        sshPassword, p.SshUsePrivateKey, p.SshPrivateKeyPath, sshPassphrase, p.SshHostKeyFingerprint, p.Driver);
+        sshPassword, p.SshUsePrivateKey, p.SshPrivateKeyPath, sshPassphrase, p.SshHostKeyFingerprint, p.Driver, p.Environment, p.Color);
 
     public ConnectionProfile ToProfile(string password, string connectionString, string sshPassword, string sshPassphrase) => new()
     {
@@ -92,7 +94,8 @@ public sealed record StoredConnectionRecord(
         AdvancedParameters = AdvancedParameters, ConnectionStringOverride = connectionString, UseSshTunnel = UseSshTunnel,
         SshHost = SshHost, SshPort = SshPort, SshUserName = SshUserName, SshPassword = sshPassword,
         SshUsePrivateKey = SshUsePrivateKey, SshPrivateKeyPath = SshPrivateKeyPath,
-        SshPrivateKeyPassphrase = sshPassphrase, SshHostKeyFingerprint = SshHostKeyFingerprint, Driver = Driver
+        SshPrivateKeyPassphrase = sshPassphrase, SshHostKeyFingerprint = SshHostKeyFingerprint, Driver = Driver,
+        Environment = Environment ?? string.Empty, Color = Color
     };
 }
 

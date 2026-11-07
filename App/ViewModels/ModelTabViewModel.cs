@@ -28,6 +28,7 @@ public partial class ModelTabViewModel : WorkspaceTabViewModel
 {
     private readonly IDatabaseAccessService _databaseAccess;
     private readonly ConnectionProfile _profile;
+    public override ConnectionProfile? TabConnection => _profile;
     private readonly Func<string, Task>? _openTable;
 
     public ModelTabViewModel(IDatabaseAccessService databaseAccess, ConnectionProfile profile, string database, string schema, Func<string, Task>? openTable)

@@ -12,6 +12,37 @@ namespace Navifox.App.Controls;
 /// <summary>Identità visiva di una connessione: monogramma, colore e nome del dialetto.</summary>
 public static class DialectVisuals
 {
+    /// <summary>"#RRGGBB" → pennello; vuoto → trasparente.</summary>
+    public static readonly Avalonia.Data.Converters.IValueConverter ColorBrushConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<string?, Avalonia.Media.IBrush>(value =>
+            string.IsNullOrEmpty(value) || !Avalonia.Media.Color.TryParse(value, out var color) ? Avalonia.Media.Brushes.Transparent : new Avalonia.Media.SolidColorBrush(color));
+
+    public static readonly Avalonia.Data.Converters.IValueConverter ColorNameConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<string?, string>(value => value switch
+        {
+            "#E5484D" => "Rosso", "#F76B15" => "Arancione", "#F5B400" => "Giallo", "#30A46C" => "Verde", "#12A594" => "Verde acqua",
+            "#0090FF" => "Blu", "#6E56CF" => "Viola", "#8B8D98" => "Grigio", _ => "Nessun colore"
+        });
+
+    public static readonly Avalonia.Data.Converters.IValueConverter HasColorConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, bool>(profile => !string.IsNullOrEmpty(profile?.Color));
+
+    public static readonly Avalonia.Data.Converters.IValueConverter ProfileColorConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, Avalonia.Media.IBrush>(profile =>
+            string.IsNullOrEmpty(profile?.Color) || !Avalonia.Media.Color.TryParse(profile.Color, out var color) ? Avalonia.Media.Brushes.Transparent : new Avalonia.Media.SolidColorBrush(color));
+
+    public static readonly Avalonia.Data.Converters.IValueConverter IsProductionConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, bool>(profile => profile?.IsProduction == true);
+
+    public static readonly Avalonia.Data.Converters.IValueConverter HasEnvironmentConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, bool>(profile => !string.IsNullOrEmpty(profile?.Environment));
+
+    public static readonly Avalonia.Data.Converters.IValueConverter EnvironmentLabelConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, string>(profile => profile?.Environment switch
+        {
+            "Produzione" => "PROD", "Test" => "TEST", "Sviluppo" => "DEV", _ => string.Empty
+        });
+
     public static DriverInfo? DriverOf(ConnectionProfile? profile) => profile is null
         ? null
         : DriverCatalog.Drivers.FirstOrDefault(d => d.Kind == profile.Kind && string.Equals(d.Name, profile.Driver, StringComparison.OrdinalIgnoreCase))

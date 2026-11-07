@@ -242,6 +242,10 @@
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center" />
                       <c:DialectBadge Profile="{Binding Profile}" ShowName="True" IsVisible="{Binding IsConnection}" />
+                      <Border Classes="env-chip" IsVisible="{Binding Profile, Converter={x:Static c:DialectVisuals.HasEnvironmentConverter}}"
+                              Background="{Binding Profile, Converter={x:Static c:DialectVisuals.ProfileColorConverter}}">
+                        <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EnvironmentLabelConverter}}" />
+                      </Border>
                       <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="28" Height="2" MinWidth="0" VerticalAlignment="Center" />
                     </StackPanel>
                     <!-- Connessione: host e porta su una seconda riga, piccola -->
@@ -263,8 +267,13 @@
             <TabControl.ItemTemplate>
               <DataTemplate DataType="vm:WorkspaceTabViewModel">
                 <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Border Width="4" Height="16" CornerRadius="2" VerticalAlignment="Center" Background="{Binding TabConnection, Converter={x:Static c:DialectVisuals.ProfileColorConverter}}"
+                          IsVisible="{Binding TabConnection, Converter={x:Static c:DialectVisuals.HasColorConverter}}" />
                   <c:NfIcon Kind="{Binding TabGlyph}" Foreground="{DynamicResource AccentBrush}" Width="14" Height="14" />
                   <TextBlock Text="{Binding TabTitle}" VerticalAlignment="Center" />
+                  <Border Classes="env-chip prod" IsVisible="{Binding TabConnection, Converter={x:Static c:DialectVisuals.IsProductionConverter}}">
+                    <TextBlock Text="PROD" />
+                  </Border>
                   <Button Content="×" Classes="tab-close" IsVisible="{Binding CanClose}"
                           Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding .}" />
                 </StackPanel>

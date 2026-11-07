@@ -290,8 +290,11 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     [RelayCommand]
     private void Stop() => _running?.Cancel();
 
+    public override ConnectionProfile? TabConnection => SelectedProfile;
+
     private async Task RunAsync(string sql, bool console)
     {
+        if (!await Services.SqlGuard.ConfirmAsync(_dialogs, _profile, sql)) { StatusMessage = "Esecuzione annullata."; return; }
         _running = new CancellationTokenSource();
         IsBusy = true;
         StatusMessage = "Esecuzione…";
