@@ -366,3 +366,4 @@ FodyWeavers.xsd
 .dotnet/
 # Pacchetti di release generati da release.ps1 (setup e aggiornamenti).
 releases/
+dist/

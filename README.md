@@ -158,10 +158,24 @@ dotnet test AppTests/Navifox.AppTests.csproj
 
 I test di integrazione con server reali si attivano con la variabile d'ambiente `NAVIFOX_IT=1` e usano database temporanei.
 
-Per creare una release (installer e pacchetti di aggiornamento con [Velopack](https://velopack.io/)):
+### Pubblicare una nuova versione
+
+Le release sono automatiche ([GitHub Actions](.github/workflows/release.yml)). Basta creare e inviare un tag:
+il messaggio del tag diventa la nota di rilascio (Markdown) che gli utenti vedono nella finestra di aggiornamento.
 
 ```powershell
-.\release.ps1 1.2.0 -Notes "Novità della versione"
+git tag -a v1.4.0 -m "- Novità uno`n- Novità due"
+git push origin v1.4.0
+```
+
+GitHub compila, esegue i test, crea installer e pacchetti di aggiornamento (anche il delta rispetto alla versione
+precedente) e pubblica la Release con tutti i file. Le installazioni esistenti si aggiornano da sole.
+Da *Actions › Release › Run workflow* si può fare una build di prova che non pubblica nulla.
+
+Per una build locale (senza pubblicare) resta disponibile lo script [Velopack](https://velopack.io/):
+
+```powershell
+.\release.ps1 1.4.0 -UpdateSource "https://github.com/Code965/Navifox" -Notes "Novità della versione"
 ```
 
 ### Struttura del progetto

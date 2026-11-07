@@ -1,0 +1,110 @@
+# Pubblicazione automatica di una versione.
+#
+#   git tag -a v1.4.0 -m "Novità della versione (Markdown)"
+#   git push origin v1.4.0
+#
+# GitHub compila, fa girare i test, crea installer e pacchetti di aggiornamento (anche il delta rispetto
+# alla versione precedente) e pubblica la Release con tutti i file. Il messaggio del tag diventa la nota di rilascio.
+#
+# Da Actions › Release › «Run workflow» si può fare una prova: costruisce tutto ma non pubblica nulla
+# (i file restano scaricabili tra gli artifact dell'esecuzione).
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versione di prova (es. 1.4.0-prova); non viene pubblicata'
+        required: true
+        default: '0.0.0-prova'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build e pubblicazione
+    runs-on: windows-latest
+    env:
+      REPO_URL: https://github.com/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Strumento Velopack (vpk)
+        run: dotnet tool install -g vpk --version 1.2.161
+
+      - name: Versione e note di rilascio
+        id: meta
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'push') {
+            $tag = '${{ github.ref_name }}'
+            $version = $tag.TrimStart('v')
+            # Il messaggio del tag annotato è la nota di rilascio (Markdown).
+            $notes = (git tag -l --format='%(contents)' $tag | Out-String).Trim()
+            $publish = 'true'
+          } else {
+            $version = '${{ inputs.version }}'
+            $tag = "v$version"
+            $notes = 'Build di prova (non pubblicata).'
+            $publish = 'false'
+          }
+          if (-not $notes) { $notes = 'Miglioramenti e correzioni.' }
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "publish=$publish" >> $env:GITHUB_OUTPUT
+          Write-Host "Versione $version · pubblicazione: $publish"
+
+      - name: Test
+        run: dotnet test Navifox.sln -c Release -nologo
+
+      - name: Versione precedente (per il pacchetto delta)
+        if: steps.meta.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ..\releases | Out-Null
+          vpk download github --repoUrl $env:REPO_URL --token ${{ secrets.GITHUB_TOKEN }} --outputDir ..\releases
+          if ($LASTEXITCODE -ne 0) { Write-Host 'Nessuna versione precedente: si pubblica solo il pacchetto completo.' }
+          exit 0
+
+      - name: Installer e pacchetti
+        shell: pwsh
+        run: |
+          $notes = Get-Content release-notes.md -Raw
+          ./release.ps1 '${{ steps.meta.outputs.version }}' -UpdateSource $env:REPO_URL -Notes $notes
+
+      - name: Pubblicazione della Release su GitHub
+        if: steps.meta.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          vpk upload github --repoUrl $env:REPO_URL --token ${{ secrets.GITHUB_TOKEN }} --outputDir ..\releases `
+            --publish --releaseName "Navifox ${{ steps.meta.outputs.version }}" --tag '${{ steps.meta.outputs.tag }}'
+          if ($LASTEXITCODE -ne 0) { throw 'Pubblicazione non riuscita' }
+
+      - name: Raccolta dei file della build di prova
+        if: steps.meta.outputs.publish != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item ..\releases\* dist -Include *.exe, *.zip, *.nupkg, *.json
+
+      - name: File della build di prova
+        if: steps.meta.outputs.publish != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: navifox-${{ steps.meta.outputs.version }}
+          path: dist/
+          retention-days: 7
