@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Media;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public sealed class MessageDialogModel
 {

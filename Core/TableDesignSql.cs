@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Core;
+namespace Navifox.Core;
 
 /// <summary>
 /// Genera le istruzioni SQL di «Progetta tabella»: CREATE TABLE per una tabella nuova, oppure le ALTER TABLE

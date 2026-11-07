@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Voce di menu contestuale indipendente dalla UI (la vista la trasforma in MenuItem).</summary>
 public sealed record ContextAction(

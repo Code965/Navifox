@@ -3,10 +3,10 @@ using System.Globalization;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public partial class MonitorServer(ConnectionProfile profile) : ObservableObject
 {
@@ -31,7 +31,7 @@ public partial class MonitorServer(ConnectionProfile profile) : ObservableObject
 
 public sealed record ProcessRow(MonitorServer Server, long Id, string User, string Host, string Db, string Command, long Time, string State, string Info)
 {
-    public string ServerName => $"{Server.Name} · {MosaicDB.App.Controls.DialectVisuals.DialectName(Server.Profile)}";
+    public string ServerName => $"{Server.Name} · {Navifox.App.Controls.DialectVisuals.DialectName(Server.Profile)}";
     public bool IsIdle => Command.Equals("Sleep", StringComparison.OrdinalIgnoreCase) || State.StartsWith("idle", StringComparison.OrdinalIgnoreCase) && !State.Contains("transaction");
     /// <summary>Query in esecuzione da almeno 10 s (esclude sessioni inattive e processi di servizio).</summary>
     public bool IsLong => !IsIdle && Time >= 10 && Info.Length > 0
@@ -153,9 +153,9 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
                         S(row, command), long.TryParse(S(row, time), out var t) ? t : 0, S(row, state), S(row, info)));
             }
             else if (SelectedTab == 1)
-                variables.AddRange((await provider.GetServerVariablesAsync(connection, CancellationToken.None)).Select(p => new ServerSetting($"{server.Name} · {MosaicDB.App.Controls.DialectVisuals.DialectName(server.Profile)}", p.Key, p.Value)));
+                variables.AddRange((await provider.GetServerVariablesAsync(connection, CancellationToken.None)).Select(p => new ServerSetting($"{server.Name} · {Navifox.App.Controls.DialectVisuals.DialectName(server.Profile)}", p.Key, p.Value)));
             else
-                status.AddRange((await provider.GetServerStatusAsync(connection, CancellationToken.None)).Select(p => new ServerSetting($"{server.Name} · {MosaicDB.App.Controls.DialectVisuals.DialectName(server.Profile)}", p.Key, p.Value)));
+                status.AddRange((await provider.GetServerStatusAsync(connection, CancellationToken.None)).Select(p => new ServerSetting($"{server.Name} · {Navifox.App.Controls.DialectVisuals.DialectName(server.Profile)}", p.Key, p.Value)));
             server.HasError = false;
             server.Error = string.Empty;
         }

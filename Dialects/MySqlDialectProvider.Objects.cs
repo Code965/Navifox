@@ -1,8 +1,8 @@
 using System.Data.Common;
 using System.Globalization;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 /// <summary>Funzioni, procedure, trigger, eventi e viste (MySQL/MariaDB).</summary>
 public sealed partial class MySqlDialectProvider

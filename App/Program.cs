@@ -1,7 +1,7 @@
 using Avalonia;
 using Velopack;
 
-namespace MosaicDB.App;
+namespace Navifox.App;
 
 internal static class Program
 {

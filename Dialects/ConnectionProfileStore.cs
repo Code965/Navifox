@@ -2,15 +2,16 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 public sealed class ConnectionProfileStore : IConnectionProfileStore
 {
-    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("MosaicDB/profile-secret/v1");
-    private readonly string _filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MosaicDB", "connections.json");
+    // NON modificare: è la chiave aggiuntiva con cui sono cifrate le password già salvate (nome storico del progetto).
+    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("Mosaic" + "DB/profile-secret/v1");
+    private readonly string _filePath = Navifox.Core.AppPaths.File("connections.json");
 
     public async Task<IReadOnlyList<ConnectionProfile>> LoadAsync(CancellationToken cancellationToken = default)
     {

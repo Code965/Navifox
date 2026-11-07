@@ -1,9 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
-using MosaicDB.App.Services;
+using Navifox.App.Services;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Aggiornamenti: controllo all'avvio, Aiuto › Verifica aggiornamenti, pulsante «Riavvia e aggiorna».</summary>
 public partial class MainWindowViewModel

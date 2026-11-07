@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public enum InfoKind { Connection, Database, Schema, Table, View }
 
@@ -75,7 +75,7 @@ public partial class InfoPanelViewModel(IDatabaseAccessService databaseAccess) :
         if (!HasDdl) IsDdlTab = false;
         (IconKind, Title, Subtitle) = target.Kind switch
         {
-            InfoKind.Connection => ("server", target.Profile.Name, MosaicDB.App.Controls.DialectVisuals.Summary(target.Profile)),
+            InfoKind.Connection => ("server", target.Profile.Name, Navifox.App.Controls.DialectVisuals.Summary(target.Profile)),
             InfoKind.Database => ("database", target.Database!, target.ObjectCount is { } n ? $"{n} {(n == 1 ? "tabella" : "tabelle")}" : "Database"),
             InfoKind.Schema => ("layers", target.Schema!, target.ObjectCount is { } n ? $"Schema · {n} {(n == 1 ? "tabella" : "tabelle")}" : "Schema"),
             InfoKind.View => ("eye", target.Name!, "Vista"),
@@ -85,7 +85,7 @@ public partial class InfoPanelViewModel(IDatabaseAccessService databaseAccess) :
         if (target.Kind == InfoKind.Connection)
         {
             var profile = target.Profile;
-            Properties.Add(new("Tipo", MosaicDB.App.Controls.DialectVisuals.DialectName(profile)));
+            Properties.Add(new("Tipo", Navifox.App.Controls.DialectVisuals.DialectName(profile)));
             Properties.Add(new("Host", profile.Host));
             Properties.Add(new("Porta", profile.EffectivePort.ToString()));
             Properties.Add(new("Utente", string.IsNullOrWhiteSpace(profile.UserName) ? "—" : profile.UserName));

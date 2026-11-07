@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace MosaicDB.Core;
+namespace Navifox.Core;
 
 /// <summary>
 /// Divide uno script SQL in istruzioni rispettando stringhe, identificatori quotati, commenti,

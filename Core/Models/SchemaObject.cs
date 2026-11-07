@@ -1,4 +1,4 @@
-namespace MosaicDB.Core.Models;
+namespace Navifox.Core.Models;
 
 /// <summary>Oggetti di schema diversi dalle tabelle, gestiti con il loro SQL di definizione.</summary>
 public enum SchemaObjectKind

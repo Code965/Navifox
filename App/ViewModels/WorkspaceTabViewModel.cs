@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Base comune per le schede dell'area di lavoro (Oggetti, tabelle, query…).</summary>
 public abstract class WorkspaceTabViewModel : ObservableObject

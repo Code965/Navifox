@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class OptionsWindow : Window
 {

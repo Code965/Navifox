@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Una cella della griglia: valore originale, valore corrente e stato di modifica.</summary>
 public partial class CellViewModel : ObservableObject

@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Finestra «Nuovo database» / «Modifica database» con anteprima SQL.</summary>
 public partial class DatabaseDialogViewModel : ObservableObject

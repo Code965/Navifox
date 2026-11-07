@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="MosaicDB.App.Views.SplashWindow"
+        x:Class="Navifox.App.Views.SplashWindow"
         Title="NaviFox" Width="760" Height="400" CanResize="False" ShowInTaskbar="True"
         SystemDecorations="None" WindowStartupLocation="CenterScreen" Topmost="False"
         RequestedThemeVariant="Dark" Background="#0B0C0E" TransparencyLevelHint="Transparent">

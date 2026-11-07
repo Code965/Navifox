@@ -1,9 +1,9 @@
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
-using MosaicDB.App.ViewModels;
-using MosaicDB.Core.Models;
+using Navifox.App.ViewModels;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public sealed class ConnectionDialogService(IWindowLocator windowLocator, IServiceProvider services)
 {

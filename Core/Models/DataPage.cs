@@ -1,4 +1,4 @@
-namespace MosaicDB.Core.Models;
+namespace Navifox.Core.Models;
 
 public sealed record DataPage(
     IReadOnlyList<ColumnInfo> Columns,

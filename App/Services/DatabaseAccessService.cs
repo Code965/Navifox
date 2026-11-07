@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> providers) : IDatabaseAccessService
 {

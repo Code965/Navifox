@@ -1,6 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <AssemblyName>MosaicDB.Core</AssemblyName>
-    <RootNamespace>MosaicDB.Core</RootNamespace>
-  </PropertyGroup>
-</Project>

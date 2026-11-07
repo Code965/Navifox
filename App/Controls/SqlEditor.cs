@@ -11,9 +11,9 @@ using AvaloniaEdit.Document;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Highlighting.Xshd;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.Controls;
+namespace Navifox.App.Controls;
 
 /// <summary>Fonte dei suggerimenti: tabelle e colonne dello schema corrente.</summary>
 public interface ISqlCompletionSource

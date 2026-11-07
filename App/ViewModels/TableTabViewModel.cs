@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>
 /// Scheda dati di una tabella: griglia paginata e modificabile, barra filtri e ordinamento,

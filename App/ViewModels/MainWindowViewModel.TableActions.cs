@@ -1,9 +1,9 @@
 using System.Text;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public sealed record TableOperation(TreeNodeViewModel Node, string Kind);
 

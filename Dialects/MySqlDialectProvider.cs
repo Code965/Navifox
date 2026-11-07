@@ -1,8 +1,8 @@
 using System.Data.Common;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 using MySqlConnector;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 public sealed partial class MySqlDialectProvider : AdoDialectProvider
 {

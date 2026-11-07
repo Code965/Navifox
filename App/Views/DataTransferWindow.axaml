@@ -1,9 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:MosaicDB.App.ViewModels"
-        xmlns:m="using:MosaicDB.Core.Models"
-        xmlns:c="using:MosaicDB.App.Controls"
-        x:Class="MosaicDB.App.Views.DataTransferWindow"
+        xmlns:vm="using:Navifox.App.ViewModels"
+        xmlns:m="using:Navifox.Core.Models"
+        xmlns:c="using:Navifox.App.Controls"
+        x:Class="Navifox.App.Views.DataTransferWindow"
         x:DataType="vm:DataTransferViewModel"
         Title="Trasferimento dati" Width="1000" Height="680" MinWidth="820" MinHeight="560"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource AppBackgroundBrush}">

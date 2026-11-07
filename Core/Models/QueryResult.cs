@@ -1,4 +1,4 @@
-namespace MosaicDB.Core.Models;
+namespace Navifox.Core.Models;
 
 /// <summary>Esito di un'istruzione SQL arbitraria.</summary>
 public sealed record QueryResult(

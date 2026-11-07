@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Progetta tabella / Nuova tabella e menu della categoria «Tabelle» (albero ed elenco oggetti).</summary>
 public partial class MainWindowViewModel

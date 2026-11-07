@@ -1,7 +1,7 @@
 using System.Data.Common;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Core;
+namespace Navifox.Core;
 
 public interface IDialectProvider
 {

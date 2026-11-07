@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using MosaicDB.Core;
+using Navifox.Core;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public sealed record FilterOperator(string Label, string Kind, bool NeedsValue = true, bool NeedsSecondValue = false)
 {

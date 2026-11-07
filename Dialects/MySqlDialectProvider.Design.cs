@@ -1,8 +1,8 @@
 using System.Data.Common;
 using System.Text.RegularExpressions;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 /// <summary>Progetta tabella (MySQL/MariaDB): lettura della struttura da INFORMATION_SCHEMA.</summary>
 public sealed partial class MySqlDialectProvider

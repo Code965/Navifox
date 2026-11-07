@@ -1,8 +1,8 @@
 using System.Data.Common;
 using System.Text.RegularExpressions;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 /// <summary>Progetta tabella (PostgreSQL): lettura della struttura da pg_catalog.</summary>
 public sealed partial class PostgreSqlDialectProvider

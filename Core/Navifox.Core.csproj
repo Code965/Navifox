@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Navifox.Core</AssemblyName>
+    <RootNamespace>Navifox.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

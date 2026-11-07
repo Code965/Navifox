@@ -1,6 +1,6 @@
 using Avalonia.Data.Converters;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public static class WizardConverters
 {

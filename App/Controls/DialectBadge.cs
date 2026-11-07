@@ -4,10 +4,10 @@ using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using Avalonia.Layout;
 using Avalonia.Media;
-using MosaicDB.App.ViewModels;
-using MosaicDB.Core.Models;
+using Navifox.App.ViewModels;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.Controls;
+namespace Navifox.App.Controls;
 
 /// <summary>Identità visiva di una connessione: monogramma, colore e nome del dialetto.</summary>
 public static class DialectVisuals

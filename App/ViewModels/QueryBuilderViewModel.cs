@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public partial class BuilderColumn(string table, string name, string type, bool isKey) : ObservableObject
 {

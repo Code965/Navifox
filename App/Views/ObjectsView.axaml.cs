@@ -2,9 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class ObjectsView : UserControl
 {

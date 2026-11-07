@@ -1,10 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Microsoft.Extensions.DependencyInjection;
-using MosaicDB.App.Services;
-using MosaicDB.App.ViewModels;
+using Navifox.App.Services;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class ModelPageView : UserControl
 {

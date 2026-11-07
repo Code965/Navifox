@@ -6,9 +6,9 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class TablePageView : UserControl
 {

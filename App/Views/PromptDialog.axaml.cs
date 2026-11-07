@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 /// <summary>Richiesta di un testo (es. nuovo nome di una tabella).</summary>
 public partial class PromptDialog : Window

@@ -1,9 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Colonna mostrata in un riquadro del diagramma.</summary>
 public sealed record DiagramColumn(string Name, string Type, bool IsPrimaryKey, bool IsForeignKey, bool IsNullable);

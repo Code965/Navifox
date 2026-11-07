@@ -1,7 +1,7 @@
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 /// <summary>Evidenziazione sintattica minima per mostrare DDL (parole chiave, stringhe, identificatori, numeri, commenti).</summary>
 public static class SqlHighlighter

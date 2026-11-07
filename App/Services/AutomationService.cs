@@ -2,10 +2,10 @@ using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
 using Avalonia.Threading;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 /// <summary>Attività pianificata (Automazione).</summary>
 public sealed class AutomationJob
@@ -56,7 +56,7 @@ public sealed record AutomationLogEntry(DateTime Time, string Job, bool Succeede
 /// <summary>Conserva le attività e le esegue quando sono in scadenza (finché Navifox è aperto).</summary>
 public sealed class AutomationService
 {
-    private static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MosaicDB", "automation.json");
+    private static readonly string FilePath = Navifox.Core.AppPaths.File("automation.json");
     private readonly IDatabaseAccessService _databaseAccess;
     private readonly IConnectionProfileStore _profiles;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(20) };

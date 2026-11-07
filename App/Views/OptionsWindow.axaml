@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:MosaicDB.App.ViewModels"
-        x:Class="MosaicDB.App.Views.OptionsWindow"
+        xmlns:vm="using:Navifox.App.ViewModels"
+        x:Class="Navifox.App.Views.OptionsWindow"
         x:DataType="vm:OptionsViewModel"
         Title="Opzioni" Width="520" SizeToContent="Height" CanResize="False"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource AppBackgroundBrush}">

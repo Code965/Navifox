@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>DbObject = funzione, procedura, trigger, evento o sequenza (categoria nel campo Category).</summary>
 public enum TreeNodeKind { Group, Connection, Database, Schema, Category, Table, DbObject, Placeholder }

@@ -1,9 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using MosaicDB.App.ViewModels;
-using MosaicDB.App.Views;
+using Navifox.App.ViewModels;
+using Navifox.App.Views;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public sealed record FileFilter(string Name, params string[] Patterns);
 

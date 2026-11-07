@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>MosaicDB.Dialects</AssemblyName>
-    <RootNamespace>MosaicDB.Dialects</RootNamespace>
+    <AssemblyName>Navifox.Dialects</AssemblyName>
+    <RootNamespace>Navifox.Dialects</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Core\MosaicDB.Core.csproj" />
+    <ProjectReference Include="..\Core\Navifox.Core.csproj" />
     <PackageReference Include="MySqlConnector" Version="2.6.1" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />

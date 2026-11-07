@@ -1,8 +1,8 @@
-using MosaicDB.Core;
-using MosaicDB.Dialects;
+using Navifox.Core;
+using Navifox.Dialects;
 using Xunit;
 
-namespace MosaicDB.Tests;
+namespace Navifox.Tests;
 
 public sealed class SqlScriptSplitterTests
 {

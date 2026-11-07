@@ -1,7 +1,7 @@
 using Avalonia.Media;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>
 /// Voce del catalogo driver mostrata nella procedura di nuova connessione.

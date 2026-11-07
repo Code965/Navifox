@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
 
-namespace MosaicDB.App.Controls;
+namespace Navifox.App.Controls;
 
 /// <summary>
 /// Icona lineare Navifox: tracciato 24×24 disegnato a contorno (stile «line icons»),

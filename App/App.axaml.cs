@@ -2,12 +2,12 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
-using MosaicDB.App.Services;
-using MosaicDB.App.ViewModels;
-using MosaicDB.Dialects;
-using MosaicDB.Core;
+using Navifox.App.Services;
+using Navifox.App.ViewModels;
+using Navifox.Dialects;
+using Navifox.Core;
 
-namespace MosaicDB.App;
+namespace Navifox.App;
 
 public partial class App : Application
 {

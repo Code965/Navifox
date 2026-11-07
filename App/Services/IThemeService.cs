@@ -1,4 +1,4 @@
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public interface IThemeService
 {

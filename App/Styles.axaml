@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:c="using:MosaicDB.App.Controls" xmlns:cc="using:AvaloniaEdit.CodeCompletion">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:c="using:Navifox.App.Controls" xmlns:cc="using:AvaloniaEdit.CodeCompletion">
   <Style Selector="Button.toolbar, Button.toolbar-primary">
     <Setter Property="Padding" Value="10,8" />
     <Setter Property="MinHeight" Value="48" />

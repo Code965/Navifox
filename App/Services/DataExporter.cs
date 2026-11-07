@@ -4,9 +4,9 @@ using System.Text;
 using System.Text.Json;
 using System.Xml;
 using ClosedXML.Excel;
-using MosaicDB.Core;
+using Navifox.Core;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public enum ExportFormat { Text, Csv, Html, Excel, Sql, Xml, Json, Markdown }
 

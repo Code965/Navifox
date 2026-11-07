@@ -4,9 +4,9 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App;
+namespace Navifox.App;
 
 public partial class MainWindow : Window
 {
@@ -220,7 +220,7 @@ public partial class MainWindow : Window
             Command = action.Command,
             CommandParameter = action.Parameter,
             IsEnabled = action.IsEnabled && (action.Command is not null || action.Children is not null),
-            Icon = action.Glyph is null ? null : new MosaicDB.App.Controls.NfIcon { Kind = action.Glyph, Width = 15, Height = 15, Classes = { "menu-icon" } },
+            Icon = action.Glyph is null ? null : new Navifox.App.Controls.NfIcon { Kind = action.Glyph, Width = 15, Height = 15, Classes = { "menu-icon" } },
             ItemsSource = action.Children is null ? null : BuildMenuItems(action.Children),
             [ToolTip.TipProperty] = action.ToolTip
         }).ToList();

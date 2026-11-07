@@ -1,8 +1,8 @@
 using System.Collections.Specialized;
 using Avalonia.Controls;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class ImportWizard : Window
 {

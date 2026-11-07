@@ -1,9 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App;
+namespace Navifox.App;
 
 public partial class ConnectionDialog : Window
 {

@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Controls;
-using MosaicDB.Core.Models;
+using Navifox.App.Controls;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Tabelle copiate con Ctrl+C (dall'albero o dalla scheda Oggetti).</summary>
 public sealed record TableClipboard(ConnectionProfile Profile, string Database, string Schema, IReadOnlyList<string> Tables)

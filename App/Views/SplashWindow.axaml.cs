@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 /// <summary>Schermata di avvio NaviFox.</summary>
 public partial class SplashWindow : Window

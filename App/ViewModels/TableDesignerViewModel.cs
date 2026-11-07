@@ -2,11 +2,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>
 /// «Progetta tabella»: campi, indici, chiavi esterne, trigger, opzioni, commento e anteprima SQL.

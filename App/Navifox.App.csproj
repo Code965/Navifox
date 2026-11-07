@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <AssemblyName>Navifox</AssemblyName>
-    <RootNamespace>MosaicDB.App</RootNamespace>
+    <RootNamespace>Navifox.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\Assets\NaviFoxBrand\navifox-dark.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -19,8 +19,8 @@
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Velopack" Version="1.2.161" />
-    <ProjectReference Include="..\Core\MosaicDB.Core.csproj" />
-    <ProjectReference Include="..\Dialects\MosaicDB.Dialects.csproj" />
+    <ProjectReference Include="..\Core\Navifox.Core.csproj" />
+    <ProjectReference Include="..\Dialects\Navifox.Dialects.csproj" />
     <PackageReference Include="Avalonia" Version="11.3.8" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.8" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.8" />

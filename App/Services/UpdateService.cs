@@ -2,7 +2,7 @@ using System.Reflection;
 using Velopack;
 using Velopack.Sources;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 /// <summary>
 /// Aggiornamenti automatici tramite Velopack. La sorgente (cartella, condivisione di rete, URL web o repository GitHub)

@@ -4,9 +4,9 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class TableDesignerView : UserControl
 {

@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public sealed record NewSchemaObjectRequest(TreeNodeViewModel Node, SchemaObjectKind Kind, string RoutineType = "FUNCTION");
 

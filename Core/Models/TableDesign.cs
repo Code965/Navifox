@@ -1,4 +1,4 @@
-namespace MosaicDB.Core.Models;
+namespace Navifox.Core.Models;
 
 /// <summary>
 /// Struttura modificabile di una tabella (Progetta tabella). <c>OriginalName</c> = nome sul server (null = elemento nuovo):

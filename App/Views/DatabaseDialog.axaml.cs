@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class DatabaseDialog : Window
 {

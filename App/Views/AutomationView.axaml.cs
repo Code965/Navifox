@@ -1,8 +1,8 @@
 using System.ComponentModel;
 using Avalonia.Controls;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class AutomationView : UserControl
 {

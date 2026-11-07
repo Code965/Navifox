@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:MosaicDB.App.ViewModels"
-        x:Class="MosaicDB.App.Views.ExportWizard"
+        xmlns:vm="using:Navifox.App.ViewModels"
+        x:Class="Navifox.App.Views.ExportWizard"
         x:DataType="vm:ExportWizardViewModel"
         Title="Export Wizard" Width="780" Height="600" MinWidth="640" MinHeight="520"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource SurfaceBrush}">

@@ -41,7 +41,7 @@ if (-not $vpk) {
 
 Write-Host "==> Compilazione Navifox $Version" -ForegroundColor DarkYellow
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
-& $dotnet publish (Join-Path $root 'App\MosaicDB.App.csproj') -c Release -r win-x64 --self-contained true `
+& $dotnet publish (Join-Path $root 'App\Navifox.App.csproj') -c Release -r win-x64 --self-contained true `
     -o $publish "-p:Version=$Version" "-p:NavifoxUpdateSource=$UpdateSource" "-p:BaseOutputPath=bin/NaviFoxRelease/" -nologo -v:q
 if ($LASTEXITCODE -ne 0) { throw "Compilazione non riuscita" }
 

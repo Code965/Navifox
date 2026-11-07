@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Riga del registro del trasferimento: info, sql (comando eseguito), ok, error.</summary>
 public sealed record TransferLogEntry(DateTime Time, string Kind, string Text)
@@ -210,7 +210,7 @@ public partial class DataTransferViewModel : ObservableObject
         var generation = source ? ++_sourceInfoLoads : ++_targetInfoLoads;
         list.Clear();
         if (profile is null) return;
-        list.Add(new PropertyItem("Tipo di connessione", MosaicDB.App.Controls.DialectVisuals.DialectName(profile)));
+        list.Add(new PropertyItem("Tipo di connessione", Navifox.App.Controls.DialectVisuals.DialectName(profile)));
         list.Add(new PropertyItem("Nome connessione", profile.Name));
         list.Add(new PropertyItem("Cartella", profile.Folder));
         list.Add(new PropertyItem("Host", profile.Host));
@@ -229,14 +229,14 @@ public partial class DataTransferViewModel : ObservableObject
     private string BuildSummary()
     {
         var selected = Tables.Where(t => t.IsSelected && !t.IsView).Select(t => t.Name).ToArray();
-        var target = TargetIsFile ? $"File SQL: {TargetFile}" : $"{TargetProfile?.Name} ({MosaicDB.App.Controls.DialectVisuals.Summary(TargetProfile)}) · database {TargetDatabase}";
+        var target = TargetIsFile ? $"File SQL: {TargetFile}" : $"{TargetProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(TargetProfile)}) · database {TargetDatabase}";
         var options = new List<string>();
         if (CreateTables) options.Add(TargetIsFile ? "struttura (DROP + CREATE)" : "ricrea le tabelle");
         if (CopyData) options.Add("dati");
         if (!CreateTables && EmptyTarget && !TargetIsFile) options.Add("svuota prima");
         if (ContinueOnError) options.Add("continua in caso di errore");
         return $"""
-            Origine:       {SourceProfile?.Name} ({MosaicDB.App.Controls.DialectVisuals.Summary(SourceProfile)}) · database {SourceDatabase}
+            Origine:       {SourceProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(SourceProfile)}) · database {SourceDatabase}
             Destinazione:  {target}
             Tabelle:       {selected.Length}
             Opzioni:       {string.Join(", ", options)}

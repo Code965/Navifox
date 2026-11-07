@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Comandi dei menu File, Visualizza e Aiuto.</summary>
 public partial class MainWindowViewModel

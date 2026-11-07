@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:MosaicDB.App.ViewModels"
-             xmlns:c="using:MosaicDB.App.Controls"
-             xmlns:m="using:MosaicDB.Core.Models"
-             x:Class="MosaicDB.App.Views.QueryPageView"
+             xmlns:vm="using:Navifox.App.ViewModels"
+             xmlns:c="using:Navifox.App.Controls"
+             xmlns:m="using:Navifox.Core.Models"
+             x:Class="Navifox.App.Views.QueryPageView"
              x:DataType="vm:QueryTabViewModel">
   <Grid>
     <!-- ───── Editor query ───── -->

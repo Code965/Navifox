@@ -1,11 +1,11 @@
 using System.Text.Json;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
-/// <summary>Preferenze dell'applicazione (Strumenti › Opzioni), salvate in %APPDATA%\MosaicDB\settings.json.</summary>
+/// <summary>Preferenze dell'applicazione (Strumenti › Opzioni), salvate in %APPDATA%\Navifox\settings.json.</summary>
 public sealed class AppSettings
 {
-    private static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MosaicDB", "settings.json");
+    private static readonly string FilePath = Navifox.Core.AppPaths.File("settings.json");
 
     public static AppSettings Current { get; private set; } = new();
 

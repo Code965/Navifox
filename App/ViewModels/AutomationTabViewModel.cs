@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Riga dell'elenco attività con riepilogo pianificazione/esito.</summary>
 public partial class AutomationJobItem(AutomationJob job) : ObservableObject
@@ -35,7 +35,7 @@ public partial class AutomationJobItem(AutomationJob job) : ObservableObject
 }
 
 /// <summary>Scheda «Automazione»: elenco attività, editor, esecuzione e registro.</summary>
-public partial class AutomationTabViewModel : WorkspaceTabViewModel, MosaicDB.App.Controls.ISqlCompletionSource
+public partial class AutomationTabViewModel : WorkspaceTabViewModel, Navifox.App.Controls.ISqlCompletionSource
 {
     private readonly AutomationService _service;
     private readonly IDatabaseAccessService _databaseAccess;

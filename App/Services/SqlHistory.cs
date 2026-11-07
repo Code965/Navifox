@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using Avalonia.Threading;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public sealed record SqlHistoryEntry(DateTime Time, string Connection, string? Database, string Sql, double Milliseconds, string? Error)
 {
@@ -17,7 +17,7 @@ public sealed record SqlHistoryEntry(DateTime Time, string Connection, string? D
 public static class SqlHistory
 {
     private const int MaxEntries = 3000;
-    private static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MosaicDB", "history.jsonl");
+    private static readonly string FilePath = Navifox.Core.AppPaths.File("history.jsonl");
     private static readonly object Gate = new();
     private static bool _loaded;
 

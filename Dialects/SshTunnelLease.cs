@@ -2,10 +2,10 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Data.Common;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 using Renci.SshNet;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 public sealed class SshTunnelLease : IDisposable
 {

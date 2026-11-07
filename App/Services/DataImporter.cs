@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using ClosedXML.Excel;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public enum ImportFormat { Csv, Text, Json, Excel }
 

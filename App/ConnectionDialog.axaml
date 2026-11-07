@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:MosaicDB.App.ViewModels"
-        x:Class="MosaicDB.App.ConnectionDialog"
+        xmlns:vm="using:Navifox.App.ViewModels"
+        x:Class="Navifox.App.ConnectionDialog"
         x:DataType="vm:ConnectionDialogViewModel"
         Title="Nuova connessione" Width="940" Height="660" MinWidth="760" MinHeight="560"
         WindowStartupLocation="CenterOwner" CanResize="True" Background="{DynamicResource AppBackgroundBrush}">

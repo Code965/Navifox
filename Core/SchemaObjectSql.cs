@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Core;
+namespace Navifox.Core;
 
 /// <summary>SQL per creare, modificare ed eliminare funzioni, procedure, trigger, eventi, viste e sequenze.</summary>
 public static class SchemaObjectSql

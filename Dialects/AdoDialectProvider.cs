@@ -1,9 +1,9 @@
 using System.Data;
 using System.Data.Common;
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 public abstract class AdoDialectProvider : IDialectProvider
 {

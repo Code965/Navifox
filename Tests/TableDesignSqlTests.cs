@@ -1,8 +1,8 @@
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 using Xunit;
 
-namespace MosaicDB.Tests;
+namespace Navifox.Tests;
 
 public sealed class TableDesignSqlTests
 {

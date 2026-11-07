@@ -4,9 +4,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Controls;
+namespace Navifox.App.Controls;
 
 /// <summary>
 /// Superficie del diagramma ER: riquadri tabella con colonne (PK/FK), relazioni con terminali «a zampa di gallina»,

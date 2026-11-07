@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Strumenti: Modello, Server Monitor, Trova, Cronologia, Trasferimento dati, Opzioni, Automazione.</summary>
 public partial class MainWindowViewModel

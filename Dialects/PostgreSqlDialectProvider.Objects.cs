@@ -1,8 +1,8 @@
 using System.Data.Common;
 using System.Text.RegularExpressions;
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Dialects;
+namespace Navifox.Dialects;
 
 /// <summary>Funzioni, procedure, trigger, sequenze e viste (PostgreSQL).</summary>
 public sealed partial class PostgreSqlDialectProvider

@@ -3,9 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class QueryPageView : UserControl
 {
@@ -37,7 +37,7 @@ public partial class QueryPageView : UserControl
                 flyout.Items.Add(new MenuItem
                 {
                     Header = snippet.Name,
-                    Icon = new MosaicDB.App.Controls.NfIcon { Kind = snippet.Icon, Width = 14, Height = 14, Classes = { "menu-icon" } },
+                    Icon = new Navifox.App.Controls.NfIcon { Kind = snippet.Icon, Width = 14, Height = 14, Classes = { "menu-icon" } },
                     Command = _viewModel.InsertSnippetCommand,
                     CommandParameter = snippet.Name
                 });

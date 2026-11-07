@@ -5,10 +5,10 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
-using MosaicDB.App.ViewModels;
-using MosaicDB.Core.Models;
+using Navifox.App.ViewModels;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 /// <summary>Costruisce le colonne dinamiche di una griglia risultati (tabelle e query).</summary>
 public static class ResultGridBuilder

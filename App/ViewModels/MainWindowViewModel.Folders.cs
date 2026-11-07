@@ -1,9 +1,9 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public sealed record MoveConnectionRequest(Guid ProfileId, string Folder);
 public sealed record MoveFolderRequest(string Folder, string Parent);

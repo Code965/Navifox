@@ -1,4 +1,4 @@
-namespace MosaicDB.Core.Models;
+namespace Navifox.Core.Models;
 
 /// <summary>Chiave esterna: colonne di <see cref="Table"/> che puntano a <see cref="ReferencedTable"/>.</summary>
 public sealed record ForeignKeyInfo(

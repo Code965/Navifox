@@ -3,13 +3,13 @@ using System.Diagnostics;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MosaicDB.App.Services;
-using MosaicDB.Core.Models;
+using Navifox.App.Services;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Scheda «Nuova query» (editor + griglia) oppure «Console» (riga di comando con trascrizione testuale).</summary>
-public partial class QueryTabViewModel : WorkspaceTabViewModel, MosaicDB.App.Controls.ISqlCompletionSource
+public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Controls.ISqlCompletionSource
 {
     private const int ConsoleMaxRows = 200;
     private readonly IDatabaseAccessService _databaseAccess;
@@ -188,7 +188,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, MosaicDB.App.Con
     private async Task ExplainAsync()
     {
         var sql = !string.IsNullOrWhiteSpace(SelectedSql) ? SelectedSql : !string.IsNullOrWhiteSpace(CurrentStatementSql) ? CurrentStatementSql : SqlText;
-        var statement = MosaicDB.Core.SqlScriptSplitter.Split(sql ?? string.Empty, _profile.Kind == DatabaseKind.MySql).FirstOrDefault();
+        var statement = Navifox.Core.SqlScriptSplitter.Split(sql ?? string.Empty, _profile.Kind == DatabaseKind.MySql).FirstOrDefault();
         if (statement is null || IsBusy) return;
         if (statement.StartsWith("EXPLAIN", StringComparison.OrdinalIgnoreCase)) statement = statement[7..].TrimStart();
         await RunAsync("EXPLAIN " + statement, console: false);

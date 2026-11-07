@@ -1,9 +1,9 @@
 using System.Collections.Specialized;
 using Avalonia.Controls;
 using Avalonia.Threading;
-using MosaicDB.App.ViewModels;
+using Navifox.App.ViewModels;
 
-namespace MosaicDB.App.Views;
+namespace Navifox.App.Views;
 
 public partial class DataTransferWindow : Window
 {

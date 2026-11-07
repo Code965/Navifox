@@ -1,6 +1,6 @@
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.Core;
+namespace Navifox.Core;
 
 public interface IConnectionProfileStore
 {

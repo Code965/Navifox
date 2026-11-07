@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 /// <summary>Scheda fissa "Oggetti": elenco filtrabile di tabelle/viste del database selezionato.</summary>
 public partial class ObjectsTabViewModel : WorkspaceTabViewModel
@@ -80,22 +80,22 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
 
     /// <summary>True per Tabelle/Viste (colonne righe, dimensione, engine…); false per funzioni, trigger, eventi e sequenze.</summary>
     public bool IsTableList => Source?.SchemaKind is null;
-    public bool IsRoutineList => Source?.SchemaKind == MosaicDB.Core.Models.SchemaObjectKind.Routine;
+    public bool IsRoutineList => Source?.SchemaKind == Navifox.Core.Models.SchemaObjectKind.Routine;
     public bool IsViewList => Source?.Category == "Viste";
     public string NewLabel => Source?.SchemaKind switch
     {
-        MosaicDB.Core.Models.SchemaObjectKind.Routine => "Nuova funzione",
-        MosaicDB.Core.Models.SchemaObjectKind.Trigger => "Nuovo trigger",
-        MosaicDB.Core.Models.SchemaObjectKind.Event => "Nuovo evento",
-        MosaicDB.Core.Models.SchemaObjectKind.Sequence => "Nuova sequenza",
+        Navifox.Core.Models.SchemaObjectKind.Routine => "Nuova funzione",
+        Navifox.Core.Models.SchemaObjectKind.Trigger => "Nuovo trigger",
+        Navifox.Core.Models.SchemaObjectKind.Event => "Nuovo evento",
+        Navifox.Core.Models.SchemaObjectKind.Sequence => "Nuova sequenza",
         _ => "Nuovo"
     };
     public string EditLabel => Source?.SchemaKind switch
     {
-        MosaicDB.Core.Models.SchemaObjectKind.Routine => "Modifica funzione",
-        MosaicDB.Core.Models.SchemaObjectKind.Trigger => "Modifica trigger",
-        MosaicDB.Core.Models.SchemaObjectKind.Event => "Modifica evento",
-        MosaicDB.Core.Models.SchemaObjectKind.Sequence => "Progetta sequenza",
+        Navifox.Core.Models.SchemaObjectKind.Routine => "Modifica funzione",
+        Navifox.Core.Models.SchemaObjectKind.Trigger => "Modifica trigger",
+        Navifox.Core.Models.SchemaObjectKind.Event => "Modifica evento",
+        Navifox.Core.Models.SchemaObjectKind.Sequence => "Progetta sequenza",
         _ => "Modifica"
     };
 

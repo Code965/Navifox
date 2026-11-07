@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Styling;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 public sealed class ThemeService : IThemeService
 {

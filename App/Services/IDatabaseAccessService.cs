@@ -1,7 +1,7 @@
-using MosaicDB.Core;
-using MosaicDB.Core.Models;
+using Navifox.Core;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 /// <summary>Esito di una singola istruzione all'interno di un batch.</summary>
 public sealed record StatementResult(string Sql, QueryResult? Result, Exception? Error, TimeSpan Elapsed);

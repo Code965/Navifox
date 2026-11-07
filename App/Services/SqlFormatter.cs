@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace MosaicDB.App.Services;
+namespace Navifox.App.Services;
 
 /// <summary>Formattatore SQL («Formatta SQL»): parole chiave maiuscole, una clausola per riga, campi e condizioni indentati.</summary>
 public static class SqlFormatter

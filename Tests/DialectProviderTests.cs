@@ -1,8 +1,8 @@
-using MosaicDB.Core.Models;
-using MosaicDB.Dialects;
+using Navifox.Core.Models;
+using Navifox.Dialects;
 using Xunit;
 
-namespace MosaicDB.Tests;
+namespace Navifox.Tests;
 
 public sealed class DialectProviderTests
 {

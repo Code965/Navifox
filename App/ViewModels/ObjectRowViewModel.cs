@@ -1,6 +1,6 @@
-using MosaicDB.Core.Models;
+using Navifox.Core.Models;
 
-namespace MosaicDB.App.ViewModels;
+namespace Navifox.App.ViewModels;
 
 public sealed class ObjectRowViewModel(DatabaseObjectInfo info)
 {
