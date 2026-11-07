@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ── Navifox ──
+# SDK .NET locale (installato da dotnet-install.ps1): non va nel repository.
+.dotnet/
+# Pacchetti di release generati da release.ps1 (setup e aggiornamenti).
+releases/
