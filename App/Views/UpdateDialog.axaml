@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:Navifox.App.Views"
+        xmlns:c="using:Navifox.App.Controls"
+        x:Class="Navifox.App.Views.UpdateDialog"
+        x:DataType="views:UpdateDialogModel"
+        Title="Aggiornamento disponibile" Width="520" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource SurfaceBrush}">
+  <Grid RowDefinitions="Auto,Auto,Auto">
+    <!-- Intestazione -->
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16" Margin="24,24,24,6">
+      <Border Width="48" Height="48" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+        <c:NfIcon Kind="download" Width="24" Height="24" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+      <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+        <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="999" Padding="9,2">
+            <TextBlock Text="{Binding CurrentLabel}" FontSize="11.5" FontFamily="Cascadia Mono,Consolas,monospace" Foreground="{DynamicResource SecondaryTextBrush}" />
+          </Border>
+          <c:NfIcon Kind="chevron-right" Width="12" Height="12" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+          <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="999" Padding="9,2">
+            <TextBlock Text="{Binding NewLabel}" FontSize="11.5" FontFamily="Cascadia Mono,Consolas,monospace" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </Grid>
+
+    <!-- Novità -->
+    <StackPanel Grid.Row="1" Spacing="8" Margin="24,14,24,20">
+      <TextBlock Text="NOVITÀ" Classes="field-label" />
+      <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+        <ScrollViewer MaxHeight="260" HorizontalScrollBarVisibility="Disabled">
+          <SelectableTextBlock Text="{Binding Notes}" TextWrapping="Wrap" FontSize="13" Margin="14,10,14,12" Foreground="{DynamicResource BodyTextBrush}" />
+        </ScrollViewer>
+      </Border>
+      <TextBlock Text="Navifox si chiuderà, si aggiornerà e si riaprirà da solo. Salva prima le query che non vuoi perdere." FontSize="12"
+                 Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- Pulsanti -->
+    <Border Grid.Row="2" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,11">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button x:Name="SkipButton" Content="Salta questa versione" Classes="small-muted" ToolTip.Tip="Non ricordarmelo più per questa versione" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+          <Button x:Name="LaterButton" Content="Più tardi" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+          <Button x:Name="UpdateButton" Content="Aggiorna ora" Classes="dialog-primary" MinWidth="120" HorizontalContentAlignment="Center" IsDefault="True" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

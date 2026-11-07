@@ -45,7 +45,18 @@ public abstract class AdoDialectProvider : IDialectProvider
     {
         var sql = Kind == DatabaseKind.MySql
             ? "SELECT TABLE_NAME, TABLE_TYPE, TABLE_ROWS, DATA_LENGTH, ENGINE, COALESCE(UPDATE_TIME, CREATE_TIME), TABLE_COMMENT, AUTO_INCREMENT FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @schema ORDER BY TABLE_NAME"
-            : "SELECT table_name, CASE table_type WHEN 'BASE TABLE' THEN 'TABLE' ELSE table_type END, NULL::bigint, NULL::bigint, NULL::text, NULL::timestamp, NULL::text, NULL::bigint FROM information_schema.tables WHERE table_catalog = @database AND table_schema = @schema ORDER BY table_name";
+            : """
+              SELECT t.table_name, CASE t.table_type WHEN 'BASE TABLE' THEN 'TABLE' ELSE t.table_type END,
+                     CASE WHEN t.table_type <> 'BASE TABLE' THEN NULL WHEN c.reltuples >= 0 THEN c.reltuples::bigint ELSE s.n_live_tup END,
+                     CASE WHEN t.table_type = 'BASE TABLE' THEN pg_total_relation_size(c.oid) END,
+                     NULL::text, NULL::timestamp, obj_description(c.oid, 'pg_class'), NULL::bigint
+              FROM information_schema.tables t
+              LEFT JOIN pg_namespace n ON n.nspname = t.table_schema
+              LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relname = t.table_name
+              LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+              WHERE t.table_catalog = @database AND t.table_schema = @schema
+              ORDER BY t.table_name
+              """;
         await using var command = CreateCommand(connection, sql);
         AddParameter(command, "@schema", schema);
         if (Kind == DatabaseKind.PostgreSql) AddParameter(command, "@database", database);

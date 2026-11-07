@@ -22,6 +22,8 @@ public sealed class ObjectRowViewModel(DatabaseObjectInfo info)
     };
     public string Rows => info.EstimatedRows is long value ? value.ToString("N0") : "";
     public long RowsValue => info.EstimatedRows ?? -1;
+    /// <summary>MySQL/MariaDB (InnoDB) e PostgreSQL danno una stima dalle statistiche; SQLite e SQL Server il valore esatto.</summary>
+    public string RowsTip => info.EstimatedRows is null ? "Numero di righe non disponibile" : "Numero di righe (per MySQL e PostgreSQL è la stima delle statistiche del server)";
     public string DataSize => info.DataBytes is long value ? FormatBytes(value) : "";
     public long DataSizeValue => info.DataBytes ?? -1;
     public string AutoIncrement => info.AutoIncrement is long value ? value.ToString("N0") : "0";

@@ -26,7 +26,14 @@ public partial class MainWindowViewModel
             if (await Task.Run(() => Updates.CheckAndDownloadAsync()) is not { } version) return;
             ShowUpdateReady(version);
             // Installazioni non presidiate: NAVIFOX_UPDATE_AUTOAPPLY=1 applica subito l'aggiornamento e riavvia.
-            if (Environment.GetEnvironmentVariable("NAVIFOX_UPDATE_AUTOAPPLY") == "1") Updates.ApplyAndRestart();
+            if (Environment.GetEnvironmentVariable("NAVIFOX_UPDATE_AUTOAPPLY") == "1")
+            {
+                Updates.ApplyAndRestart();
+                return;
+            }
+            // Finestra con le novità, salvo che l'utente abbia scelto di saltare proprio questa versione
+            // (il pulsante nella barra di stato resta comunque disponibile).
+            if (AppSettings.Current.SkippedUpdateVersion != version) await AskUpdateAsync();
         }
         catch
         {
@@ -62,7 +69,7 @@ public partial class MainWindowViewModel
                 return;
             }
             ShowUpdateReady(version);
-            await ApplyUpdateAsync();
+            await AskUpdateAsync();
         }
         catch (Exception ex)
         {
@@ -78,13 +85,33 @@ public partial class MainWindowViewModel
     }
 
     [RelayCommand]
-    private async Task ApplyUpdateAsync()
+    private Task ApplyUpdateAsync() => AskUpdateAsync();
+
+    /// <summary>Finestra «Aggiornamento disponibile»: novità della versione e scelta tra Aggiorna ora, Più tardi, Salta questa versione.</summary>
+    private async Task AskUpdateAsync()
     {
-        if (!IsUpdateReady) return;
-        if (!await _dialogs.ConfirmAsync("Aggiornamento disponibile",
-                $"Navifox {Updates.PendingVersion} è pronto (versione attuale {AppVersion}).\n\n" +
-                "Navifox verrà chiuso, aggiornato e riaperto. Le query non salvate andranno perse.", "Riavvia e aggiorna")) return;
-        Updates.ApplyAndRestart();
+        if (!IsUpdateReady || Updates.PendingVersion is not { } version) return;
+        var dialog = new Navifox.App.Views.UpdateDialog
+        {
+            DataContext = new Navifox.App.Views.UpdateDialogModel { NewVersion = version, CurrentVersion = AppVersion, NotesMarkdown = Updates.PendingNotes },
+        };
+        var owner = (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (owner is null) return;
+        switch (await dialog.ShowDialog<Navifox.App.Views.UpdateChoice>(owner))
+        {
+            case Navifox.App.Views.UpdateChoice.Update:
+                SaveSession();
+                Updates.ApplyAndRestart();
+                break;
+            case Navifox.App.Views.UpdateChoice.Skip:
+                AppSettings.Current.SkippedUpdateVersion = version;
+                AppSettings.Current.Save();
+                StatusMessage = $"Versione {version} saltata: puoi installarla quando vuoi dal pulsante nella barra di stato.";
+                break;
+            default:
+                StatusMessage = $"Navifox {version} è pronto: installalo quando vuoi dal pulsante nella barra di stato.";
+                break;
+        }
     }
 
     [RelayCommand]

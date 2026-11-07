@@ -31,6 +31,8 @@ public sealed class UpdateService
     public bool IsInstalled => CreateManager() is { IsInstalled: true };
 
     public string? PendingVersion => _pending?.TargetFullRelease.Version.ToString();
+    /// <summary>Note di rilascio della versione scaricata (Markdown), da mostrare nella finestra dell'aggiornamento.</summary>
+    public string? PendingNotes => _pending?.TargetFullRelease.NotesMarkdown;
 
     private static UpdateManager? CreateManager()
     {

@@ -20,6 +20,8 @@ public sealed class AppSettings
     public bool ShowInfoOnStartup { get; set; } = true;
     /// <summary>Controlla gli aggiornamenti all'avvio.</summary>
     public bool CheckUpdatesOnStartup { get; set; } = true;
+    /// <summary>Versione per cui l'utente ha scelto «Salta questa versione»: all'avvio non si mostra la finestra.</summary>
+    public string? SkippedUpdateVersion { get; set; }
     /// <summary>Modalità sicura: conferma prima di UPDATE/DELETE senza WHERE, DROP e TRUNCATE.</summary>
     public bool SafeMode { get; set; } = true;
     /// <summary>Editor di campo della griglia: "right" (a destra) o "bottom" (in basso), con le dimensioni scelte.</summary>

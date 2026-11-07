@@ -88,7 +88,15 @@ public sealed class SqliteDialectProvider : AdoDialectProvider
                 if (ParseLong(r[1]) is { } seq) sequences[r[0]] = seq;
         }
         catch (SqliteException) { /* nessuna tabella AUTOINCREMENT */ }
-        return rows.Select(r => new DatabaseObjectInfo(r[0], r[1], AutoIncrement: sequences.TryGetValue(r[0], out var s) ? s : null)).ToArray();
+        var counts = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        if (rows.Count(r => r[1] == "TABLE") <= 300)
+            foreach (var table in rows.Where(r => r[1] == "TABLE"))
+            {
+                try { counts[table[0]] = await CountRowsAsync(connection, schema, table[0], null, cancellationToken); }
+                catch (SqliteException) { /* tabella virtuale non leggibile: nessun conteggio */ }
+            }
+        return rows.Select(r => new DatabaseObjectInfo(r[0], r[1], EstimatedRows: counts.TryGetValue(r[0], out var n) ? n : null,
+            AutoIncrement: sequences.TryGetValue(r[0], out var s) ? s : null)).ToArray();
     }
 
     public override async Task<IReadOnlyList<ColumnInfo>> GetColumnsAsync(DbConnection connection, string database, string schema, string table, CancellationToken cancellationToken) =>
