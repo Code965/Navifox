@@ -369,6 +369,15 @@ public abstract class AdoDialectProvider : IDialectProvider
         return connection;
     }
 
+    /// <summary>Connessione in sola lettura: rende la sessione read-only lato server (oltre ai blocchi dell'interfaccia).</summary>
+    protected static async Task ApplyReadOnlyAsync(DbConnection connection, ConnectionProfile profile, string sql, CancellationToken cancellationToken)
+    {
+        if (!profile.ReadOnly) return;
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     protected static void ApplyAdvancedParameters(DbConnectionStringBuilder builder, string parameters)
     {
         foreach (var segment in parameters.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))

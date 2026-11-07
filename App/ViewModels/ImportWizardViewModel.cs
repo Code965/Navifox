@@ -213,6 +213,7 @@ public partial class ImportWizardViewModel : ObservableObject
         ErrorMessage = string.Empty;
         Log.Clear();
         ImportedRows = 0;
+        if (await Services.SqlGuard.BlockIfReadOnlyAsync(_dialogs, _profile, $"Importazione in «{_table}» non consentita.")) { IsRunning = false; return; }
         _running = new CancellationTokenSource();
         var token = _running.Token;
         var timer = Stopwatch.StartNew();

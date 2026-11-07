@@ -80,12 +80,13 @@ public sealed record StoredConnectionRecord(
     string SshHostKeyFingerprint,
     string? Driver = null,
     string? Environment = null,
-    string? Color = null)
+    string? Color = null,
+    bool ReadOnly = false)
 {
     public static StoredConnectionRecord FromProfile(ConnectionProfile p, string password, string connectionString, string sshPassword, string sshPassphrase) => new(
         p.Id, p.Name, p.Folder, p.IsFavorite, p.Kind, p.Host, p.Port, p.UserName, password, p.DefaultDatabase,
         p.SslMode, p.AdvancedParameters, connectionString, p.UseSshTunnel, p.SshHost, p.SshPort, p.SshUserName,
-        sshPassword, p.SshUsePrivateKey, p.SshPrivateKeyPath, sshPassphrase, p.SshHostKeyFingerprint, p.Driver, p.Environment, p.Color);
+        sshPassword, p.SshUsePrivateKey, p.SshPrivateKeyPath, sshPassphrase, p.SshHostKeyFingerprint, p.Driver, p.Environment, p.Color, p.ReadOnly);
 
     public ConnectionProfile ToProfile(string password, string connectionString, string sshPassword, string sshPassphrase) => new()
     {
@@ -95,7 +96,7 @@ public sealed record StoredConnectionRecord(
         SshHost = SshHost, SshPort = SshPort, SshUserName = SshUserName, SshPassword = sshPassword,
         SshUsePrivateKey = SshUsePrivateKey, SshPrivateKeyPath = SshPrivateKeyPath,
         SshPrivateKeyPassphrase = sshPassphrase, SshHostKeyFingerprint = SshHostKeyFingerprint, Driver = Driver,
-        Environment = Environment ?? string.Empty, Color = Color
+        Environment = Environment ?? string.Empty, Color = Color, ReadOnly = ReadOnly
     };
 }
 

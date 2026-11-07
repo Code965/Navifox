@@ -103,6 +103,9 @@ public partial class MainWindowViewModel
         var mysql = provider.UsesMySqlScriptSyntax;
         var name = TableName(node);
         var view = IsViewNode(node);
+        if (operation.Kind is "new" or "drop" or "empty" or "truncate" or "duplicate-data" or "duplicate-structure" or "import" or "rename"
+                or "optimize" or "repair" or "vacuum" or "vacuum-full" or "reindex"
+            && await SqlGuard.BlockIfReadOnlyAsync(_dialogs, profile, "Questa operazione modificherebbe il database.")) return;
         try
         {
             switch (operation.Kind)

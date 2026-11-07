@@ -356,7 +356,8 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
 
     private async Task RunAsync(string sql, bool console)
     {
-        if (!await Services.SqlGuard.ConfirmAsync(_dialogs, _profile, sql)) { StatusMessage = "Esecuzione annullata."; return; }
+        if (!await Services.SqlGuard.ConfirmAsync(_dialogs, _profile, sql, countRows: Services.SqlGuard.Counter(_databaseAccess, _profile, SelectedDatabase)))
+        { StatusMessage = "Esecuzione annullata."; return; }
         _running = new CancellationTokenSource();
         IsBusy = true;
         StatusMessage = "Esecuzione…";

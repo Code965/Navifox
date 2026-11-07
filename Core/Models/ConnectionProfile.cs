@@ -14,6 +14,8 @@ public sealed record ConnectionProfile
     /// <summary>Colore della connessione (#RRGGBB) mostrato nell'albero e sulle schede; null = nessuno.</summary>
     public string? Color { get; init; }
     public bool IsProduction => Environment == "Produzione";
+    /// <summary>Sola lettura: Navifox blocca qualsiasi modifica a dati e struttura (e, dove il server lo consente, apre la sessione in sola lettura).</summary>
+    public bool ReadOnly { get; init; }
     public string Host { get; init; } = "localhost";
     public int Port { get; init; }
     public string UserName { get; init; } = string.Empty;

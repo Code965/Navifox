@@ -1,3 +1,4 @@
+using Navifox.App.Services;
 using CommunityToolkit.Mvvm.Input;
 using Navifox.App.Controls;
 using Navifox.Core.Models;
@@ -85,6 +86,7 @@ public partial class MainWindowViewModel
     /// <summary>Incolla nello stesso database: crea «nome_copy» (struttura con indici e dati).</summary>
     private async Task DuplicateTablesAsync(TableClipboard clip, bool withData)
     {
+        if (await SqlGuard.BlockIfReadOnlyAsync(_dialogs, clip.Profile, "La copia delle tabelle crea nuove tabelle nel database.")) return;
         var provider = _databaseAccess.Provider(clip.Profile);
         var mysql = provider.UsesMySqlScriptSyntax;
         var existing = (await _databaseAccess.ListTablesAsync(clip.Profile, clip.Database, clip.Schema, CancellationToken.None))

@@ -31,6 +31,11 @@
           <CheckBox Classes="crit-check" Content="All'avvio riapri le schede dell'ultima sessione" IsChecked="{Binding RestoreSession, Mode=TwoWay}" />
           <CheckBox Classes="crit-check" Content="Modalità sicura: conferma UPDATE/DELETE senza WHERE, DROP e TRUNCATE" IsChecked="{Binding SafeMode, Mode=TwoWay}"
                     ToolTip.Tip="Sulle connessioni di produzione Navifox chiede sempre conferma prima di ogni modifica" />
+          <Grid ColumnDefinitions="200,*">
+            <TextBlock Text="Anteprima righe modificate" VerticalAlignment="Center"
+                       ToolTip.Tip="Prima di un UPDATE o DELETE dall'editor SQL Navifox conta le righe che verranno toccate (SELECT COUNT(*) con lo stesso WHERE)" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding RowPreviewModes}" SelectedItem="{Binding RowPreview, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+          </Grid>
         </StackPanel>
       </Border>
       <Border Classes="card" Padding="14">

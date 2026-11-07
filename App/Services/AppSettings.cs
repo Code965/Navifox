@@ -24,6 +24,8 @@ public sealed class AppSettings
     public string? SkippedUpdateVersion { get; set; }
     /// <summary>Modalità sicura: conferma prima di UPDATE/DELETE senza WHERE, DROP e TRUNCATE.</summary>
     public bool SafeMode { get; set; } = true;
+    /// <summary>«Quante righe toccherai?» per UPDATE/DELETE dall'editor: "Sempre", "Conferme" (solo quando c'è già una conferma) o "Mai".</summary>
+    public string RowPreview { get; set; } = "Conferme";
     /// <summary>Editor di campo della griglia: "right" (a destra) o "bottom" (in basso), con le dimensioni scelte.</summary>
     public string FieldPanelPosition { get; set; } = "right";
     public double FieldPanelWidth { get; set; } = 340;

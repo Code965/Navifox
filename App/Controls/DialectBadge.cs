@@ -34,6 +34,9 @@ public static class DialectVisuals
     public static readonly Avalonia.Data.Converters.IValueConverter IsProductionConverter =
         new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, bool>(profile => profile?.IsProduction == true);
 
+    public static readonly Avalonia.Data.Converters.IValueConverter IsReadOnlyConverter =
+        new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, bool>(profile => profile?.ReadOnly == true);
+
     public static readonly Avalonia.Data.Converters.IValueConverter HasEnvironmentConverter =
         new Avalonia.Data.Converters.FuncValueConverter<ConnectionProfile?, bool>(profile => !string.IsNullOrEmpty(profile?.Environment));
 

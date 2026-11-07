@@ -256,6 +256,15 @@
                               Background="{Binding Profile, Converter={x:Static c:DialectVisuals.ProfileColorConverter}}">
                         <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EnvironmentLabelConverter}}" />
                       </Border>
+                      <Border Classes="env-chip readonly" ToolTip.Tip="Connessione in sola lettura: le modifiche sono bloccate">
+                        <Border.IsVisible>
+                          <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="IsConnection" />
+                            <Binding Path="Profile" Converter="{x:Static c:DialectVisuals.IsReadOnlyConverter}" />
+                          </MultiBinding>
+                        </Border.IsVisible>
+                        <TextBlock Text="R/O" />
+                      </Border>
                       <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="28" Height="2" MinWidth="0" VerticalAlignment="Center" />
                     </StackPanel>
                     <!-- Connessione: host e porta su una seconda riga, piccola -->
@@ -283,6 +292,10 @@
                   <TextBlock Text="{Binding TabTitle}" VerticalAlignment="Center" />
                   <Border Classes="env-chip prod" IsVisible="{Binding TabConnection, Converter={x:Static c:DialectVisuals.IsProductionConverter}}">
                     <TextBlock Text="PROD" />
+                  </Border>
+                  <Border Classes="env-chip readonly" IsVisible="{Binding TabConnection, Converter={x:Static c:DialectVisuals.IsReadOnlyConverter}}"
+                          ToolTip.Tip="Connessione in sola lettura">
+                    <TextBlock Text="R/O" />
                   </Border>
                   <Button Content="×" Classes="tab-close" IsVisible="{Binding CanClose}"
                           Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding .}" />

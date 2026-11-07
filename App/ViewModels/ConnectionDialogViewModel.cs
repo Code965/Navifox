@@ -36,6 +36,7 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
         IsFavorite = profile.IsFavorite;
         Environment = profile.Environment;
         Color = profile.Color;
+        ReadOnly = profile.ReadOnly;
         SelectedKind = profile.Kind;
         Host = profile.Host;
         PortText = profile.Port.ToString();
@@ -61,6 +62,7 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
     [ObservableProperty] private bool _isFavorite;
     [ObservableProperty] private string _environment = string.Empty;
     [ObservableProperty] private string? _color;
+    [ObservableProperty] private bool _readOnly;
 
     public IReadOnlyList<string> Environments { get; } = ["", "Sviluppo", "Test", "Produzione"];
     public IReadOnlyList<string> Colors { get; } = ["", "#E5484D", "#F76B15", "#F5B400", "#30A46C", "#12A594", "#0090FF", "#6E56CF", "#8B8D98"];
@@ -336,7 +338,7 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
     {
         Id = Editing?.Id ?? Guid.NewGuid(),
         Name = Name.Trim(), Folder = MainWindowViewModel.NormalizeFolder(Folder), IsFavorite = IsFavorite,
-        Environment = Environment ?? string.Empty, Color = string.IsNullOrEmpty(Color) ? null : Color,
+        Environment = Environment ?? string.Empty, Color = string.IsNullOrEmpty(Color) ? null : Color, ReadOnly = ReadOnly,
         Kind = SelectedKind, Driver = SelectedDriver?.Name, Host = Host.Trim(), Port = port, UserName = UserName.Trim(), Password = Password,
         DefaultDatabase = Database.Trim(), SslMode = SelectedSslMode, AdvancedParameters = AdvancedParameters,
         ConnectionStringOverride = ConnectionStringOverride.Trim(), UseSshTunnel = UseSshTunnel,

@@ -21,7 +21,7 @@ public sealed class SqliteDialectProvider : AdoDialectProvider
         var builder = new SqliteConnectionStringBuilder
         {
             DataSource = Environment.ExpandEnvironmentVariables(profile.Host.Trim().Trim('"')),
-            Mode = SqliteOpenMode.ReadWriteCreate,
+            Mode = profile.ReadOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate,
             Cache = SqliteCacheMode.Private,
             ForeignKeys = true,
             DefaultTimeout = 30,
@@ -29,6 +29,7 @@ public sealed class SqliteDialectProvider : AdoDialectProvider
         if (!string.IsNullOrWhiteSpace(profile.Password)) builder.Password = profile.Password;
         if (!string.IsNullOrWhiteSpace(profile.ConnectionStringOverride)) builder.ConnectionString = profile.ConnectionStringOverride;
         ApplyAdvancedParameters(builder, profile.AdvancedParameters);
+        if (profile.ReadOnly) builder.Mode = SqliteOpenMode.ReadOnly;
         var connection = new SqliteConnection(builder.ConnectionString);
         try
         {

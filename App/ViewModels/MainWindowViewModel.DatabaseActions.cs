@@ -115,6 +115,7 @@ public partial class MainWindowViewModel
     {
         var connection = node is null ? null : ConnectionOf(node);
         if (connection?.Profile is not { } profile) return;
+        if (await SqlGuard.BlockIfReadOnlyAsync(_dialogs, profile, "Non è possibile creare database.")) return;
         try
         {
             var charsets = await _databaseAccess.ListCharsetsAsync(profile, CancellationToken.None);
@@ -131,6 +132,7 @@ public partial class MainWindowViewModel
     private async Task EditDatabaseAsync(TreeNodeViewModel? node)
     {
         if (node?.Profile is not { } profile || node.Database is not { } database) return;
+        if (await SqlGuard.BlockIfReadOnlyAsync(_dialogs, profile, "Non è possibile modificare le proprietà del database.")) return;
         var connection = ConnectionOf(node);
         try
         {
@@ -153,6 +155,7 @@ public partial class MainWindowViewModel
     private async Task DeleteDatabaseAsync(TreeNodeViewModel? node)
     {
         if (node?.Profile is not { } profile || node.Database is not { } database) return;
+        if (await SqlGuard.BlockIfReadOnlyAsync(_dialogs, profile, "Non è possibile eliminare database.")) return;
         var confirmed = await _dialogs.ConfirmAsync("Elimina database",
             $"Eliminare definitivamente il database «{database}» su «{profile.Name}»?\n\nTutte le tabelle e i dati verranno persi. L’operazione non può essere annullata.",
             "Elimina", danger: true);
@@ -264,6 +267,7 @@ public partial class MainWindowViewModel
     private async Task ExecuteSqlFileAsync(TreeNodeViewModel? node)
     {
         if (node?.Profile is not { } profile) return;
+        if (await SqlGuard.BlockIfReadOnlyAsync(_dialogs, profile, "L’esecuzione di file SQL non è consentita.")) return;
         var path = await _dialogs.PickOpenFileAsync("Esegui file SQL", new FileFilter("Script SQL", "*.sql"), new FileFilter("Tutti i file", "*.*"));
         if (path is null) return;
         if (!await SqlGuard.ConfirmProductionAsync(_dialogs, profile, $"Stai per eseguire lo script «{Path.GetFileName(path)}» su «{node.Database ?? profile.Name}».")) return;

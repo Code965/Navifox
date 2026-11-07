@@ -226,6 +226,8 @@
             </StackPanel>
           </Grid>
           <CheckBox Content="Aggiungi ai preferiti" IsChecked="{Binding IsFavorite}" />
+          <CheckBox Content="Sola lettura: blocca qualsiasi modifica a dati e struttura" IsChecked="{Binding ReadOnly}"
+                    ToolTip.Tip="Utile per i database di produzione da consultare: Navifox impedisce UPDATE, DELETE, DROP, modifiche dalla griglia, importazioni e trasferimenti verso questa connessione. Su MySQL, PostgreSQL e SQLite anche la sessione è aperta in sola lettura." />
           <CheckBox Content="Usa un tunnel SSH" IsChecked="{Binding UseSshTunnel}" />
           <StackPanel IsVisible="{Binding UseSshTunnel}" Spacing="9" Margin="12,0,0,0">
             <Grid ColumnDefinitions="*,110" ColumnSpacing="12">

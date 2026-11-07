@@ -30,6 +30,7 @@ public sealed partial class MySqlDialectProvider : AdoDialectProvider
         try
         {
             await OpenAsync(connection, cancellationToken);
+            await ApplyReadOnlyAsync(connection, profile, "SET SESSION TRANSACTION READ ONLY", cancellationToken);
             tunnel?.Attach(connection);
             ActivityRecording.Register(connection, profile);
             return connection;

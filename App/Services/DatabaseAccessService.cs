@@ -66,6 +66,8 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
     {
         var provider = Provider(profile);
         var results = new List<StatementResult>();
+        if (profile.ReadOnly && SqlSafety.Analyze(sql, profile.Kind == DatabaseKind.MySql).FirstOrDefault(r => r.Risk != SqlRisk.Read) is { } write)
+            return [new StatementResult(write.Statement, null, ReadOnlyError(profile), TimeSpan.Zero)];
         await using var connection = await ConnectAsync(profile, database, cancellationToken);
         foreach (var statement in provider.SplitScript(sql))
         {
@@ -93,6 +95,7 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
 
     private async Task<int> ExecuteScriptFileCoreAsync(ConnectionProfile profile, string? database, string path, IProgress<ScriptProgress>? progress, CancellationToken cancellationToken)
     {
+        if (profile.ReadOnly) throw ReadOnlyError(profile);
         var provider = Provider(profile);
         var totalBytes = new FileInfo(path).Length;
         // Lo script viene letto per intero: lo splitter lavora su stringa (adatto a file fino a qualche centinaio di MB).
@@ -122,6 +125,7 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
 
     public async Task ExecuteOnServerAsync(ConnectionProfile profile, IEnumerable<string> statements, CancellationToken cancellationToken)
     {
+        if (profile.ReadOnly) throw ReadOnlyError(profile);
         var provider = Provider(profile);
         provider.ClearPools();
         // Mai collegati al database da eliminare/rinominare: si usa quello di manutenzione.
@@ -159,8 +163,13 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
         return await Provider(profile).GetTableDesignAsync(connection, database, schema, table, cancellationToken);
     }
 
+    /// <summary>Errore per i tentativi di modifica su una connessione in sola lettura (ultima difesa dopo i controlli dell'interfaccia).</summary>
+    private static InvalidOperationException ReadOnlyError(ConnectionProfile profile) =>
+        new($"«{profile.Name}» è una connessione in sola lettura: modifiche a dati e struttura non consentite.");
+
     public async Task ExecuteStatementsAsync(ConnectionProfile profile, string? database, IReadOnlyList<string> statements, CancellationToken cancellationToken, bool atomic = false)
     {
+        if (profile.ReadOnly) throw ReadOnlyError(profile);
         var provider = Provider(profile);
         await using var connection = await ConnectAsync(profile, database, cancellationToken);
         if (!atomic)

@@ -677,6 +677,12 @@ public partial class DataTransferViewModel : ObservableObject
 }
 
 /// <summary>Strumenti › Opzioni.</summary>
+/// <summary>Voce della scelta «Anteprima righe modificate» nelle opzioni.</summary>
+public sealed record RowPreviewMode(string Value, string Label)
+{
+    public override string ToString() => Label;
+}
+
 public partial class OptionsViewModel : ObservableObject
 {
     public OptionsViewModel()
@@ -690,6 +696,7 @@ public partial class OptionsViewModel : ObservableObject
         _queryMaxRows = settings.QueryMaxRows;
         _checkUpdatesOnStartup = settings.CheckUpdatesOnStartup;
         _safeMode = settings.SafeMode;
+        _rowPreview = RowPreviewModes.FirstOrDefault(m => m.Value == settings.RowPreview) ?? RowPreviewModes[1];
         _restoreSession = settings.RestoreSession;
         _updateSource = settings.UpdateSource;
         _assistantProvider = SqlAssistant.Current;
@@ -809,6 +816,14 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private decimal? _queryMaxRows;
     [ObservableProperty] private bool _checkUpdatesOnStartup;
     [ObservableProperty] private bool _safeMode;
+    [ObservableProperty] private RowPreviewMode? _rowPreview;
+
+    public IReadOnlyList<RowPreviewMode> RowPreviewModes { get; } =
+    [
+        new(SqlGuard.PreviewAlways, "Sempre, prima di ogni UPDATE/DELETE"),
+        new(SqlGuard.PreviewWithConfirm, "Solo quando Navifox chiede conferma"),
+        new(SqlGuard.PreviewNever, "Mai"),
+    ];
     [ObservableProperty] private bool _restoreSession;
     [ObservableProperty] private string _updateSource;
 
@@ -824,6 +839,7 @@ public partial class OptionsViewModel : ObservableObject
         settings.QueryMaxRows = (int)Math.Clamp(QueryMaxRows ?? 1000, 1, 1_000_000);
         settings.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
         settings.SafeMode = SafeMode;
+        settings.RowPreview = RowPreview?.Value ?? SqlGuard.PreviewWithConfirm;
         settings.RestoreSession = RestoreSession;
         settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;
         // Fornitore dell'assistente: si salvano anche le modifiche fatte agli altri fornitori durante la sessione.

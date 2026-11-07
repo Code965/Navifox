@@ -592,8 +592,9 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     private void UpdateEditability()
     {
         var hasKey = _metadata.Any(column => column.IsPrimaryKey);
-        CanEdit = !IsView && hasKey;
-        EditHint = IsView ? "Le viste sono in sola lettura." : hasKey ? string.Empty : "La tabella non ha una chiave primaria: modifica disattivata.";
+        CanEdit = !IsView && hasKey && !_profile.ReadOnly;
+        EditHint = _profile.ReadOnly ? "Connessione in sola lettura: modifica disattivata."
+            : IsView ? "Le viste sono in sola lettura." : hasKey ? string.Empty : "La tabella non ha una chiave primaria: modifica disattivata.";
     }
 
     private TableRowViewModel TrackRow(TableRowViewModel row)

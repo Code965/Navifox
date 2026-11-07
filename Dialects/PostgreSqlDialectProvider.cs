@@ -28,6 +28,7 @@ public sealed partial class PostgreSqlDialectProvider : AdoDialectProvider
         try
         {
             await OpenAsync(connection, cancellationToken);
+            await ApplyReadOnlyAsync(connection, profile, "SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY", cancellationToken);
             tunnel?.Attach(connection);
             ActivityRecording.Register(connection, profile);
             return connection;
