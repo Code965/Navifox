@@ -259,6 +259,9 @@ public partial class MainWindowViewModel : ObservableObject
     {
         _themeService.Toggle();
         IsDarkTheme = _themeService.IsDark;
+        // La scelta resta anche alla prossima apertura (prima cambiava solo i colori in memoria).
+        AppSettings.Current.Theme = IsDarkTheme ? "Scuro" : "Chiaro";
+        AppSettings.Current.Save();
     }
 
     [RelayCommand]
