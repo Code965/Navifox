@@ -25,6 +25,7 @@ public partial class MainWindowViewModel
         var view = IsViewNode(node);
         var what = view ? "vista" : "tabella";
         var mysql = node.Profile?.Kind == DatabaseKind.MySql;
+        var kind = node.Profile?.Kind ?? DatabaseKind.MySql;
         return
         [
             new($"Apri {what}", OpenNodeCommand, node, view ? "eye" : "table"),
@@ -38,7 +39,7 @@ public partial class MainWindowViewModel
                 new("Struttura e dati", TableOperationCommand, new TableOperation(node, "duplicate-data")),
                 new("Solo struttura", TableOperationCommand, new TableOperation(node, "duplicate-structure")),
             ]),
-            new("Imposta privilegi…", OpenUsersCommand, node, "users"),
+            new("Imposta privilegi…", OpenUsersCommand, node, "users", kind is DatabaseKind.MySql or DatabaseKind.PostgreSql),
             ContextAction.Separator,
             new("Import Wizard…", TableOperationCommand, new TableOperation(node, "import"), "import", !view),
             new("Export Wizard…", TableOperationCommand, new TableOperation(node, "export"), "export"),
@@ -49,7 +50,23 @@ public partial class MainWindowViewModel
                 new("Solo struttura…", TableOperationCommand, new TableOperation(node, "dump-structure")),
             ]),
             new("Stampa tabella…", PrintCommand, node, "printer", !view),
-            new("Manutenzione", Glyph: "sliders", IsEnabled: !view, Children: mysql
+            new("Manutenzione", Glyph: "sliders", IsEnabled: !view, Children: kind == DatabaseKind.SqlServer
+                ?
+                [
+                    new("Aggiorna statistiche", TableOperationCommand, new TableOperation(node, "analyze")),
+                    new("Controlla tabella (DBCC CHECKTABLE)", TableOperationCommand, new TableOperation(node, "check")),
+                    new("Riorganizza indici", TableOperationCommand, new TableOperation(node, "optimize")),
+                    new("Ricostruisci indici", TableOperationCommand, new TableOperation(node, "reindex")),
+                ]
+                : kind == DatabaseKind.Sqlite
+                ?
+                [
+                    new("Analizza (ANALYZE)", TableOperationCommand, new TableOperation(node, "analyze")),
+                    new("Controlla integrità", TableOperationCommand, new TableOperation(node, "check")),
+                    new("Ricostruisci indici (REINDEX)", TableOperationCommand, new TableOperation(node, "reindex")),
+                    new("Compatta il database (VACUUM)", TableOperationCommand, new TableOperation(node, "vacuum")),
+                ]
+                : mysql
                 ?
                 [
                     new("Analizza tabella", TableOperationCommand, new TableOperation(node, "analyze")),
@@ -107,7 +124,13 @@ public partial class MainWindowViewModel
                     break;
                 case "truncate":
                     if (!await _dialogs.ConfirmAsync("Tronca tabella", $"Troncare «{node.Name}»? Tutti i record vengono eliminati e il contatore AUTO_INCREMENT/identità riparte.", "Tronca", danger: true)) return;
-                    await RunTableSqlAsync(node, mysql ? $"TRUNCATE TABLE {name}" : $"TRUNCATE TABLE {name} RESTART IDENTITY");
+                    await RunTableSqlAsync(node, profile.Kind switch
+                    {
+                        DatabaseKind.MySql or DatabaseKind.SqlServer => $"TRUNCATE TABLE {name}",
+                        // SQLite: DELETE senza WHERE usa l'ottimizzazione «truncate»; si azzera anche il contatore AUTOINCREMENT.
+                        DatabaseKind.Sqlite => $"DELETE FROM {name};\nDELETE FROM sqlite_sequence WHERE name = {provider.FormatLiteral(node.Name)}",
+                        _ => $"TRUNCATE TABLE {name} RESTART IDENTITY",
+                    });
                     StatusMessage = $"«{node.Name}» troncata.";
                     break;
                 case "duplicate-data":
@@ -144,9 +167,14 @@ public partial class MainWindowViewModel
                     if (string.IsNullOrWhiteSpace(newName) || newName.Trim() == node.Name) return;
                     newName = newName.Trim();
                     var target = mysql ? provider.QuoteIdentifier(newName) : $"{provider.QuoteIdentifier(schema)}.{provider.QuoteIdentifier(newName)}";
-                    await RunTableSqlAsync(node, mysql
-                        ? $"RENAME TABLE {name} TO {target}"
-                        : $"ALTER {(view ? "VIEW" : "TABLE")} {name} RENAME TO {provider.QuoteIdentifier(newName)}");
+                    await RunTableSqlAsync(node, profile.Kind switch
+                    {
+                        DatabaseKind.MySql => $"RENAME TABLE {name} TO {target}",
+                        DatabaseKind.SqlServer => $"EXEC sp_rename {provider.FormatLiteral($"{schema}.{node.Name}")}, {provider.FormatLiteral(newName)}",
+                        DatabaseKind.Sqlite when view => throw new NotSupportedException("SQLite non permette di rinominare una vista: modificala e salvala con un altro nome."),
+                        DatabaseKind.Sqlite => $"ALTER TABLE {provider.QuoteIdentifier(node.Name)} RENAME TO {provider.QuoteIdentifier(newName)}",
+                        _ => $"ALTER {(view ? "VIEW" : "TABLE")} {name} RENAME TO {provider.QuoteIdentifier(newName)}",
+                    });
                     CloseTabsForTable(profile.Id, database, node.Name);
                     StatusMessage = $"«{node.Name}» rinominata in «{newName}».";
                     break;
@@ -178,18 +206,33 @@ public partial class MainWindowViewModel
             CloseTab(tab);
     }
 
+    private static string LegacyMaintenanceSql(TreeNodeViewModel node, string kind, string name) => kind switch
+    {
+        "analyze" => $"ANALYZE {(node.Profile!.Kind == DatabaseKind.MySql ? "TABLE " : string.Empty)}{name}",
+        "check" => $"CHECK TABLE {name}",
+        "optimize" => $"OPTIMIZE TABLE {name}",
+        "repair" => $"REPAIR TABLE {name}",
+        "vacuum" => $"VACUUM {name}",
+        "vacuum-full" => $"VACUUM FULL {name}",
+        _ => $"REINDEX TABLE {name}"
+    };
+
     private async Task MaintainAsync(TreeNodeViewModel node, string kind)
     {
         var name = TableName(node);
-        var sql = kind switch
+        var dialect = node.Profile!.Kind;
+        var literal = _databaseAccess.Provider(node.Profile).FormatLiteral(dialect == DatabaseKind.SqlServer ? $"{node.Schema}.{node.Name}" : node.Name);
+        var sql = (dialect, kind) switch
         {
-            "analyze" => $"ANALYZE {(node.Profile!.Kind == DatabaseKind.MySql ? "TABLE " : string.Empty)}{name}",
-            "check" => $"CHECK TABLE {name}",
-            "optimize" => $"OPTIMIZE TABLE {name}",
-            "repair" => $"REPAIR TABLE {name}",
-            "vacuum" => $"VACUUM {name}",
-            "vacuum-full" => $"VACUUM FULL {name}",
-            _ => $"REINDEX TABLE {name}"
+            (DatabaseKind.SqlServer, "analyze") => $"UPDATE STATISTICS {name}",
+            (DatabaseKind.SqlServer, "check") => $"DBCC CHECKTABLE ({literal})",
+            (DatabaseKind.SqlServer, "optimize") => $"ALTER INDEX ALL ON {name} REORGANIZE",
+            (DatabaseKind.SqlServer, _) => $"ALTER INDEX ALL ON {name} REBUILD",
+            (DatabaseKind.Sqlite, "analyze") => $"ANALYZE {name}",
+            (DatabaseKind.Sqlite, "check") => $"PRAGMA integrity_check({literal})",
+            (DatabaseKind.Sqlite, "vacuum") => "VACUUM",
+            (DatabaseKind.Sqlite, _) => $"REINDEX {name}",
+            _ => LegacyMaintenanceSql(node, kind, name),
         };
         StatusMessage = $"{sql}…";
         var results = await _databaseAccess.ExecuteBatchAsync(node.Profile!, node.Database, sql, 50, CancellationToken.None);

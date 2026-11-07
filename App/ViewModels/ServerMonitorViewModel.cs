@@ -13,7 +13,7 @@ public partial class MonitorServer(ConnectionProfile profile) : ObservableObject
     public ConnectionProfile Profile { get; } = profile;
     public string Name => Profile.Name;
     public string Kind => Profile.Kind.DisplayName();
-    public string Endpoint => $"{Profile.Host}:{Profile.EffectivePort}";
+    public string Endpoint => Profile.Endpoint;
     [ObservableProperty] private bool _isChecked = true;
     [ObservableProperty] private string _version = "—";
     [ObservableProperty] private string _uptime = "—";
@@ -246,7 +246,21 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
     private async Task LoadSlowQueriesAsync(MonitorServer server, System.Data.Common.DbConnection connection, Navifox.Core.IDialectProvider provider)
     {
         var mysql = server.Profile.Kind == DatabaseKind.MySql;
-        var sql = mysql
+        if (server.Profile.Kind == DatabaseKind.Sqlite)
+        {
+            SlowQueryInfo = $"{server.Name}: SQLite non raccoglie statistiche delle query.";
+            return;
+        }
+        var sql = server.Profile.Kind == DatabaseKind.SqlServer
+            ? """
+              SELECT TOP (50) SUBSTRING(t.text, (s.statement_start_offset / 2) + 1,
+                       ((CASE s.statement_end_offset WHEN -1 THEN DATALENGTH(t.text) ELSE s.statement_end_offset END - s.statement_start_offset) / 2) + 1),
+                     s.execution_count, s.total_elapsed_time / 1000.0 / s.execution_count, s.total_elapsed_time / 1000.0, s.max_elapsed_time / 1000.0,
+                     s.total_rows, COALESCE(DB_NAME(t.dbid), '')
+              FROM sys.dm_exec_query_stats s CROSS APPLY sys.dm_exec_sql_text(s.sql_handle) t
+              ORDER BY s.total_elapsed_time / s.execution_count DESC
+              """
+            : mysql
             ? """
               SELECT DIGEST_TEXT, COUNT_STAR, AVG_TIMER_WAIT / 1000000000, SUM_TIMER_WAIT / 1000000000, MAX_TIMER_WAIT / 1000000000, SUM_ROWS_SENT, COALESCE(SCHEMA_NAME, '')
               FROM performance_schema.events_statements_summary_by_digest
@@ -269,7 +283,7 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
         }
         catch (Exception exception)
         {
-            SlowQueryInfo = mysql
+            SlowQueryInfo = server.Profile.Kind != DatabaseKind.PostgreSql
                 ? $"{server.Name}: statistiche non disponibili ({exception.Message})."
                 : $"{server.Name}: serve l'estensione pg_stat_statements (shared_preload_libraries = 'pg_stat_statements', poi CREATE EXTENSION pg_stat_statements). {exception.Message}";
         }

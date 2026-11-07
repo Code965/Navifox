@@ -140,8 +140,9 @@ public partial class FindTabViewModel : WorkspaceTabViewModel
                 var parts = searchable.Select((c, i) =>
                 {
                     var column = provider.QuoteIdentifier(c.Name);
-                    var expression = mysql ? column : $"CAST({column} AS text)";
-                    var condition = ExactMatch ? $"{expression} = {literal}" : $"{expression} {(mysql ? "LIKE" : "ILIKE")} {literal}";
+                    var expression = provider.Kind switch { DatabaseKind.MySql or DatabaseKind.Sqlite => column, DatabaseKind.SqlServer => $"CAST({column} AS nvarchar(max))", _ => $"CAST({column} AS text)" };
+                    var escape = provider.Kind is DatabaseKind.SqlServer or DatabaseKind.Sqlite ? " ESCAPE '\\'" : string.Empty;
+                    var condition = ExactMatch ? $"{expression} = {literal}" : $"{expression} {(provider.Kind == DatabaseKind.PostgreSql ? "ILIKE" : "LIKE")} {literal}{escape}";
                     return $"SUM(CASE WHEN {condition} THEN 1 ELSE 0 END) AS c{i}";
                 });
                 var sql = $"SELECT {string.Join(", ", parts)} FROM {provider.QuoteIdentifier(Schema)}.{provider.QuoteIdentifier(table)}";

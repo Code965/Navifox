@@ -23,6 +23,8 @@ public partial class App : Application
             var registrations = new ServiceCollection();
             registrations.AddSingleton<IDialectProvider, MySqlDialectProvider>();
             registrations.AddSingleton<IDialectProvider, PostgreSqlDialectProvider>();
+            registrations.AddSingleton<IDialectProvider, SqlServerDialectProvider>();
+            registrations.AddSingleton<IDialectProvider, SqliteDialectProvider>();
             registrations.AddSingleton<IConnectionProfileStore, ConnectionProfileStore>();
             registrations.AddSingleton<IDatabaseAccessService, DatabaseAccessService>();
             registrations.AddSingleton<IWindowLocator, WindowLocator>();

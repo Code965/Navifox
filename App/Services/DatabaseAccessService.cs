@@ -67,7 +67,7 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
         var provider = Provider(profile);
         var results = new List<StatementResult>();
         await using var connection = await ConnectAsync(profile, database, cancellationToken);
-        foreach (var statement in SqlScriptSplitter.Split(sql, provider.UsesMySqlScriptSyntax))
+        foreach (var statement in provider.SplitScript(sql))
         {
             var timer = Stopwatch.StartNew();
             try
@@ -97,7 +97,7 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
         var executed = 0;
         long processedChars = 0;
         var lastReport = Stopwatch.StartNew();
-        foreach (var statement in SqlScriptSplitter.Split(script, provider.UsesMySqlScriptSyntax))
+        foreach (var statement in provider.SplitScript(script))
         {
             cancellationToken.ThrowIfCancellationRequested();
             try { await provider.ExecuteAsync(connection, statement, 0, cancellationToken); }
@@ -164,8 +164,8 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
             await RunStatementsAsync(provider, connection, profile, database, statements, cancellationToken);
             return;
         }
-        // DDL transazionale (PostgreSQL): o tutto o niente.
-        await provider.ExecuteAsync(connection, "BEGIN", 0, cancellationToken);
+        // DDL transazionale (PostgreSQL, SQL Server, SQLite): o tutto o niente.
+        await provider.ExecuteAsync(connection, profile.Kind.BeginTransactionSql(), 0, cancellationToken);
         try
         {
             await RunStatementsAsync(provider, connection, profile, database, statements, cancellationToken);
@@ -276,15 +276,17 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
         var isMySql = provider.UsesMySqlScriptSyntax;
         await using var connection = await ConnectAsync(profile, database, cancellationToken);
         await writer.WriteAsync(provider.DumpHeader(database));
-        var schemas = isMySql ? [database] : await provider.ListSchemasAsync(connection, database, cancellationToken);
+        var schemas = !profile.Kind.HasSchemas() ? [profile.Kind.DefaultSchema(database)] : await provider.ListSchemasAsync(connection, database, cancellationToken);
         var postData = new List<string>();
         foreach (var schema in schemas)
         {
-            if (!isMySql && schema != "public") await writer.WriteAsync($"\nCREATE SCHEMA IF NOT EXISTS {provider.QuoteIdentifier(schema)};\n");
+            if (profile.Kind == DatabaseKind.PostgreSql && schema != "public") await writer.WriteAsync($"\nCREATE SCHEMA IF NOT EXISTS {provider.QuoteIdentifier(schema)};\n");
+            if (profile.Kind == DatabaseKind.SqlServer && schema != "dbo")
+                await writer.WriteAsync($"\nIF SCHEMA_ID({provider.FormatLiteral(schema)}) IS NULL EXEC({provider.FormatLiteral("CREATE SCHEMA " + provider.QuoteIdentifier(schema))});\nGO\n");
             var objects = await provider.ListTablesAsync(connection, database, schema, cancellationToken);
             var tables = objects.Where(item => !item.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase)).ToArray();
             var views = objects.Where(item => item.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase)).ToArray();
-            var cascade = isMySql ? string.Empty : " CASCADE";
+            var cascade = profile.Kind == DatabaseKind.PostgreSql ? " CASCADE" : string.Empty;
             foreach (var table in tables)
             {
                 cancellationToken.ThrowIfCancellationRequested();

@@ -494,7 +494,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         var ok = false;
         await RunAsync(async (connection, token) =>
         {
-            var begin = _provider.UsesMySqlScriptSyntax ? "START TRANSACTION" : "BEGIN";
+            var begin = _provider.Kind.BeginTransactionSql();
             if (!IsTransaction) await _provider.ExecuteAsync(connection, begin, 0, token);
             try
             {
@@ -588,7 +588,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         try
         {
             _transaction = await _databaseAccess.OpenAsync(_profile, Database, CancellationToken.None);
-            await _provider.ExecuteAsync(_transaction, _provider.UsesMySqlScriptSyntax ? "START TRANSACTION" : "BEGIN", 0, CancellationToken.None);
+            await _provider.ExecuteAsync(_transaction, _provider.Kind.BeginTransactionSql(), 0, CancellationToken.None);
             IsTransaction = true;
             StatusMessage = "Transazione avviata: le modifiche resteranno provvisorie fino a «Commit».";
         }
@@ -669,7 +669,11 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         var sql = $"SELECT * FROM {_provider.QuoteIdentifier(Schema)}.{_provider.QuoteIdentifier(TableName)}"
                   + (_appliedWhere is null ? string.Empty : $" WHERE {_appliedWhere}")
                   + (_appliedOrderBy is null ? string.Empty : $" ORDER BY {_appliedOrderBy}");
-        return withPaging && PageSize > 0 ? $"{sql} LIMIT {PageSize} OFFSET {(long)_pageIndex * PageSize}" : sql;
+        if (!withPaging || PageSize <= 0) return sql;
+        var offset = (long)_pageIndex * PageSize;
+        return _provider.Kind == Navifox.Core.Models.DatabaseKind.SqlServer
+            ? $"{sql}{(_appliedOrderBy is null ? " ORDER BY (SELECT NULL)" : string.Empty)} OFFSET {offset} ROWS FETCH NEXT {PageSize} ROWS ONLY"
+            : $"{sql} LIMIT {PageSize} OFFSET {offset}";
     }
 
     private void UpdateRecordLabel()

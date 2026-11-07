@@ -252,7 +252,7 @@ public partial class MainWindowViewModel
         if (!isConsole && node.Kind == TreeNodeKind.Table)
         {
             var provider = _databaseAccess.Provider(profile);
-            tab.SqlText = $"SELECT * FROM {provider.QuoteIdentifier(node.Schema!)}.{provider.QuoteIdentifier(node.Name)} LIMIT 100;";
+            tab.SqlText = profile.Kind.LimitSelect("*", $"FROM {provider.QuoteIdentifier(node.Schema!)}.{provider.QuoteIdentifier(node.Name)}", 100) + ";";
         }
         OpenTabs.Add(tab);
         SelectedTab = tab;

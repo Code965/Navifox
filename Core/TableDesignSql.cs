@@ -8,7 +8,7 @@ namespace Navifox.Core;
 /// Genera le istruzioni SQL di «Progetta tabella»: CREATE TABLE per una tabella nuova, oppure le ALTER TABLE
 /// necessarie a passare dalla struttura caricata (<c>original</c>) a quella modificata (<c>target</c>).
 /// </summary>
-public static class TableDesignSql
+public static partial class TableDesignSql
 {
     private static readonly HashSet<string> MySqlTextTypes = new(StringComparer.OrdinalIgnoreCase)
     {

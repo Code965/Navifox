@@ -32,7 +32,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         _selectedDatabase = database;
         IsConsole = isConsole;
         _number = isConsole ? 0 : Interlocked.Increment(ref _queryCounter);
-        if (isConsole) _transcript.Append($"Navifox console · {profile.Name} ({profile.Host}:{profile.EffectivePort}){(database is null ? string.Empty : " · " + database)}\nTermina le istruzioni con ';' e premi Invio. ↑/↓ per la cronologia.\n\n");
+        if (isConsole) _transcript.Append($"Navifox console · {profile.Name} ({profile.Endpoint}){(database is null ? string.Empty : " · " + database)}\nTermina le istruzioni con ';' e premi Invio. ↑/↓ per la cronologia.\n\n");
         ConsoleText = _transcript.ToString();
         _initializing = false;
         _ = LoadDatabasesAsync(database);
@@ -144,7 +144,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         if (_schemaCache.TryGetValue(database, out var cached)) return cached;
         try
         {
-            var schema = _profile.Kind == DatabaseKind.MySql ? database : "public";
+            var schema = _profile.Kind.DefaultSchema(database);
             cached = await _databaseAccess.GetSchemaModelAsync(_profile, database, schema, CancellationToken.None);
         }
         catch { cached = null; }
@@ -167,7 +167,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     public override string TabGlyph => IsConsole ? "terminal" : "file-code";
     public bool IsConsole { get; }
     public bool IsEditor => !IsConsole;
-    public string Prompt => $"{(_profile.Kind == DatabaseKind.MySql ? "mysql" : "psql")}{(SelectedDatabase is null ? string.Empty : ":" + SelectedDatabase)}>";
+    public string Prompt => $"{_profile.Kind switch { DatabaseKind.MySql => "mysql", DatabaseKind.SqlServer => "sqlcmd", DatabaseKind.Sqlite => "sqlite", _ => "psql" }}{(SelectedDatabase is null ? string.Empty : ":" + SelectedDatabase)}>";
     public string Context => SelectedDatabase is null ? $"{_profile.Name} · server" : $"{_profile.Name} · {SelectedDatabase}";
     public ObservableCollection<ColumnInfo> Columns { get; } = [];
     public ObservableCollection<TableRowViewModel> Rows { get; } = [];
@@ -217,7 +217,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     private async Task ExplainAsync()
     {
         var sql = !string.IsNullOrWhiteSpace(SelectedSql) ? SelectedSql : !string.IsNullOrWhiteSpace(CurrentStatementSql) ? CurrentStatementSql : SqlText;
-        var statement = Navifox.Core.SqlScriptSplitter.Split(sql ?? string.Empty, _profile.Kind == DatabaseKind.MySql).FirstOrDefault();
+        var statement = Navifox.Core.SqlScriptSplitter.Split(sql ?? string.Empty, _profile.Kind).FirstOrDefault();
         if (statement is null || IsBusy) return;
         if (statement.StartsWith("EXPLAIN", StringComparison.OrdinalIgnoreCase)) statement = statement[7..].TrimStart();
         await RunAsync("EXPLAIN " + statement, console: false);
@@ -275,7 +275,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
             StatusMessage = "Scegli un database per usare il Query Builder.";
             return;
         }
-        var builder = new QueryBuilderViewModel(Schema, _databaseAccess.Provider(_profile), _profile.Kind == DatabaseKind.MySql ? SelectedDatabase! : "public");
+        var builder = new QueryBuilderViewModel(Schema, _databaseAccess.Provider(_profile), _profile.Kind.DefaultSchema(SelectedDatabase!));
         if (await _dialogs.ShowQueryBuilderAsync(builder) && builder.GeneratedSql.Length > 0)
         {
             if (string.IsNullOrWhiteSpace(SqlText)) SqlText = builder.GeneratedSql;

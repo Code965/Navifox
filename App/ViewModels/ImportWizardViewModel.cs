@@ -240,7 +240,7 @@ public partial class ImportWizardViewModel : ObservableObject
                 var target = $"{provider.QuoteIdentifier(_schema)}.{provider.QuoteIdentifier(_table)}";
                 long imported = 0, failed = 0, total = 0;
                 var logged = 0;
-                if (useTransaction) await provider.ExecuteAsync(connection, provider.UsesMySqlScriptSyntax ? "START TRANSACTION" : "BEGIN", 0, token);
+                if (useTransaction) await provider.ExecuteAsync(connection, provider.Kind.BeginTransactionSql(), 0, token);
                 try
                 {
                     if (replace) await provider.ExecuteAsync(connection, $"DELETE FROM {target}", 0, token);

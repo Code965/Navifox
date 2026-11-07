@@ -286,11 +286,21 @@ public partial class TableTabViewModel
         var table = _provider.UsesMySqlScriptSyntax
             ? $"{_provider.QuoteIdentifier(reference.Schema)}.{_provider.QuoteIdentifier(reference.Table)}"
             : $"{_provider.QuoteIdentifier(reference.Schema)}.{_provider.QuoteIdentifier(reference.Table)}";
-        var where = string.IsNullOrWhiteSpace(filter) ? string.Empty
-            : _provider.UsesMySqlScriptSyntax
-                ? $" WHERE CONCAT_WS(' ', {string.Join(", ", (await _provider.GetColumnsAsync(connection, reference.Schema, reference.Schema, reference.Table, CancellationToken.None)).Select(c => _provider.QuoteIdentifier(c.Name)))}) LIKE {_provider.FormatLiteral("%" + filter + "%")}"
-                : $" WHERE CAST(t AS text) ILIKE {_provider.FormatLiteral("%" + filter + "%")}";
-        var sql = _provider.UsesMySqlScriptSyntax ? $"SELECT * FROM {table}{where} LIMIT 500" : $"SELECT * FROM {table} t{where} LIMIT 500";
+        var pattern = _provider.FormatLiteral("%" + filter + "%");
+        string where;
+        if (string.IsNullOrWhiteSpace(filter)) where = string.Empty;
+        else if (_provider.Kind == Navifox.Core.Models.DatabaseKind.PostgreSql) where = $" WHERE CAST(t AS text) ILIKE {pattern}";
+        else
+        {
+            var columns = (await _provider.GetColumnsAsync(connection, Database, reference.Schema, reference.Table, CancellationToken.None)).Select(c => _provider.QuoteIdentifier(c.Name)).ToArray();
+            where = _provider.Kind switch
+            {
+                Navifox.Core.Models.DatabaseKind.MySql => $" WHERE CONCAT_WS(' ', {string.Join(", ", columns)}) LIKE {pattern}",
+                Navifox.Core.Models.DatabaseKind.SqlServer => $" WHERE CONCAT_WS(' ', {string.Join(", ", columns)}) LIKE {pattern}",
+                _ => $" WHERE ({string.Join(" || ' ' || ", columns.Select(c => $"COALESCE({c}, '')"))}) LIKE {pattern}",
+            };
+        }
+        var sql = _provider.Kind.LimitSelect("*", $"FROM {table} t{where}", 500);
         return await _provider.ExecuteAsync(connection, sql, 500, CancellationToken.None);
     }
 

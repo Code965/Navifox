@@ -99,7 +99,7 @@ public partial class QueryTabViewModel
     {
         var sql = TargetSql();
         if (sql is null) { StatusMessage = "Scrivi o seleziona una query da ottimizzare."; return null; }
-        var statement = Navifox.Core.SqlScriptSplitter.Split(sql, IsMySql).FirstOrDefault() ?? sql;
+        var statement = Navifox.Core.SqlScriptSplitter.Split(sql, _profile.Kind).FirstOrDefault() ?? sql;
         string? plan = null;
         if (statement.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) || statement.TrimStart().StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
         {

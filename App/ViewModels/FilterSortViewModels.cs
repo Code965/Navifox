@@ -52,8 +52,8 @@ public partial class FilterConditionViewModel : ObservableObject
         if (string.IsNullOrEmpty(Column)) return null;
         var column = provider.QuoteIdentifier(Column);
         var mysql = provider.UsesMySqlScriptSyntax;
-        var text = mysql ? column : $"CAST({column} AS text)";
-        var like = mysql ? "LIKE" : "ILIKE";
+        var text = provider.Kind switch { Navifox.Core.Models.DatabaseKind.MySql or Navifox.Core.Models.DatabaseKind.Sqlite => column, Navifox.Core.Models.DatabaseKind.SqlServer => $"CAST({column} AS nvarchar(max))", _ => $"CAST({column} AS text)" };
+        var like = provider.Kind == Navifox.Core.Models.DatabaseKind.PostgreSql ? "ILIKE" : "LIKE";
         string Literal(string value) => provider.FormatLiteral(value);
         string Pattern(string prefix, string suffix) => Literal(prefix + EscapeLike(Value) + suffix);
         return Operator.Kind switch

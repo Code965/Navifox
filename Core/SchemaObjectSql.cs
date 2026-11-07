@@ -5,7 +5,7 @@ using Navifox.Core.Models;
 namespace Navifox.Core;
 
 /// <summary>SQL per creare, modificare ed eliminare funzioni, procedure, trigger, eventi, viste e sequenze.</summary>
-public static class SchemaObjectSql
+public static partial class SchemaObjectSql
 {
     private static string QMy(string identifier) => $"`{identifier.Replace("`", "``", StringComparison.Ordinal)}`";
     private static string QPg(string identifier) => $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";

@@ -32,10 +32,21 @@ public sealed record ConnectionProfile
     public string SshPrivateKeyPassphrase { get; init; } = string.Empty;
     public string SshHostKeyFingerprint { get; init; } = string.Empty;
 
+    /// <summary>«host:porta», oppure il nome del file per SQLite.</summary>
+    public string Endpoint => Kind switch
+    {
+        DatabaseKind.Sqlite => System.IO.Path.GetFileName(Host),
+        // Istanza con nome (server\ISTANZA): la porta non si usa.
+        DatabaseKind.SqlServer when Host.Contains('\\') && Port is 0 or 1433 => Host,
+        _ => $"{Host}:{EffectivePort}",
+    };
+
     public int EffectivePort => Port > 0 ? Port : Kind switch
     {
         DatabaseKind.MySql => 3306,
         DatabaseKind.PostgreSql => 5432,
+        DatabaseKind.SqlServer => 1433,
+        DatabaseKind.Sqlite => 0,
         _ => throw new ArgumentOutOfRangeException(nameof(Kind), Kind, null)
     };
 }

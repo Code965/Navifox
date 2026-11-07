@@ -154,7 +154,7 @@ public sealed class AutomationService
             {
                 Directory.CreateDirectory(job.OutputFolder);
                 var provider = _databaseAccess.Provider(profile);
-                var schema = profile.Kind == DatabaseKind.MySql ? job.Database : "public";
+                var schema = profile.Kind.DefaultSchema(job.Database);
                 var columns = await _databaseAccess.GetColumnsAsync(profile, job.Database, schema, job.Table, CancellationToken.None);
                 var path = Path.Combine(job.OutputFolder, $"{job.Table}_{stamp}.csv");
                 var sql = $"SELECT * FROM {provider.QuoteIdentifier(schema)}.{provider.QuoteIdentifier(job.Table)}";

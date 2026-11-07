@@ -95,7 +95,37 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _connectionSucceeded;
 
-    partial void OnSelectedKindChanged(DatabaseKind value) => PortText = value == DatabaseKind.MySql ? "3306" : "5432";
+    partial void OnSelectedKindChanged(DatabaseKind value)
+    {
+        PortText = value switch { DatabaseKind.MySql => "3306", DatabaseKind.SqlServer => "1433", DatabaseKind.Sqlite => "0", _ => "5432" };
+        if (value == DatabaseKind.Sqlite && Host == "localhost") Host = string.Empty;
+        if (value != DatabaseKind.Sqlite && string.IsNullOrWhiteSpace(Host)) Host = "localhost";
+        OnPropertyChanged(nameof(IsFileBased));
+        OnPropertyChanged(nameof(IsServerBased));
+        OnPropertyChanged(nameof(HostLabel));
+        OnPropertyChanged(nameof(HostWatermark));
+        OnPropertyChanged(nameof(UserWatermark));
+    }
+
+    /// <summary>SQLite: al posto di host, porta e credenziali si sceglie il file.</summary>
+    public bool IsFileBased => SelectedKind.IsFileBased();
+    public bool IsServerBased => !IsFileBased;
+    public string HostLabel => SelectedKind switch { DatabaseKind.Sqlite => "File del database", DatabaseKind.SqlServer => "Server (host oppure host\\ISTANZA)", _ => "Host" };
+    public string HostWatermark => SelectedKind switch { DatabaseKind.Sqlite => "C:\\dati\\archivio.db (se non esiste viene creato)", DatabaseKind.SqlServer => "localhost\\SQLEXPRESS", _ => "localhost" };
+    public string UserWatermark => SelectedKind == DatabaseKind.SqlServer ? "Vuoto = autenticazione di Windows" : string.Empty;
+
+    /// <summary>La vista apre il selettore di file e restituisce il percorso scelto.</summary>
+    public Func<Task<string?>>? BrowseFile { get; set; }
+
+    [RelayCommand]
+    private async Task BrowseAsync()
+    {
+        if (BrowseFile is null) return;
+        var path = await BrowseFile();
+        if (string.IsNullOrWhiteSpace(path)) return;
+        Host = path;
+        if (Name is "Nuova connessione" or "SQLite") Name = System.IO.Path.GetFileNameWithoutExtension(path);
+    }
 
     // ───────────── Passo 1: scelta del driver ─────────────
 
@@ -260,7 +290,7 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
         profile = new ConnectionProfile();
         if (string.IsNullOrWhiteSpace(Name) || (string.IsNullOrWhiteSpace(Host) && string.IsNullOrWhiteSpace(ConnectionStringOverride)))
         {
-            StatusMessage = "Inserisci un nome e un host o una stringa di connessione.";
+            StatusMessage = IsFileBased ? "Inserisci un nome e scegli il file del database." : "Inserisci un nome e un host o una stringa di connessione.";
             return false;
         }
         if (!int.TryParse(PortText, out var port) || port is < 0 or > 65535)
@@ -268,7 +298,7 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
             StatusMessage = "La porta deve essere un numero tra 1 e 65535 (oppure 0 per il valore predefinito).";
             return false;
         }
-        if (string.IsNullOrWhiteSpace(UserName) && string.IsNullOrWhiteSpace(ConnectionStringOverride))
+        if (string.IsNullOrWhiteSpace(UserName) && string.IsNullOrWhiteSpace(ConnectionStringOverride) && SelectedKind is DatabaseKind.MySql or DatabaseKind.PostgreSql)
         {
             StatusMessage = "Inserisci il nome utente del database.";
             return false;

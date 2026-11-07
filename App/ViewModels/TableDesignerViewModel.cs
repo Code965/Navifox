@@ -31,6 +31,19 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
         "inet", "cidr", "macaddr", "money", "xml", "tsvector", "point", "integer[]", "text[]",
     ];
 
+    private static readonly string[] SqlServerTypes =
+    [
+        "int", "bigint", "smallint", "tinyint", "bit", "decimal", "numeric", "money", "float", "real",
+        "nvarchar", "varchar", "nchar", "char", "nvarchar(max)", "varchar(max)", "uniqueidentifier",
+        "date", "datetime2", "datetime", "datetimeoffset", "time", "smalldatetime",
+        "varbinary", "varbinary(max)", "binary", "xml", "geography", "geometry", "hierarchyid", "sql_variant",
+    ];
+
+    private static readonly string[] SqliteTypes =
+    [
+        "INTEGER", "TEXT", "REAL", "NUMERIC", "BLOB", "VARCHAR", "BOOLEAN", "DATE", "DATETIME", "DECIMAL", "JSON",
+    ];
+
     private readonly IDatabaseAccessService _databaseAccess;
     private readonly IDialogService _dialogs;
     private readonly Func<TableDesignerViewModel, Task>? _saved;
@@ -48,14 +61,25 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
         Database = database;
         Schema = schema;
         _tableName = table ?? string.Empty;
-        IsMySql = databaseAccess.Provider(profile).UsesMySqlScriptSyntax;
-        DataTypes = IsMySql ? MySqlTypes : PostgresTypes;
+        Kind = profile.Kind;
+        IsMySql = Kind == DatabaseKind.MySql;
+        DataTypes = Kind switch { DatabaseKind.MySql => MySqlTypes, DatabaseKind.SqlServer => SqlServerTypes, DatabaseKind.Sqlite => SqliteTypes, _ => PostgresTypes };
         IndexKinds = IsMySql ? ["NORMAL", "UNIQUE", "FULLTEXT", "SPATIAL"] : ["NORMAL", "UNIQUE"];
-        IndexMethods = IsMySql ? ["", "BTREE", "HASH"] : ["btree", "hash", "gin", "gist", "brin", "spgist"];
-        TriggerEvents = IsMySql ? ["INSERT", "UPDATE", "DELETE"]
-            : ["INSERT", "UPDATE", "DELETE", "INSERT OR UPDATE", "INSERT OR DELETE", "UPDATE OR DELETE", "INSERT OR UPDATE OR DELETE", "TRUNCATE"];
-        TriggerTimings = IsMySql ? ["BEFORE", "AFTER"] : ["BEFORE", "AFTER", "INSTEAD OF"];
-        DefaultSuggestions = IsMySql ? ["NULL", "''", "0", "CURRENT_TIMESTAMP", "(UUID())"] : ["NULL", "''", "0", "now()", "CURRENT_DATE", "gen_random_uuid()", "true", "false"];
+        IndexMethods = Kind switch { DatabaseKind.MySql => ["", "BTREE", "HASH"], DatabaseKind.SqlServer => ["", "CLUSTERED"], DatabaseKind.Sqlite => [""], _ => ["btree", "hash", "gin", "gist", "brin", "spgist"] };
+        TriggerEvents = Kind switch
+        {
+            DatabaseKind.MySql or DatabaseKind.Sqlite => ["INSERT", "UPDATE", "DELETE"],
+            DatabaseKind.SqlServer => ["INSERT", "UPDATE", "DELETE", "INSERT, UPDATE", "INSERT, DELETE", "UPDATE, DELETE", "INSERT, UPDATE, DELETE"],
+            _ => ["INSERT", "UPDATE", "DELETE", "INSERT OR UPDATE", "INSERT OR DELETE", "UPDATE OR DELETE", "INSERT OR UPDATE OR DELETE", "TRUNCATE"],
+        };
+        TriggerTimings = Kind switch { DatabaseKind.MySql => ["BEFORE", "AFTER"], DatabaseKind.SqlServer => ["AFTER", "INSTEAD OF"], _ => ["BEFORE", "AFTER", "INSTEAD OF"] };
+        DefaultSuggestions = Kind switch
+        {
+            DatabaseKind.MySql => ["NULL", "''", "0", "CURRENT_TIMESTAMP", "(UUID())"],
+            DatabaseKind.SqlServer => ["NULL", "N''", "0", "SYSDATETIME()", "GETDATE()", "NEWID()", "NEWSEQUENTIALID()"],
+            DatabaseKind.Sqlite => ["NULL", "''", "0", "CURRENT_TIMESTAMP", "CURRENT_DATE"],
+            _ => ["NULL", "''", "0", "now()", "CURRENT_DATE", "gen_random_uuid()", "true", "false"],
+        };
         Fields.CollectionChanged += (_, _) => MarkDirty();
         Indexes.CollectionChanged += (_, _) => MarkDirty();
         ForeignKeys.CollectionChanged += (_, _) => MarkDirty();
@@ -66,6 +90,7 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
     public string Database { get; }
     public string Schema { get; }
     public bool IsMySql { get; }
+    public DatabaseKind Kind { get; }
     public bool IsPostgres => !IsMySql;
     public bool IsNew => _original is null;
 
@@ -132,12 +157,16 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
     public bool IsCommentSection => SelectedSection == 5;
     public bool IsPreviewSection => SelectedSection == 6;
 
-    public string TriggerHint => IsMySql
-        ? "Istruzione eseguita FOR EACH ROW, es.\nSET NEW.updated_at = NOW()\noppure BEGIN … END"
-        : "FOR EACH ROW EXECUTE FUNCTION nome_funzione()";
+    public string TriggerHint => Kind switch
+    {
+        DatabaseKind.MySql => "Istruzione eseguita FOR EACH ROW, es.\nSET NEW.updated_at = NOW()\noppure BEGIN … END",
+        DatabaseKind.SqlServer => "Corpo del trigger (dopo AS), es.\nBEGIN\n  SET NOCOUNT ON;\n  UPDATE … FROM inserted …\nEND",
+        DatabaseKind.Sqlite => "FOR EACH ROW BEGIN … ; END",
+        _ => "FOR EACH ROW EXECUTE FUNCTION nome_funzione()",
+    };
 
     /// <summary>PostgreSQL non permette di cambiare la posizione delle colonne esistenti.</summary>
-    public bool CanReorder => IsMySql || IsNew;
+    public bool CanReorder => IsMySql || Kind == DatabaseKind.Sqlite || IsNew;
 
     public override string TabTitle => $"{(IsDirty ? "● " : string.Empty)}{(string.IsNullOrWhiteSpace(TableName) ? "Senza titolo" : TableName)} @{Database} ({Profile.Name}) – Tabella";
     public override string TabGlyph => "pencil";
@@ -207,7 +236,7 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
 
     private TableDesign NewTableDesign() => TableDesign.Empty(TableName) with
     {
-        Columns = [new DesignColumn(null, "id", IsMySql ? "int" : "integer", NotNull: true, KeyOrder: 1, AutoIncrement: true)],
+        Columns = [new DesignColumn(null, "id", Kind switch { DatabaseKind.MySql or DatabaseKind.SqlServer => "int", DatabaseKind.Sqlite => "INTEGER", _ => "integer" }, NotNull: true, KeyOrder: 1, AutoIncrement: true)],
         Options = IsMySql ? new TableDesignOptions("InnoDB", "utf8mb4") : new TableDesignOptions(),
     };
 
@@ -274,7 +303,7 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
 
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    public IReadOnlyList<string> BuildStatements() => TableDesignSql.Build(IsMySql, Schema, _original, BuildDesign());
+    public IReadOnlyList<string> BuildStatements() => TableDesignSql.Build(Kind, Schema, _original, BuildDesign());
 
     private void RefreshPreview()
     {
@@ -327,7 +356,8 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
         IsLoading = true;
         try
         {
-            await _databaseAccess.ExecuteStatementsAsync(Profile, Database, statements, CancellationToken.None);
+            // SQL Server e SQLite: le modifiche (anche la ricostruzione della tabella in SQLite) vanno applicate tutte o nessuna.
+            await _databaseAccess.ExecuteStatementsAsync(Profile, Database, statements, CancellationToken.None, atomic: Kind is DatabaseKind.SqlServer or DatabaseKind.Sqlite);
         }
         catch (Exception exception)
         {
@@ -366,7 +396,7 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
     {
         var name = "campo";
         for (var i = 1; Fields.Any(f => f.Name == name); i++) name = $"campo{i}";
-        return Track(new DesignFieldViewModel(this, new DesignColumn(null, name, IsMySql ? "varchar" : "varchar", 255)));
+        return Track(new DesignFieldViewModel(this, new DesignColumn(null, name, Kind switch { DatabaseKind.SqlServer => "nvarchar", DatabaseKind.Sqlite => "TEXT", _ => "varchar" }, Kind == DatabaseKind.Sqlite ? null : 255)));
     }
 
     [RelayCommand]
@@ -458,7 +488,7 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
     {
         var columns = SelectedField?.Name ?? string.Empty;
         var index = Track(new DesignIndexViewModel(new DesignIndex(null, UniqueName("idx_" + (columns.Length > 0 ? columns : TableName), Indexes.Select(i => i.Name)), columns.Length > 0 ? [columns] : [],
-            "NORMAL", IsMySql ? "BTREE" : "btree")));
+            "NORMAL", Kind switch { DatabaseKind.MySql => "BTREE", DatabaseKind.PostgreSql => "btree", _ => null })));
         Indexes.Add(index);
         SelectedIndex = index;
         SelectedSection = 1;
@@ -497,7 +527,13 @@ public partial class TableDesignerViewModel : WorkspaceTabViewModel
     private void AddTrigger()
     {
         var trigger = Track(new DesignTriggerViewModel(new DesignTrigger(null, UniqueName($"tr_{TableName}", Triggers.Select(t => t.Name)), "BEFORE", "INSERT",
-            IsMySql ? "BEGIN\n  -- es. SET NEW.created_at = NOW();\nEND" : "FOR EACH ROW EXECUTE FUNCTION nome_funzione()")));
+            Kind switch
+            {
+                DatabaseKind.MySql => "BEGIN\n  -- es. SET NEW.created_at = NOW();\nEND",
+                DatabaseKind.SqlServer => "BEGIN\n  SET NOCOUNT ON;\n  -- es. UPDATE … FROM inserted …\nEND",
+                DatabaseKind.Sqlite => "FOR EACH ROW BEGIN\n  SELECT 1;\nEND",
+                _ => "FOR EACH ROW EXECUTE FUNCTION nome_funzione()",
+            })));
         Triggers.Add(trigger);
         SelectedTrigger = trigger;
         SelectedSection = 3;

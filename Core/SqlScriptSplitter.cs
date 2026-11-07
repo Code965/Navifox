@@ -8,6 +8,62 @@ namespace Navifox.Core;
 /// </summary>
 public static class SqlScriptSplitter
 {
+    private static readonly System.Text.RegularExpressions.Regex GoLine = new(@"^[ \t]*GO[ \t]*(?:--.*)?\r?$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex ModuleStart = new(
+        @"^(?:\s|--[^\n]*\n|/\*.*?\*/)*(?:CREATE\s+OR\s+ALTER|CREATE|ALTER)\s+(?:PROC|PROCEDURE|FUNCTION|TRIGGER|VIEW)\b",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex SqliteTrigger = new(@"^CREATE\s+(?:TEMP\s+|TEMPORARY\s+)?TRIGGER\b",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static bool EndsWithEnd(string statement) =>
+        System.Text.RegularExpressions.Regex.IsMatch(statement, @"\bEND\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Divisione secondo il dialetto. SQL Server: i batch separati da «GO» restano interi se definiscono una procedura,
+    /// funzione, trigger o vista (il corpo contiene «;»); gli altri si dividono sui punti e virgola.
+    /// </summary>
+    public static IEnumerable<string> Split(string script, Models.DatabaseKind kind)
+    {
+        if (kind == Models.DatabaseKind.Sqlite)
+        {
+            // CREATE TRIGGER … BEGIN …; …; END: i punti e virgola interni appartengono al corpo del trigger.
+            string? pending = null;
+            foreach (var statement in Split(script, false))
+            {
+                if (pending is not null)
+                {
+                    pending += ";\n" + statement;
+                    if (!EndsWithEnd(pending)) continue;
+                    yield return pending + ";";
+                    pending = null;
+                    continue;
+                }
+                if (SqliteTrigger.IsMatch(statement) && !EndsWithEnd(statement)) { pending = statement; continue; }
+                yield return SqliteTrigger.IsMatch(statement) ? statement + ";" : statement;
+            }
+            if (pending is not null) yield return pending;
+            yield break;
+        }
+        if (kind != Models.DatabaseKind.SqlServer)
+        {
+            foreach (var statement in Split(script, kind == Models.DatabaseKind.MySql)) yield return statement;
+            yield break;
+        }
+        foreach (var batch in GoLine.Split(script))
+        {
+            if (string.IsNullOrWhiteSpace(batch)) continue;
+            if (ModuleStart.IsMatch(batch))
+            {
+                yield return batch.Trim();
+                continue;
+            }
+            foreach (var statement in Split(batch, false)) yield return statement;
+        }
+    }
+
     public static IEnumerable<string> Split(string script, bool mySqlSyntax)
     {
         var delimiter = ";";

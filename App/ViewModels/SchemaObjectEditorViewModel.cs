@@ -33,6 +33,7 @@ public partial class SchemaObjectEditorViewModel : WorkspaceTabViewModel
         Kind = kind;
         Item = item;
         IsMySql = databaseAccess.Provider(profile).UsesMySqlScriptSyntax;
+        DialectKind = profile.Kind;
         _viewName = item?.ObjectName ?? (kind == SchemaObjectKind.View ? "nuova_vista" : string.Empty);
         _definition = template ?? string.Empty;
         _isDirty = item is null;
@@ -43,6 +44,7 @@ public partial class SchemaObjectEditorViewModel : WorkspaceTabViewModel
     public string Schema { get; }
     public SchemaObjectKind Kind { get; }
     public bool IsMySql { get; }
+    public DatabaseKind DialectKind { get; }
     public bool IsView => Kind == SchemaObjectKind.View;
     public bool IsRoutine => Kind == SchemaObjectKind.Routine;
     public bool IsNew => Item is null;
@@ -138,8 +140,8 @@ public partial class SchemaObjectEditorViewModel : WorkspaceTabViewModel
         }
         if (!await SqlGuard.ConfirmProductionAsync(_dialogs, Profile, $"Stai per salvare {KindLabel.ToLowerInvariant()} «{DisplayName}».")) return;
         var plan = IsView
-            ? SchemaObjectSql.BuildViewSave(IsMySql, Schema, Item?.ObjectName, ViewName.Trim(), Definition)
-            : SchemaObjectSql.BuildSave(IsMySql, Schema, Kind, Item, _originalDefinition, Definition);
+            ? SchemaObjectSql.BuildViewSave(DialectKind, Schema, Item?.ObjectName, ViewName.Trim(), Definition)
+            : SchemaObjectSql.BuildSave(DialectKind, Schema, Kind, Item, _originalDefinition, Definition);
         IsLoading = true;
         try
         {
@@ -209,7 +211,7 @@ public partial class SchemaObjectEditorViewModel : WorkspaceTabViewModel
         try
         {
             var parameters = await _databaseAccess.GetRoutineParametersAsync(Profile, Database, Schema, Item, CancellationToken.None);
-            _openQuery(SchemaObjectSql.RunTemplate(IsMySql, Schema, Item, parameters), parameters.Count == 0);
+            _openQuery(SchemaObjectSql.RunTemplate(DialectKind, Schema, Item, parameters), parameters.Count == 0);
         }
         catch (Exception exception) { StatusMessage = $"Impossibile leggere i parametri: {exception.Message}"; }
     }

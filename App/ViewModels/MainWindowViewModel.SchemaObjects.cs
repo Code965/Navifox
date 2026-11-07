@@ -141,7 +141,7 @@ public partial class MainWindowViewModel
         }
         var firstTable = FindCategory(profile, database, schema, "Tabelle")?.Objects?.FirstOrDefault()?.Name;
         AddEditor(new SchemaObjectEditorViewModel(_databaseAccess, _dialogs, profile, database, schema, SchemaObjectKind.View, view,
-            view is null ? SchemaObjectSql.Template(profile.Kind == DatabaseKind.MySql, schema, SchemaObjectKind.View, firstTable) : null,
+            view is null ? SchemaObjectSql.Template(profile.Kind, schema, SchemaObjectKind.View, firstTable) : null,
             OnSchemaObjectSavedAsync, OpenQueryFor(profile, database)));
     }
 
@@ -209,7 +209,7 @@ public partial class MainWindowViewModel
             {
                 var table = request.Node.Kind == TreeNodeKind.Table ? request.Node.Name : FindCategory(context.Profile, context.Database, context.Schema, "Tabelle")?.Objects?.FirstOrDefault()?.Name;
                 AddEditor(new SchemaObjectEditorViewModel(_databaseAccess, _dialogs, context.Profile, context.Database, context.Schema, request.Kind, null,
-                    SchemaObjectSql.Template(mysql, context.Schema, request.Kind, table, request.RoutineType), OnSchemaObjectSavedAsync, OpenQueryFor(context.Profile, context.Database)));
+                    SchemaObjectSql.Template(context.Profile.Kind, context.Schema, request.Kind, table, request.RoutineType), OnSchemaObjectSavedAsync, OpenQueryFor(context.Profile, context.Database)));
                 return;
             }
         }
@@ -224,7 +224,7 @@ public partial class MainWindowViewModel
             return;
         try
         {
-            await _databaseAccess.ExecuteStatementsAsync(profile, database, [SchemaObjectSql.DropSql(profile.Kind == DatabaseKind.MySql, schema, kind, item)], CancellationToken.None);
+            await _databaseAccess.ExecuteStatementsAsync(profile, database, [SchemaObjectSql.DropSql(profile.Kind, schema, kind, item)], CancellationToken.None);
             foreach (var tab in OpenTabs.OfType<SchemaObjectEditorViewModel>().Where(t => t.Profile.Id == profile.Id && t.Database == database && t.Kind == kind && t.Item?.Name == item.Name).ToArray()) CloseTab(tab);
             StatusMessage = $"«{item.Name}» eliminato.";
             await RefreshCategoryAsync(profile, database, schema, node.Category!);
@@ -239,7 +239,7 @@ public partial class MainWindowViewModel
         try
         {
             var parameters = await _databaseAccess.GetRoutineParametersAsync(profile, database, schema, item, CancellationToken.None);
-            OpenQueryFor(profile, database)(SchemaObjectSql.RunTemplate(profile.Kind == DatabaseKind.MySql, schema, item, parameters), parameters.Count == 0);
+            OpenQueryFor(profile, database)(SchemaObjectSql.RunTemplate(profile.Kind, schema, item, parameters), parameters.Count == 0);
         }
         catch (Exception exception) { await ReportErrorAsync("Impossibile preparare l’esecuzione", exception); }
     }

@@ -170,25 +170,28 @@
           </Grid>
           <Grid ColumnDefinitions="*,140" ColumnSpacing="14">
             <StackPanel Spacing="5">
-              <TextBlock Text="Host" Classes="field-label" />
-              <TextBox Text="{Binding Host}" Watermark="localhost" />
+              <TextBlock Text="{Binding HostLabel}" Classes="field-label" />
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                <TextBox Text="{Binding Host}" Watermark="{Binding HostWatermark}" />
+                <Button Grid.Column="1" Classes="small-muted" Content="Sfoglia…" Command="{Binding BrowseCommand}" IsVisible="{Binding IsFileBased}" VerticalAlignment="Stretch" />
+              </Grid>
             </StackPanel>
-            <StackPanel Grid.Column="1" Spacing="5">
+            <StackPanel Grid.Column="1" Spacing="5" IsVisible="{Binding IsServerBased}">
               <TextBlock Text="Porta" Classes="field-label" />
               <TextBox Text="{Binding PortText}" />
             </StackPanel>
           </Grid>
-          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14" IsVisible="{Binding IsServerBased}">
             <StackPanel Spacing="5">
               <TextBlock Text="Utente" Classes="field-label" />
-              <TextBox Text="{Binding UserName}" />
+              <TextBox Text="{Binding UserName}" Watermark="{Binding UserWatermark}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Spacing="5">
               <TextBlock Text="Password" Classes="field-label" />
               <TextBox PasswordChar="●" Text="{Binding Password, Mode=TwoWay}" />
             </StackPanel>
           </Grid>
-          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14" IsVisible="{Binding IsServerBased}">
             <StackPanel Spacing="5">
               <TextBlock Text="Database iniziale" Classes="field-label" />
               <TextBox Text="{Binding Database}" Watermark="Facoltativo" />

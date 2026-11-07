@@ -152,7 +152,7 @@ public partial class AutomationTabViewModel : WorkspaceTabViewModel, Navifox.App
         if (Profile is null || Database is null) return;
         try
         {
-            var schema = Profile.Kind == DatabaseKind.MySql ? Database : "public";
+            var schema = Profile.Kind.DefaultSchema(Database);
             Schema = await _databaseAccess.GetSchemaModelAsync(Profile, Database, schema, CancellationToken.None);
             foreach (var name in Schema.Tables.Keys.OrderBy(n => n)) TablesList.Add(name);
             Table = table is not null && TablesList.Contains(table) ? table : TablesList.FirstOrDefault();

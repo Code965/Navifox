@@ -414,7 +414,7 @@ public partial class MainWindowViewModel
     private async Task PrintAsync(TreeNodeViewModel? node)
     {
         if (node?.Profile is not { } profile || node.Database is not { } database) return;
-        var schema = node.Schema ?? (profile.Kind == DatabaseKind.MySql ? database : "public");
+        var schema = node.Schema ?? profile.Kind.DefaultSchema(database);
         var provider = _databaseAccess.Provider(profile);
         StatusMessage = "Preparazione della stampa…";
         try

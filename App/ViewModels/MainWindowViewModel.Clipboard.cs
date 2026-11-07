@@ -104,9 +104,12 @@ public partial class MainWindowViewModel
         var errors = new List<string>();
         foreach (var (source, copy) in plan)
         {
-            var sql = mysql
-                ? $"CREATE TABLE {Name(copy)} LIKE {Name(source)};" + (withData ? $"\nINSERT INTO {Name(copy)} SELECT * FROM {Name(source)};" : string.Empty)
-                : $"CREATE TABLE {Name(copy)} (LIKE {Name(source)} INCLUDING ALL);" + (withData ? $"\nINSERT INTO {Name(copy)} OVERRIDING SYSTEM VALUE SELECT * FROM {Name(source)};\n{ResyncSequencesSql(Name(copy))}" : string.Empty);
+            var sql = clip.Profile.Kind switch
+            {
+                DatabaseKind.MySql => $"CREATE TABLE {Name(copy)} LIKE {Name(source)};" + (withData ? $"\nINSERT INTO {Name(copy)} SELECT * FROM {Name(source)};" : string.Empty),
+                DatabaseKind.PostgreSql => $"CREATE TABLE {Name(copy)} (LIKE {Name(source)} INCLUDING ALL);" + (withData ? $"\nINSERT INTO {Name(copy)} OVERRIDING SYSTEM VALUE SELECT * FROM {Name(source)};\n{ResyncSequencesSql(Name(copy))}" : string.Empty),
+                _ => await CopyTableSqlAsync(clip, provider, source, copy, withData),
+            };
             StatusMessage = $"Copia di {source} in corso…";
             var results = await _databaseAccess.ExecuteBatchAsync(clip.Profile, clip.Database, sql, 0, CancellationToken.None);
             if (results.FirstOrDefault(r => r.Error is not null) is { } failed) errors.Add($"{source}: {failed.Error!.Message}");
@@ -114,6 +117,43 @@ public partial class MainWindowViewModel
         await RefreshTablesOfAsync(clip.Profile, clip.Database, clip.Schema);
         if (errors.Count > 0) await _dialogs.ShowMessageAsync("Copia non completata", string.Join("\n", errors), isError: true);
         else StatusMessage = plan.Count == 1 ? $"Creata la tabella «{plan[0].Copy}»." : $"Create {plan.Count} copie di tabelle.";
+    }
+
+    /// <summary>
+    /// SQL Server e SQLite: la copia si crea dalla struttura letta con «Progetta tabella» (indici, chiavi e vincoli con nomi nuovi),
+    /// poi si copiano i dati (SQL Server: con IDENTITY_INSERT per conservare i valori delle colonne identity).
+    /// </summary>
+    private async Task<string> CopyTableSqlAsync(TableClipboard clip, Navifox.Core.IDialectProvider provider, string source, string copy, bool withData)
+    {
+        var design = await _databaseAccess.GetTableDesignAsync(clip.Profile, clip.Database, clip.Schema, source, CancellationToken.None);
+        string Renamed(string name) => name.Contains(source, StringComparison.OrdinalIgnoreCase)
+            ? System.Text.RegularExpressions.Regex.Replace(name, System.Text.RegularExpressions.Regex.Escape(source), copy, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            : $"{name}_{copy}";
+        var target = design with
+        {
+            OriginalName = null,
+            Name = copy,
+            PrimaryKeyName = design.PrimaryKeyName is null ? null : Renamed(design.PrimaryKeyName),
+            Columns = design.Columns.Select(c => c with { OriginalName = null }).ToArray(),
+            Indexes = design.Indexes.Select(i => i with { OriginalName = null, Name = Renamed(i.Name) }).ToArray(),
+            ForeignKeys = design.ForeignKeys.Select(k => k with { OriginalName = null, Name = Renamed(k.Name) }).ToArray(),
+            Triggers = [],
+        };
+        var statements = Navifox.Core.TableDesignSql.Build(clip.Profile.Kind, clip.Schema, null, target).ToList();
+        if (withData)
+        {
+            var columns = string.Join(", ", design.Columns.Where(c => !c.IsVirtual).Select(c => provider.QuoteIdentifier(c.Name)));
+            string Qualified(string table) => clip.Profile.Kind == DatabaseKind.Sqlite ? provider.QuoteIdentifier(table) : $"{provider.QuoteIdentifier(clip.Schema)}.{provider.QuoteIdentifier(table)}";
+            var insert = $"INSERT INTO {Qualified(copy)} ({columns}) SELECT {columns} FROM {Qualified(source)}";
+            var identity = clip.Profile.Kind == DatabaseKind.SqlServer && design.Columns.Any(c => c.AutoIncrement);
+            if (identity) statements.Add($"SET IDENTITY_INSERT {Qualified(copy)} ON");
+            statements.Add(insert);
+            if (identity) statements.Add($"SET IDENTITY_INSERT {Qualified(copy)} OFF");
+        }
+        // Le istruzioni contengono già i separatori necessari: «GO» per SQL Server, «;» per SQLite.
+        return clip.Profile.Kind == DatabaseKind.SqlServer
+            ? string.Join("\nGO\n", statements)
+            : string.Join(";\n", statements) + ";";
     }
 
     /// <summary>

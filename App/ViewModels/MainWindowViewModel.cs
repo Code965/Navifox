@@ -13,6 +13,20 @@ public partial class MainWindowViewModel : ObservableObject
     private static readonly string[] MySqlCategories = ["Tabelle", "Viste", "Funzioni", "Trigger", "Eventi", "Query salvate", "Backup"];
     private static readonly string[] PostgresCategories = ["Tabelle", "Viste", "Funzioni", "Trigger", "Sequenze", "Query salvate", "Backup"];
 
+    /// <summary>Categorie dell'albero: tabelle e viste, gli oggetti gestiti dal dialetto, query salvate e backup.</summary>
+    private IReadOnlyList<string> CategoriesFor(ConnectionProfile profile) => profile.Kind switch
+    {
+        DatabaseKind.MySql => MySqlCategories,
+        DatabaseKind.PostgreSql => PostgresCategories,
+        _ => ["Tabelle", "Viste", .. _databaseAccess.Provider(profile).SchemaObjectKinds.Select(kind => kind switch
+            {
+                SchemaObjectKind.Routine => "Funzioni",
+                SchemaObjectKind.Trigger => "Trigger",
+                SchemaObjectKind.Event => "Eventi",
+                _ => "Sequenze",
+            }), "Query salvate", "Backup"],
+    };
+
     private readonly IConnectionProfileStore _profileStore;
     private readonly IDatabaseAccessService _databaseAccess;
     private readonly ConnectionDialogService _connectionDialog;
@@ -71,7 +85,7 @@ public partial class MainWindowViewModel : ObservableObject
             target = node.Kind switch
             {
                 TreeNodeKind.Connection => new InfoTarget(nodeProfile, InfoKind.Connection, IsConnected: node.IsLoaded),
-                TreeNodeKind.Database when nodeProfile.Kind == DatabaseKind.MySql => new InfoTarget(nodeProfile, InfoKind.Database, node.Database, ObjectCount: FindTablesCategory(node)?.Objects?.Count),
+                TreeNodeKind.Database when !nodeProfile.Kind.HasSchemas() => new InfoTarget(nodeProfile, InfoKind.Database, node.Database, ObjectCount: FindTablesCategory(node)?.Objects?.Count),
                 TreeNodeKind.Database => new InfoTarget(nodeProfile, InfoKind.Database, node.Database),
                 TreeNodeKind.Schema => new InfoTarget(nodeProfile, InfoKind.Schema, node.Database, node.Schema, ObjectCount: FindTablesCategory(node)?.Objects?.Count),
                 TreeNodeKind.Category when node.Database == node.Schema => new InfoTarget(nodeProfile, InfoKind.Database, node.Database, ObjectCount: node.Parent is { } db ? FindTablesCategory(db)?.Objects?.Count : null),
@@ -281,7 +295,7 @@ public partial class MainWindowViewModel : ObservableObject
         // PostgreSQL: dal database si scende nel primo schema (di solito «public»).
         if (container.Kind == TreeNodeKind.Database && container.Children.FirstOrDefault(child => child.Kind == TreeNodeKind.Schema) is { } schema)
         {
-            container = container.Children.FirstOrDefault(child => child.Name == "public") ?? schema;
+            container = container.Children.FirstOrDefault(child => child.Name == container.Profile!.Kind.DefaultSchema(container.Name)) ?? schema;
             await EnsureLoadedAsync(container);
         }
         var node = container.Children.FirstOrDefault(child => child.Kind == TreeNodeKind.Category && child.Category == category);
@@ -398,12 +412,12 @@ public partial class MainWindowViewModel : ObservableObject
                     _connectedProfiles.Add(profile.Id);
                     RememberConnection(profile);
                     OnPropertyChanged(nameof(ConnectionCount));
-                    StatusMessage = $"Connesso a {profile.Host}:{profile.EffectivePort} · {databases.Count} database";
+                    StatusMessage = $"Connesso a {profile.Endpoint} · {databases.Count} database";
                     break;
                 }
-                case TreeNodeKind.Database when profile.Kind == DatabaseKind.MySql:
-                    // In MySQL/MariaDB database e schema coincidono: si va direttamente alle categorie.
-                    node.SetChildren(CreateCategories(profile, node.Database!, node.Database!));
+                case TreeNodeKind.Database when !profile.Kind.HasSchemas():
+                    // MySQL/MariaDB (database = schema) e SQLite (schema «main»): si va direttamente alle categorie.
+                    node.SetChildren(CreateCategories(profile, node.Database!, profile.Kind.DefaultSchema(node.Database!)));
                     break;
                 case TreeNodeKind.Database:
                 {
@@ -459,7 +473,7 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     private IEnumerable<TreeNodeViewModel> CreateCategories(ConnectionProfile profile, string database, string schema) =>
-        (profile.Kind == DatabaseKind.MySql ? MySqlCategories : PostgresCategories)
+        CategoriesFor(profile)
         .Select(category => new TreeNodeViewModel(category, CategoryGlyph(category), TreeNodeKind.Category, profile, database, schema, category));
 
     private static TreeNodeViewModel? FindTablesCategory(TreeNodeViewModel node) =>

@@ -67,6 +67,8 @@ public interface IDialectProvider
     bool SupportsDatabaseRename { get; }
     /// <summary>Sintassi dello script (DELIMITER, commenti #, escape con backslash).</summary>
     bool UsesMySqlScriptSyntax { get; }
+    /// <summary>Divide uno script nelle istruzioni da eseguire una alla volta (GO per SQL Server, BEGIN…END dei trigger SQLite).</summary>
+    IEnumerable<string> SplitScript(string script);
 
     /// <summary>Intestazione e chiusura di un dump SQL.</summary>
     string DumpHeader(string database);

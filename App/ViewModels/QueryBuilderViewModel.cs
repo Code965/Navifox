@@ -155,7 +155,11 @@ public partial class QueryBuilderViewModel : ObservableObject
             var parts = order.Split('.', 2);
             sql += $"\nORDER BY {parts[0]}.{_provider.QuoteIdentifier(parts[1])} {Direction}";
         }
-        if (Limit is > 0) sql += $"\nLIMIT {(int)Limit}";
+        if (Limit is > 0)
+        {
+            if (_provider.Kind == Navifox.Core.Models.DatabaseKind.SqlServer) sql = (Distinct ? "SELECT DISTINCT TOP (" + (int)Limit + ") " + sql["SELECT DISTINCT ".Length..] : "SELECT TOP (" + (int)Limit + ")" + sql["SELECT".Length..]);
+            else sql += $"\nLIMIT {(int)Limit}";
+        }
         GeneratedSql = sql + ";";
     }
 

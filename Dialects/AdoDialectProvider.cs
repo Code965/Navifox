@@ -66,7 +66,7 @@ public abstract class AdoDialectProvider : IDialectProvider
         return result;
     }
 
-    public async Task<long> CountRowsAsync(DbConnection connection, string schema, string table, string? where, CancellationToken cancellationToken)
+    public virtual async Task<long> CountRowsAsync(DbConnection connection, string schema, string table, string? where, CancellationToken cancellationToken)
     {
         var sql = $"SELECT COUNT(*) FROM {QuoteIdentifier(schema)}.{QuoteIdentifier(table)}" + (string.IsNullOrWhiteSpace(where) ? string.Empty : $" WHERE {where}");
         await using var command = CreateCommand(connection, sql);
@@ -108,7 +108,7 @@ public abstract class AdoDialectProvider : IDialectProvider
     }
 
     /// <summary>Pagina di una tabella; <paramref name="pageSize"/> = 0 legge tutte le righe (nessun limite).</summary>
-    public async Task<DataPage> QueryPagedAsync(DbConnection connection, string schema, string table, int pageIndex, int pageSize, CancellationToken cancellationToken, string? where = null, string? orderBy = null)
+    public virtual async Task<DataPage> QueryPagedAsync(DbConnection connection, string schema, string table, int pageIndex, int pageSize, CancellationToken cancellationToken, string? where = null, string? orderBy = null)
     {
         if (pageIndex < 0) throw new ArgumentOutOfRangeException(nameof(pageIndex));
         if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
@@ -122,6 +122,13 @@ public abstract class AdoDialectProvider : IDialectProvider
         await using var command = CreateCommand(connection, sql);
         command.CommandTimeout = 0;
         if (!unlimited) BindPageParameters(command, checked((int)offset), checked(pageSize + 1));
+        return await ReadPageAsync(command, pageIndex, pageSize, cancellationToken);
+    }
+
+    /// <summary>Legge una pagina: il comando chiede una riga in più per sapere se ce ne sono altre.</summary>
+    protected static async Task<DataPage> ReadPageAsync(DbCommand command, int pageIndex, int pageSize, CancellationToken cancellationToken)
+    {
+        var unlimited = pageSize == 0;
         var rows = new List<IReadOnlyList<object?>>(unlimited ? 1024 : Math.Min(pageSize, 4096));
         var columns = new List<ColumnInfo>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -180,7 +187,7 @@ public abstract class AdoDialectProvider : IDialectProvider
     public abstract Task<IReadOnlyList<KeyValuePair<string, string>>> GetDatabasePropertiesAsync(DbConnection connection, string database, CancellationToken cancellationToken);
     public abstract Task<IReadOnlyList<KeyValuePair<string, string>>> GetTablePropertiesAsync(DbConnection connection, string database, string schema, string table, CancellationToken cancellationToken);
 
-    public async Task<IReadOnlyList<KeyValuePair<string, string>>> GetServerPropertiesAsync(DbConnection connection, CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<KeyValuePair<string, string>>> GetServerPropertiesAsync(DbConnection connection, CancellationToken cancellationToken)
     {
         var version = await ReadStringsAsync(connection, "SELECT version()", new Dictionary<string, object>(), cancellationToken);
         return [new("Versione server", version.Count == 0 ? "—" : version[0][0]), new("Versione client", connection.ServerVersion is { Length: > 0 } v ? v : "—")];
@@ -279,11 +286,12 @@ public abstract class AdoDialectProvider : IDialectProvider
     public abstract Task<DatabaseOptions> GetDatabaseOptionsAsync(DbConnection connection, string database, CancellationToken cancellationToken);
     public abstract string BuildCreateDatabaseSql(DatabaseOptions options);
     public abstract IReadOnlyList<string> BuildAlterDatabaseSql(DatabaseOptions current, DatabaseOptions updated);
-    public string BuildDropDatabaseSql(string database) => $"DROP DATABASE {QuoteIdentifier(database)}";
+    public virtual string BuildDropDatabaseSql(string database) => $"DROP DATABASE {QuoteIdentifier(database)}";
     public abstract string MaintenanceDatabase { get; }
     public abstract void ClearPools();
     public abstract bool SupportsDatabaseRename { get; }
     public abstract bool UsesMySqlScriptSyntax { get; }
+    public virtual IEnumerable<string> SplitScript(string script) => SqlScriptSplitter.Split(script, Kind);
     public abstract string DumpHeader(string database);
     public abstract string DumpFooter();
     public abstract string FormatLiteral(object? value);

@@ -35,6 +35,13 @@ public partial class MainWindowViewModel
             StatusMessage = "Seleziona una connessione.";
             return;
         }
+        if (profile.Kind is not (Navifox.Core.Models.DatabaseKind.MySql or Navifox.Core.Models.DatabaseKind.PostgreSql))
+        {
+            Notify("Utenti e privilegi", profile.Kind == Navifox.Core.Models.DatabaseKind.Sqlite
+                ? "SQLite non ha utenti: l'accesso dipende dai permessi del file."
+                : "Per SQL Server la gestione di login e ruoli arriverà in una versione successiva: usa per ora CREATE LOGIN / CREATE USER nell'editor SQL.");
+            return;
+        }
         OpenOrSelect<UsersTabViewModel>(tab => tab.Profile.Id == profile.Id, () => new UsersTabViewModel(_databaseAccess, _dialogs, profile));
     }
 }

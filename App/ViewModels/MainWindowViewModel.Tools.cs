@@ -14,7 +14,7 @@ public partial class MainWindowViewModel
             return (tableProfile, table.Database, table.Schema);
         node ??= SelectedNode;
         if (node?.Profile is not { } profile || node.Database is not { } database) return null;
-        var schema = node.Schema ?? (profile.Kind == DatabaseKind.MySql ? database : "public");
+        var schema = node.Schema ?? profile.Kind.DefaultSchema(database);
         return (profile, database, schema);
     }
 

@@ -137,7 +137,7 @@ public partial class SyncTabViewModel : WorkspaceTabViewModel
         });
     }
 
-    private static string SchemaFor(ConnectionProfile profile, string database) => profile.Kind == DatabaseKind.MySql ? database : "public";
+    private static string SchemaFor(ConnectionProfile profile, string database) => profile.Kind.DefaultSchema(database);
 
     [RelayCommand]
     private async Task CompareAsync()
@@ -202,13 +202,13 @@ public partial class SyncTabViewModel : WorkspaceTabViewModel
                 if (!targetTables.TryGetValue(table.Name, out var existing))
                 {
                     var create = Retarget(design, null, sourceSchema, targetSchema);
-                    AddItem(new SyncItem(table.Name, "TABLE", "Nuova", $"Tabella da creare ({design.Columns.Count} campi)", TableDesignSql.Build(mysql, targetSchema, null, create)));
+                    AddItem(new SyncItem(table.Name, "TABLE", "Nuova", $"Tabella da creare ({design.Columns.Count} campi)", TableDesignSql.Build(target.Kind, targetSchema, null, create)));
                 }
                 else
                 {
                     var current = await provider.GetTableDesignAsync(to, targetDb, targetSchema, existing.Name, token);
                     var wanted = Retarget(design, current, sourceSchema, targetSchema);
-                    var statements = TableDesignSql.Build(mysql, targetSchema, current, wanted);
+                    var statements = TableDesignSql.Build(target.Kind, targetSchema, current, wanted);
                     AddItem(statements.Count == 0
                         ? new SyncItem(table.Name, "TABLE", "Uguale", "Struttura identica", [])
                         : new SyncItem(table.Name, "TABLE", "Modificata", Describe(current, wanted), statements));
@@ -228,14 +228,14 @@ public partial class SyncTabViewModel : WorkspaceTabViewModel
             {
                 var select = await provider.GetSchemaObjectDefinitionAsync(from, sourceDb, sourceSchema, SchemaObjectKind.View, view, token);
                 if (!targetViews.TryGetValue(view.Name, out var existing))
-                    AddItem(new SyncItem(view.Name, "VIEW", "Nuova", "Vista da creare", SchemaObjectSql.BuildViewSave(mysql, targetSchema, null, view.Name, Requalify(select, sourceSchema, targetSchema, mysql)).Statements));
+                    AddItem(new SyncItem(view.Name, "VIEW", "Nuova", "Vista da creare", SchemaObjectSql.BuildViewSave(target.Kind, targetSchema, null, view.Name, Requalify(select, sourceSchema, targetSchema, mysql)).Statements));
                 else
                 {
                     var current = await provider.GetSchemaObjectDefinitionAsync(to, targetDb, targetSchema, SchemaObjectKind.View, existing, token);
                     var wanted = Requalify(select, sourceSchema, targetSchema, mysql);
                     AddItem(Normalize(current) == Normalize(wanted)
                         ? new SyncItem(view.Name, "VIEW", "Uguale", "Definizione identica", [])
-                        : new SyncItem(view.Name, "VIEW", "Modificata", "Definizione diversa", SchemaObjectSql.BuildViewSave(mysql, targetSchema, existing.Name, view.Name, wanted).Statements));
+                        : new SyncItem(view.Name, "VIEW", "Modificata", "Definizione diversa", SchemaObjectSql.BuildViewSave(target.Kind, targetSchema, existing.Name, view.Name, wanted).Statements));
                 }
             }
             catch (Exception exception) when (exception is not OperationCanceledException)

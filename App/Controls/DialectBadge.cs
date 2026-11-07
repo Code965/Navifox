@@ -53,10 +53,10 @@ public static class DialectVisuals
     /// <summary>«MySQL · localhost:3306» (+ database iniziale se presente).</summary>
     public static string Summary(ConnectionProfile? profile) => profile is null
         ? string.Empty
-        : $"{DialectName(profile)} · {profile.Host}:{profile.EffectivePort}{(string.IsNullOrWhiteSpace(profile.DefaultDatabase) ? string.Empty : " · " + profile.DefaultDatabase)}";
+        : $"{DialectName(profile)} · {profile.Endpoint}{(string.IsNullOrWhiteSpace(profile.DefaultDatabase) ? string.Empty : " · " + profile.DefaultDatabase)}";
 
     public static readonly IValueConverter SummaryConverter = new FuncValueConverter<ConnectionProfile?, string>(Summary);
-    public static string Endpoint(ConnectionProfile? profile) => profile is null ? string.Empty : $"{profile.Host}:{profile.EffectivePort}";
+    public static string Endpoint(ConnectionProfile? profile) => profile is null ? string.Empty : profile.Endpoint;
     public static readonly IValueConverter EndpointConverter = new FuncValueConverter<ConnectionProfile?, string>(Endpoint);
     public static readonly IValueConverter NameConverter = new FuncValueConverter<ConnectionProfile?, string>(DialectName);
 }

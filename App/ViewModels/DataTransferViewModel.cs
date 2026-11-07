@@ -312,7 +312,7 @@ public partial class DataTransferViewModel : ObservableObject
     }
     partial void OnSourceDatabaseChanging(string? value) => _ = LoadTablesAsync(value);
 
-    private static string SchemaFor(ConnectionProfile profile, string database) => profile.Kind == DatabaseKind.MySql ? database : "public";
+    private static string SchemaFor(ConnectionProfile profile, string database) => profile.Kind.DefaultSchema(database);
 
     private async Task LoadDatabasesAsync(bool source)
     {
@@ -464,8 +464,8 @@ public partial class DataTransferViewModel : ObservableObject
                     if (CreateTables)
                     {
                         var ddl = await provider.GetDdlAsync(from, sourceDb, sourceSchema, table.Name, false, token);
-                        await Run($"DROP TABLE IF EXISTS {name}{(mysql ? string.Empty : " CASCADE")}");
-                        foreach (var statement in SqlScriptSplitter.Split(ddl.Create, mysql)) await Run(statement);
+                        await Run($"DROP TABLE IF EXISTS {name}{(source.Kind == DatabaseKind.PostgreSql ? " CASCADE" : string.Empty)}");
+                        foreach (var statement in provider.SplitScript(ddl.Create)) await Run(statement);
                         postData.AddRange(ddl.PostData);
                     }
                     else if (EmptyTarget && CopyData) await Run($"DELETE FROM {name}");
@@ -486,7 +486,10 @@ public partial class DataTransferViewModel : ObservableObject
                             UpdateProgress(tracker);
                         }
                         // Una transazione per tabella: molto più veloce (soprattutto su server remoti) e, in caso di errore, nessuna tabella a metà.
-                        await Run(mysql ? "START TRANSACTION" : "BEGIN");
+                        await Run(source.Kind.BeginTransactionSql());
+                        // SQL Server: per copiare i valori delle colonne IDENTITY serve IDENTITY_INSERT.
+                        if (source.Kind == DatabaseKind.SqlServer)
+                            await Run($"IF OBJECTPROPERTY(OBJECT_ID({provider.FormatLiteral(name)}), 'TableHasIdentity') = 1 SET IDENTITY_INSERT {name} ON");
                         try
                         {
                             await foreach (var row in provider.StreamRowsAsync(from, sourceSchema, table.Name, token))
@@ -495,6 +498,8 @@ public partial class DataTransferViewModel : ObservableObject
                                 if (batch.Count >= BatchSize) await Flush();
                             }
                             if (batch.Count > 0) await Flush();
+                            if (source.Kind == DatabaseKind.SqlServer)
+                                await Run($"IF OBJECTPROPERTY(OBJECT_ID({provider.FormatLiteral(name)}), 'TableHasIdentity') = 1 SET IDENTITY_INSERT {name} OFF");
                             await Run("COMMIT");
                         }
                         catch
