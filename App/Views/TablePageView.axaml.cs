@@ -22,12 +22,13 @@ public partial class TablePageView : UserControl
     {
         InitializeComponent();
         ResultGrid.Sorting += OnSorting;
-        ResultGrid.CurrentCellChanged += (_, _) => SyncCurrent();
+        ResultGrid.CurrentCellChanged += (_, _) => { SyncCurrent(); QueueSelectionSummary(); };
         ResultGrid.SelectionChanged += (_, _) =>
         {
             if (_viewModel is null) return;
             _viewModel.SelectedRows = ResultGrid.SelectedItems.OfType<TableRowViewModel>().ToArray();
             SyncCurrent();
+            QueueSelectionSummary();
         };
         ResultGrid.LoadingRow += OnLoadingRow;
         ResultGrid.BeginningEdit += (_, args) =>
@@ -220,6 +221,35 @@ public partial class TablePageView : UserControl
         ResultGrid.Classes.Set("row-mode", kind == SelectionKind.Row);
         ResultGrid.Classes.Set("col-mode", kind == SelectionKind.Column);
         if (kind != SelectionKind.Column) ResultGridBuilder.SetHighlightColumn(ResultGrid, -1);
+        QueueSelectionSummary();
+    }
+
+    private bool _summaryQueued;
+
+    /// <summary>Ricalcola i totali della selezione una sola volta per ciclo dell'interfaccia (la selezione cambia a raffiche).</summary>
+    private void QueueSelectionSummary()
+    {
+        if (_summaryQueued) return;
+        _summaryQueued = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            _summaryQueued = false;
+            if (_viewModel is null) return;
+            _viewModel.SelectionSummary = SelectionStats.Compute(SelectedValues(_viewModel)).Format();
+        }, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Colonne selezionate: tutti i valori caricati; più righe: i valori della colonna corrente.</summary>
+    private IEnumerable<object?> SelectedValues(TableTabViewModel viewModel)
+    {
+        if (_selectionMode == SelectionKind.Column)
+        {
+            var columns = ResultGridBuilder.HighlightedColumns(ResultGrid).Where(i => i < viewModel.Columns.Count).ToArray();
+            return viewModel.Rows.SelectMany(row => columns.Select(row.ValueAt));
+        }
+        var current = CurrentIndex();
+        if (current < 0 || viewModel.SelectedRows.Count < 2) return [];
+        return viewModel.SelectedRows.Select(row => row.ValueAt(current));
     }
 
     /// <summary>
@@ -243,6 +273,7 @@ public partial class TablePageView : UserControl
         var columns = ResultGridBuilder.HighlightedColumns(ResultGrid).Where(i => i < _viewModel.Columns.Count).ToArray();
         if (columns.Length == 0) return;
         var label = columns.Length == 1 ? $"Colonna «{_viewModel.Columns[columns[0]].Name}»" : $"{columns.Length} colonne ({_viewModel.Columns[columns[0]].Name} … {_viewModel.Columns[columns[^1]].Name})";
+        QueueSelectionSummary();
         _viewModel.StatusMessage = $"{label} selezionat{(columns.Length == 1 ? "a" : "e")} · {_viewModel.Rows.Count:N0} righe · Ctrl+C per copiare · Maiusc+←/→ per estendere";
     }
 

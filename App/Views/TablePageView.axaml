@@ -295,6 +295,8 @@
         <TextBlock Grid.Column="1" Text="{Binding SqlPreview}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" TextTrimming="CharacterEllipsis"
                    VerticalAlignment="Center" ToolTip.Tip="{Binding StatusMessage}" Classes.error="{Binding HasError}" />
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Classes="selection-summary" Text="{Binding SelectionSummary}" IsVisible="{Binding SelectionSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     ToolTip.Tip="Totali della selezione: seleziona più celle di una colonna o clicca l'intestazione per la colonna intera" />
           <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="60" Height="3" MinWidth="0" Margin="0,0,8,0" VerticalAlignment="Center" />
           <Button Classes="bar-icon" Command="{Binding FirstPageCommand}" ToolTip.Tip="Prima pagina"><c:NfIcon Kind="chevrons-left" Width="14" Height="14" /></Button>
           <Button Classes="bar-icon" Command="{Binding PreviousCommand}" ToolTip.Tip="Pagina precedente"><c:NfIcon Kind="chevron-left" Width="14" Height="14" /></Button>

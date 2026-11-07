@@ -20,6 +20,8 @@ public partial class QueryPageView : UserControl
             if (_viewModel is not null && _viewModel.SqlText != SqlEditor.Text) _viewModel.SqlText = SqlEditor.Text;
         };
         ConsoleInputBox.AddHandler(KeyDownEvent, OnConsoleKeyDown, RoutingStrategies.Tunnel);
+        ResultGrid.SelectionChanged += (_, _) => UpdateSelectionSummary();
+        ResultGrid.CurrentCellChanged += (_, _) => UpdateSelectionSummary();
         RunButton.Click += (_, _) => Run(RunMode.Auto);
         RunSelectionItem.Click += (_, _) => Run(RunMode.Selection);
         RunCurrentItem.Click += (_, _) => Run(RunMode.Current);
@@ -80,6 +82,17 @@ public partial class QueryPageView : UserControl
         SqlEditor.CompletionSource = _viewModel;
         _viewModel.InsertRequested += OnInsert;
         if (SqlEditor.Text != _viewModel.SqlText) SqlEditor.Text = _viewModel.SqlText;
+    }
+
+    /// <summary>Più righe selezionate: conteggio, somma, media, min e max della colonna corrente.</summary>
+    private void UpdateSelectionSummary()
+    {
+        if (_viewModel is null) return;
+        var rows = ResultGrid.SelectedItems.OfType<TableRowViewModel>().ToArray();
+        var column = ResultGrid.CurrentColumn?.Tag is int index ? index : -1;
+        _viewModel.SelectionSummary = rows.Length < 2 || column < 0
+            ? string.Empty
+            : Navifox.Core.SelectionStats.Compute(rows.Select(row => row.ValueAt(column))).Format();
     }
 
     private void OnColumnsChanged(object? sender, NotifyCollectionChangedEventArgs e)

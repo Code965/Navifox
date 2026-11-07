@@ -124,6 +124,9 @@ public partial class TableRowViewModel : ObservableObject
         return cell;
     }
 
+    /// <summary>Valore attuale (modificato o letto dal database) senza creare la cella.</summary>
+    public object? ValueAt(int index) => index < 0 || index >= _values.Length ? null : _cells[index] is { } cell ? cell.Value : _values[index];
+
     public bool IsNull(int index) => _cells.ElementAtOrDefault(index) is { } cell ? cell.IsNull : index < _values.Length && _values[index] is null;
     public string TextAt(int index) => _cells.ElementAtOrDefault(index) is { } cell ? cell.Text : index < _values.Length ? Format(_values[index]) : string.Empty;
 

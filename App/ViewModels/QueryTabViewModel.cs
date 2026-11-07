@@ -201,6 +201,8 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     [ObservableProperty] private string _consoleInput = string.Empty;
     [ObservableProperty] private string _consoleText;
     [ObservableProperty] private string _statusMessage = "Pronto";
+    /// <summary>Totali della selezione nella griglia dei risultati.</summary>
+    [ObservableProperty] private string _selectionSummary = string.Empty;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private int _resultTabIndex;
 

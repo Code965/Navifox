@@ -173,6 +173,8 @@
       <Border Grid.Row="4" Classes="grid-statusbar">
         <DockPanel>
           <ProgressBar DockPanel.Dock="Right" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="100" Height="3" MinWidth="0" VerticalAlignment="Center" />
+          <TextBlock DockPanel.Dock="Right" Classes="selection-summary" Text="{Binding SelectionSummary}" IsVisible="{Binding SelectionSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     ToolTip.Tip="Totali della selezione: seleziona più righe per la colonna corrente" />
           <TextBlock Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         </DockPanel>
       </Border>

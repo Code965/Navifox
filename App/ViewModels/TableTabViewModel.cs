@@ -90,6 +90,8 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _hasError;
     [ObservableProperty] private string _sqlPreview = string.Empty;
+    /// <summary>Totali della selezione (conteggio, somma, media, min, max) per la barra di stato.</summary>
+    [ObservableProperty] private string _selectionSummary = string.Empty;
     [ObservableProperty] private long _totalRows = -1;
     [ObservableProperty] private string _recordLabel = string.Empty;
     [ObservableProperty] private string _pageLabel = "1";
