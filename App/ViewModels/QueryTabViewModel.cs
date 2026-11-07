@@ -195,6 +195,41 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     public string Context => SelectedDatabase is null ? $"{_profile.Name} · server" : $"{_profile.Name} · {SelectedDatabase}";
     public ObservableCollection<ColumnInfo> Columns { get; } = [];
     public ObservableCollection<TableRowViewModel> Rows { get; } = [];
+    /// <summary>Tutte le righe del risultato; <see cref="Rows"/> contiene solo quelle che passano il filtro rapido.</summary>
+    private readonly List<TableRowViewModel> _allRows = [];
+    private readonly Dictionary<int, QuickFilterCondition> _quickFilters = [];
+    private readonly Dictionary<int, string> _quickFilterTexts = [];
+    [ObservableProperty] private bool _showQuickFilter = AppSettings.Current.QuickFilterRow;
+
+    partial void OnShowQuickFilterChanged(bool value)
+    {
+        AppSettings.Current.QuickFilterRow = value;
+        AppSettings.Current.Save();
+        if (!value && _quickFilters.Count > 0)
+        {
+            _quickFilters.Clear();
+            _quickFilterTexts.Clear();
+            ApplyQuickFilter();
+        }
+    }
+
+    public string QuickFilterText(int column) => _quickFilterTexts.TryGetValue(column, out var text) ? text : string.Empty;
+
+    public void SetQuickFilter(int column, string text)
+    {
+        if (QuickFilter.Parse(text) is { } condition) { _quickFilters[column] = condition; _quickFilterTexts[column] = text.Trim(); }
+        else { _quickFilters.Remove(column); _quickFilterTexts.Remove(column); }
+        ApplyQuickFilter();
+    }
+
+    private void ApplyQuickFilter()
+    {
+        Rows.Clear();
+        foreach (var row in _allRows)
+            if (_quickFilters.All(filter => QuickFilter.Matches(filter.Value, row.ValueAt(filter.Key)))) Rows.Add(row);
+        if (_quickFilters.Count > 0) StatusMessage = $"Filtro rapido: {Rows.Count:N0} di {_allRows.Count:N0} righe";
+        PrepareChart();
+    }
     public ObservableCollection<string> Messages { get; } = [];
 
     [ObservableProperty] private string _sqlText = string.Empty;
@@ -405,12 +440,20 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     private void ShowEditorResults(IReadOnlyList<StatementResult> results, TimeSpan elapsed)
     {
         var lastWithRows = results.LastOrDefault(result => result.Result?.HasResultSet == true);
+        _quickFilters.Clear();
+        _quickFilterTexts.Clear();
+        _allRows.Clear();
         Columns.Clear();
         Rows.Clear();
         if (lastWithRows?.Result is { } shown)
         {
             foreach (var column in shown.Columns) Columns.Add(column);
-            foreach (var row in shown.Rows) Rows.Add(new TableRowViewModel(row));
+            foreach (var row in shown.Rows)
+            {
+                var item = new TableRowViewModel(row);
+                _allRows.Add(item);
+                Rows.Add(item);
+            }
         }
         foreach (var result in results)
         {

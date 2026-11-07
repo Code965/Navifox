@@ -73,6 +73,20 @@ public static class ResultGridBuilder
         return Enumerable.Range(Math.Min(start, end), Math.Abs(end - start) + 1).ToArray();
     }
 
+    /// <summary>Mostra o nasconde la riga del filtro rapido sotto le intestazioni.</summary>
+    public static void SetFilterRowVisible(DataGrid grid, bool visible)
+    {
+        foreach (var column in grid.Columns)
+            if (column.Header is ColumnHeaderContent { FilterBox: { } box }) box.IsVisible = visible;
+    }
+
+    /// <summary>Svuota tutte le caselle del filtro rapido (senza notificare).</summary>
+    public static void ClearFilters(DataGrid grid)
+    {
+        foreach (var column in grid.Columns)
+            if (column.Header is ColumnHeaderContent { FilterBox: { } box }) box.SetTextSilently(string.Empty);
+    }
+
     /// <summary>Testo dell'intestazione (con eventuali simboli PK, filtro, ordinamento).</summary>
     public static string HeaderText(DataGridColumn column) => column.Header switch
     {
@@ -89,8 +103,10 @@ public static class ResultGridBuilder
 
     /// <param name="onHeaderClick">Clic sull'intestazione (seleziona la colonna); null = comportamento standard.</param>
     /// <param name="onSort">Freccina dell'intestazione: true = crescente, false = decrescente, null = rimuovi ordinamento.</param>
+    /// <param name="filterText">Testo iniziale del filtro rapido della colonna.</param>
+    /// <param name="onFilter">Filtro rapido modificato (dopo una breve pausa o con Invio); null = nessuna riga di filtro.</param>
     public static void Rebuild(DataGrid grid, IReadOnlyList<ColumnInfo> columns, bool editable = false, Func<int, string?>? headerGlyph = null,
-        Action<int, bool>? onHeaderClick = null, Action<int, bool?>? onSort = null)
+        Action<int, bool>? onHeaderClick = null, Action<int, bool?>? onSort = null, Func<int, string>? filterText = null, Action<int, string>? onFilter = null)
     {
         grid.Columns.Clear();
         SetHighlightColumn(grid, -1);
@@ -102,7 +118,7 @@ public static class ResultGridBuilder
             var glyph = headerGlyph?.Invoke(index);
             var gridColumn = new DataGridTemplateColumn
             {
-                Header = onHeaderClick is null && onSort is null
+                Header = onHeaderClick is null && onSort is null && onFilter is null
                     ? glyph is null ? column.Name : $"{column.Name}  {glyph}"
                     : new ColumnHeaderContent(glyph is null ? column.Name : $"{column.Name}  {glyph}", cellIndex, onHeaderClick, onSort),
                 Tag = index,
@@ -112,6 +128,8 @@ public static class ResultGridBuilder
                 IsReadOnly = !editable || column.IsGenerated,
                 Width = new DataGridLength(Math.Clamp((column.Name.Length + (glyph?.Length + 2 ?? 0)) * 8.5 + 44, 70, 240))
             };
+            if (onFilter is not null && gridColumn.Header is ColumnHeaderContent header)
+                header.AddFilter(filterText?.Invoke(cellIndex) ?? string.Empty, numeric, text => onFilter(cellIndex, text));
             if (editable && !column.IsGenerated)
                 gridColumn.CellEditingTemplate = new FuncDataTemplate<TableRowViewModel>((row, _) => CreateEditor(row?.CellAt(cellIndex), numeric), supportsRecycling: false);
             grid.Columns.Add(gridColumn);
@@ -206,7 +224,8 @@ public sealed class ColumnHeaderContent : Grid
         if (onClick is not null)
             PointerReleased += (_, args) =>
             {
-                if (args.InitialPressMouseButton != Avalonia.Input.MouseButton.Left || args.Source is Visual source && source.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
+                if (args.InitialPressMouseButton != Avalonia.Input.MouseButton.Left || args.Source is Visual source
+                    && (source.FindAncestorOfType<Button>(includeSelf: true) is not null || source.FindAncestorOfType<QuickFilterBox>(includeSelf: true) is not null)) return;
                 onClick(index, args.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift));
                 args.Handled = true;
             };
@@ -252,6 +271,75 @@ public sealed class ColumnHeaderContent : Grid
     {
         get => _label.Text ?? string.Empty;
         set => _label.Text = value;
+    }
+
+    public QuickFilterBox? FilterBox { get; private set; }
+
+    /// <summary>Seconda riga dell'intestazione: casella del filtro rapido.</summary>
+    public void AddFilter(string text, bool numeric, Action<string> changed)
+    {
+        RowDefinitions = new RowDefinitions("Auto,Auto");
+        FilterBox = new QuickFilterBox(text, numeric, changed) { IsVisible = Services.AppSettings.Current.QuickFilterRow };
+        Grid.SetRow(FilterBox, 1);
+        Grid.SetColumnSpan(FilterBox, 2);
+        Children.Add(FilterBox);
+    }
+}
+
+/// <summary>
+/// Casella del filtro rapido: applica dopo una breve pausa di digitazione o con Invio; Esc svuota.
+/// Sintassi: testo (contiene), Roma*, =x, !x, &gt;100, &lt;=5, 10..20, null, !null.
+/// </summary>
+public sealed class QuickFilterBox : TextBox
+{
+    protected override Type StyleKeyOverride => typeof(TextBox);
+
+    private readonly Avalonia.Threading.DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(600) };
+    private readonly Action<string> _changed;
+    private string _applied;
+    private bool _silent;
+
+    public QuickFilterBox(string text, bool numeric, Action<string> changed)
+    {
+        _changed = changed;
+        _applied = text;
+        Text = text;
+        Classes.Add("quick-filter");
+        Watermark = numeric ? "> < =" : "filtra…";
+        ToolTip.SetTip(this, "Filtro rapido: testo (contiene), Roma*, =valore, !valore, >100, <=5, 10..20, null, !null\nInvio applica subito · Esc svuota");
+        _timer.Tick += (_, _) => Apply();
+        PropertyChanged += (_, args) =>
+        {
+            if (args.Property != TextProperty || _silent) return;
+            Classes.Set("active", !string.IsNullOrWhiteSpace(Text));
+            _timer.Stop();
+            _timer.Start();
+        };
+        Classes.Set("active", !string.IsNullOrWhiteSpace(text));
+        KeyDown += (_, args) =>
+        {
+            if (args.Key == Avalonia.Input.Key.Enter) { Apply(); args.Handled = true; }
+            else if (args.Key == Avalonia.Input.Key.Escape && !string.IsNullOrEmpty(Text)) { Text = string.Empty; Apply(); args.Handled = true; }
+        };
+        LostFocus += (_, _) => Apply();
+    }
+
+    public void SetTextSilently(string text)
+    {
+        _silent = true;
+        Text = text;
+        _applied = text;
+        Classes.Set("active", !string.IsNullOrWhiteSpace(text));
+        _silent = false;
+    }
+
+    private void Apply()
+    {
+        _timer.Stop();
+        var text = (Text ?? string.Empty).Trim();
+        if (text == _applied.Trim()) return;
+        _applied = text;
+        _changed(text);
     }
 }
 

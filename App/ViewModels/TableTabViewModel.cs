@@ -25,6 +25,8 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     private DbConnection? _transaction;
     private CancellationTokenSource? _running;
     private string? _appliedWhere;
+    /// <summary>Filtro rapido sotto le intestazioni: colonna → testo (vedi <see cref="QuickFilter"/>).</summary>
+    private readonly Dictionary<string, string> _quickFilters = new(StringComparer.Ordinal);
     private string? _appliedOrderBy;
     private int _pageIndex;
     // Ultima impostazione scelta: le nuove schede la riprendono.
@@ -163,8 +165,9 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
                 UpdateEditability();
                 await LoadReferencesAsync(connection, token);
             }
-            var page = await _provider.QueryPagedAsync(connection, Schema, TableName, _pageIndex, PageSize, token, _appliedWhere, _appliedOrderBy);
-            TotalRows = await _provider.CountRowsAsync(connection, Schema, TableName, _appliedWhere, token);
+            var where = EffectiveWhere;
+            var page = await _provider.QueryPagedAsync(connection, Schema, TableName, _pageIndex, PageSize, token, where, _appliedOrderBy);
+            TotalRows = await _provider.CountRowsAsync(connection, Schema, TableName, where, token);
             var byName = _metadata.ToDictionary(column => column.Name, StringComparer.Ordinal);
             var columns = page.Columns.Select(column => byName.TryGetValue(column.Name, out var meta) ? meta : column).ToArray();
             if (!Columns.Select(column => column.Name).SequenceEqual(columns.Select(column => column.Name)))
@@ -316,6 +319,56 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         IsFilterActive = false;
         _pageIndex = 0;
         await LoadAsync();
+    }
+
+    // ───────────── Filtro rapido sotto le intestazioni ─────────────
+
+    [ObservableProperty] private bool _showQuickFilter = AppSettings.Current.QuickFilterRow;
+    public bool IsQuickFilterActive => _quickFilters.Count > 0;
+
+    async partial void OnShowQuickFilterChanged(bool value)
+    {
+        AppSettings.Current.QuickFilterRow = value;
+        AppSettings.Current.Save();
+        // Riga nascosta: niente filtri invisibili.
+        if (!value && _quickFilters.Count > 0)
+        {
+            _quickFilters.Clear();
+            OnPropertyChanged(nameof(IsQuickFilterActive));
+            _pageIndex = 0;
+            await LoadAsync();
+        }
+    }
+
+    public string QuickFilterText(string column) => _quickFilters.TryGetValue(column, out var text) ? text : string.Empty;
+
+    public async Task SetQuickFilterAsync(string column, string text)
+    {
+        text = text.Trim();
+        if (QuickFilterText(column) == text) return;
+        if (text.Length == 0) _quickFilters.Remove(column);
+        else _quickFilters[column] = text;
+        OnPropertyChanged(nameof(IsQuickFilterActive));
+        _pageIndex = 0;
+        await LoadAsync();
+    }
+
+    /// <summary>Filtro del pannello «Filtro» e filtro rapido combinati in AND.</summary>
+    private string? EffectiveWhere
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (_appliedWhere is not null) parts.Add(_appliedWhere);
+            foreach (var (column, text) in _quickFilters)
+            {
+                if (QuickFilter.Parse(text) is not { } condition) continue;
+                var info = Columns.FirstOrDefault(c => c.Name == column) ?? _metadata.FirstOrDefault(c => c.Name == column);
+                var numeric = info is not null && Views.ResultGridBuilder.IsNumeric(info.DataType);
+                parts.Add(QuickFilter.ToSql(condition, _provider.QuoteIdentifier(column), numeric, _provider.Kind, _provider.FormatLiteral));
+            }
+            return parts.Count switch { 0 => null, 1 => parts[0], _ => string.Join(" AND ", parts.Select(p => $"({p})")) };
+        }
     }
 
     /// <summary>Filtro rapido dal menu della cella: colonna = valore corrente.</summary>
@@ -698,7 +751,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     private string BuildSelectSql(bool withPaging)
     {
         var sql = $"SELECT * FROM {_provider.QuoteIdentifier(Schema)}.{_provider.QuoteIdentifier(TableName)}"
-                  + (_appliedWhere is null ? string.Empty : $" WHERE {_appliedWhere}")
+                  + (EffectiveWhere is not { } where ? string.Empty : $" WHERE {where}")
                   + (_appliedOrderBy is null ? string.Empty : $" ORDER BY {_appliedOrderBy}");
         if (!withPaging || PageSize <= 0) return sql;
         var offset = (long)_pageIndex * PageSize;

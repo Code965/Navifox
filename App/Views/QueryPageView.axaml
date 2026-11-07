@@ -172,6 +172,10 @@
       </TabControl>
       <Border Grid.Row="4" Classes="grid-statusbar">
         <DockPanel>
+          <ToggleButton DockPanel.Dock="Right" Classes="objbar" IsChecked="{Binding ShowQuickFilter, Mode=TwoWay}" Margin="6,0,0,0"
+                        ToolTip.Tip="Riga di filtro rapido sotto le intestazioni dei risultati: testo, Roma*, =x, !x, &gt;100, &lt;=5, 10..20, null, !null">
+            <StackPanel Orientation="Horizontal" Spacing="5"><c:NfIcon Kind="search" Classes="objbar-icon" /><TextBlock Text="Filtro rapido" /></StackPanel>
+          </ToggleButton>
           <ProgressBar DockPanel.Dock="Right" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="100" Height="3" MinWidth="0" VerticalAlignment="Center" />
           <TextBlock DockPanel.Dock="Right" Classes="selection-summary" Text="{Binding SelectionSummary}" IsVisible="{Binding SelectionSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                      ToolTip.Tip="Totali della selezione: seleziona più righe per la colonna corrente" />

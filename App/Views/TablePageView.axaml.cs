@@ -103,6 +103,11 @@ public partial class TablePageView : UserControl
     {
         if (e.PropertyName is nameof(TableTabViewModel.IsSortActive) or nameof(TableTabViewModel.IsFilterActive) or nameof(TableTabViewModel.SqlPreview)) RefreshHeaders();
         if (e.PropertyName == nameof(TableTabViewModel.CanEdit)) RebuildColumns();
+        if (e.PropertyName == nameof(TableTabViewModel.ShowQuickFilter) && _viewModel is not null)
+        {
+            if (!_viewModel.ShowQuickFilter) ResultGridBuilder.ClearFilters(ResultGrid);
+            ResultGridBuilder.SetFilterRowVisible(ResultGrid, _viewModel.ShowQuickFilter);
+        }
         if (e.PropertyName is nameof(TableTabViewModel.IsFieldPanelOpen) or nameof(TableTabViewModel.IsFieldPanelBottom)) LayoutFieldPanel();
         if (e.PropertyName == nameof(TableTabViewModel.IsSearchOpen) && _viewModel?.IsSearchOpen == true)
             Avalonia.Threading.Dispatcher.UIThread.Post(() => SearchBox.Focus(), Avalonia.Threading.DispatcherPriority.Input);
@@ -150,7 +155,10 @@ public partial class TablePageView : UserControl
     private void RebuildColumns()
     {
         if (_viewModel is null) return;
-        ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns, _viewModel.CanEdit, HeaderGlyph, SelectColumn, SortColumn);
+        var vm = _viewModel;
+        ResultGridBuilder.Rebuild(ResultGrid, vm.Columns, vm.CanEdit, HeaderGlyph, SelectColumn, SortColumn,
+            filterText: i => i < vm.Columns.Count ? vm.QuickFilterText(vm.Columns[i].Name) : string.Empty,
+            onFilter: (i, text) => { if (i < vm.Columns.Count) _ = vm.SetQuickFilterAsync(vm.Columns[i].Name, text); });
         _selectionMode = SelectionKind.Cell;
         ResultGrid.Classes.Remove("row-mode");
         ResultGrid.Classes.Remove("col-mode");
@@ -314,6 +322,8 @@ public partial class TablePageView : UserControl
 
     private void OnGridKeyDown(object? sender, KeyEventArgs e)
     {
+        // Tasti nella casella del filtro rapido: restano alla casella (niente copia/elimina righe).
+        if ((e.Source as Avalonia.Visual)?.FindAncestorOfType<QuickFilterBox>(includeSelf: true) is not null) return;
         if (_viewModel is null || HandleColumnKeys(e)) return;
         var editor = (e.Source as Avalonia.Visual)?.FindAncestorOfType<TextBox>(includeSelf: true);
         var combo = (e.Source as Avalonia.Visual)?.FindAncestorOfType<ComboBox>(includeSelf: true);

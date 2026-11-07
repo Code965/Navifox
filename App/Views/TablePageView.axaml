@@ -53,6 +53,10 @@
           <ToggleButton Classes="objbar" IsChecked="{Binding IsFilterOpen, Mode=TwoWay}" Classes.active="{Binding IsFilterActive}" ToolTip.Tip="Filtro (Ctrl+F)">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="filter" Classes="objbar-icon" Classes.active="{Binding IsFilterActive}" /><TextBlock Text="Filtro" /></StackPanel>
           </ToggleButton>
+          <ToggleButton Classes="objbar" IsChecked="{Binding ShowQuickFilter, Mode=TwoWay}" Classes.active="{Binding IsQuickFilterActive}"
+                        ToolTip.Tip="Riga di filtro rapido sotto le intestazioni: testo, Roma*, =x, !x, &gt;100, &lt;=5, 10..20, null, !null">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="search" Classes="objbar-icon" Classes.active="{Binding IsQuickFilterActive}" /><TextBlock Text="Filtro rapido" /></StackPanel>
+          </ToggleButton>
           <ToggleButton Classes="objbar" IsChecked="{Binding IsSortOpen, Mode=TwoWay}" Classes.active="{Binding IsSortActive}" ToolTip.Tip="Ordinamento">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="sort" Classes="objbar-icon" /><TextBlock Text="Ordina" /></StackPanel>
           </ToggleButton>

@@ -77,11 +77,17 @@ public partial class QueryPageView : UserControl
         if (_viewModel is null) return;
         _viewModel.Columns.CollectionChanged += OnColumnsChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns);
+        RebuildGrid();
         FitSoon();
         SqlEditor.CompletionSource = _viewModel;
         _viewModel.InsertRequested += OnInsert;
         if (SqlEditor.Text != _viewModel.SqlText) SqlEditor.Text = _viewModel.SqlText;
+    }
+
+    private void RebuildGrid()
+    {
+        if (_viewModel is not { } vm) return;
+        ResultGridBuilder.Rebuild(ResultGrid, vm.Columns, filterText: vm.QuickFilterText, onFilter: vm.SetQuickFilter);
     }
 
     /// <summary>Più righe selezionate: conteggio, somma, media, min e max della colonna corrente.</summary>
@@ -99,7 +105,7 @@ public partial class QueryPageView : UserControl
     {
         if (_viewModel is not null)
         {
-            ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns);
+            RebuildGrid();
             FitSoon();
         }
     }
@@ -107,6 +113,11 @@ public partial class QueryPageView : UserControl
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(QueryTabViewModel.SqlText) && _viewModel is not null && SqlEditor.Text != _viewModel.SqlText) SqlEditor.Text = _viewModel.SqlText;
+        if (e.PropertyName == nameof(QueryTabViewModel.ShowQuickFilter) && _viewModel is not null)
+        {
+            if (!_viewModel.ShowQuickFilter) ResultGridBuilder.ClearFilters(ResultGrid);
+            ResultGridBuilder.SetFilterRowVisible(ResultGrid, _viewModel.ShowQuickFilter);
+        }
         if (e.PropertyName != nameof(QueryTabViewModel.ConsoleText)) return;
         Dispatcher.UIThread.Post(() =>
         {

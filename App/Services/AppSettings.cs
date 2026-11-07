@@ -26,6 +26,8 @@ public sealed class AppSettings
     public bool SafeMode { get; set; } = true;
     /// <summary>«Quante righe toccherai?» per UPDATE/DELETE dall'editor: "Sempre", "Conferme" (solo quando c'è già una conferma) o "Mai".</summary>
     public string RowPreview { get; set; } = "Conferme";
+    /// <summary>Riga del filtro rapido sotto le intestazioni delle griglie.</summary>
+    public bool QuickFilterRow { get; set; } = true;
     /// <summary>Editor di campo della griglia: "right" (a destra) o "bottom" (in basso), con le dimensioni scelte.</summary>
     public string FieldPanelPosition { get; set; } = "right";
     public double FieldPanelWidth { get; set; } = 340;
