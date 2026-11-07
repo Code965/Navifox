@@ -66,6 +66,7 @@ public partial class App : Application
                 viewModel.PendingOpen = args[at + 1];
             viewModel.ApplySettings();
             window.Opened += (_, _) => _ = viewModel.CheckUpdatesOnStartupAsync();
+            window.Closed += (_, _) => Navifox.Dialects.SshTunnelLease.CloseAll();
         }
         return window;
     }

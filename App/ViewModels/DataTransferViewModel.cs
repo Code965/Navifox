@@ -475,7 +475,7 @@ public partial class DataTransferViewModel : ObservableObject
                     {
                         var columns = (await provider.GetColumnsAsync(from, sourceDb, sourceSchema, table.Name, token)).Select(c => c.Name).ToArray();
                         var head = $"INSERT INTO {name} ({string.Join(", ", columns.Select(provider.QuoteIdentifier))}) VALUES";
-                        var batch = new List<IReadOnlyList<object?>>(500);
+                        var batch = new List<IReadOnlyList<object?>>(BatchSize);
                         async Task Flush()
                         {
                             rows += batch.Count;
@@ -485,12 +485,23 @@ public partial class DataTransferViewModel : ObservableObject
                             table.State = tracker.TableLabel(i, rows);
                             UpdateProgress(tracker);
                         }
-                        await foreach (var row in provider.StreamRowsAsync(from, sourceSchema, table.Name, token))
+                        // Una transazione per tabella: molto più veloce (soprattutto su server remoti) e, in caso di errore, nessuna tabella a metà.
+                        await Run(mysql ? "START TRANSACTION" : "BEGIN");
+                        try
                         {
-                            batch.Add(row);
-                            if (batch.Count >= 500) await Flush();
+                            await foreach (var row in provider.StreamRowsAsync(from, sourceSchema, table.Name, token))
+                            {
+                                batch.Add(row);
+                                if (batch.Count >= BatchSize) await Flush();
+                            }
+                            if (batch.Count > 0) await Flush();
+                            await Run("COMMIT");
                         }
-                        if (batch.Count > 0) await Flush();
+                        catch
+                        {
+                            try { await provider.ExecuteAsync(to, "ROLLBACK", 0, CancellationToken.None); AddLog("ROLLBACK: i dati di questa tabella non sono stati scritti."); } catch { }
+                            throw;
+                        }
                     }
                     tracker.FinishTable(i, rows);
                     table.State = CopyData ? $"✓ {rows:N0} righe" : "✓ struttura";
@@ -633,6 +644,9 @@ public partial class DataTransferViewModel : ObservableObject
         catch (Exception exception) { StatusMessage = $"Esportazione non riuscita: {exception.Message}"; AddError(StatusMessage); }
         finally { IsRunning = false; }
     }
+
+    /// <summary>Righe per ogni INSERT multiplo.</summary>
+    private const int BatchSize = 1000;
 
     private void AddLog(string message) => Log.Add(new TransferLogEntry(DateTime.Now, "info", message));
     private void AddSql(string sql) => Log.Add(new TransferLogEntry(DateTime.Now, "sql", sql.Trim()));
