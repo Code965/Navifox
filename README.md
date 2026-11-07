@@ -1,0 +1,144 @@
+<p align="center">
+  <img src="docs/logo.png" alt="NaviFox" height="72">
+</p>
+
+<p align="center">
+  <b>Il client desktop per database relazionali, in italiano.</b><br>
+  MySQL · MariaDB · PostgreSQL · SQL Server · SQLite — da un'unica finestra.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="Licenza GPL-3.0" src="https://img.shields.io/badge/licenza-GPL--3.0-E8590C"></a>
+  <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4">
+</p>
+
+---
+
+Navifox è un'applicazione desktop per **esplorare, progettare, interrogare e amministrare** database relazionali.
+Unisce in un'interfaccia moderna (tema chiaro e scuro, palette arancione) gli strumenti di tutti i giorni:
+albero delle connessioni, griglia dati modificabile, editor SQL con autocompletamento, progettazione delle tabelle,
+modello ER, trasferimento e sincronizzazione dei dati, backup, monitor del server e un assistente SQL basato su Claude.
+
+È scritto in C# con [.NET 10](https://dotnet.microsoft.com/) e [Avalonia](https://avaloniaui.net/), interamente in italiano.
+
+![Modello ER](docs/screenshots/modello-er.png)
+
+## Database supportati
+
+| Database | Varianti e servizi compatibili | Note |
+|---|---|---|
+| **MySQL / MariaDB** | TiDB, Amazon Aurora MySQL | eventi pianificati, utenti e privilegi |
+| **PostgreSQL** | Supabase, Neon, Amazon Aurora PostgreSQL, CockroachDB, TimescaleDB | schemi, sequenze, funzioni e procedure, utenti e ruoli |
+| **SQL Server** | Azure SQL Database | autenticazione SQL o di Windows, istanze con nome (`server\ISTANZA`), script con `GO` |
+| **SQLite** | file `.db`, `.sqlite`, `.sqlite3` | modifica della struttura con ricostruzione sicura della tabella |
+
+Le connessioni possono passare da un **tunnel SSH** (password o chiave privata, con verifica dell'impronta del server) e usare **SSL/TLS**.
+
+## Funzionalità
+
+### Connessioni
+- Cartelle e sottocartelle, ordine libero con trascinamento, rinomina con F2.
+- **Colore** e **ambiente** (Sviluppo, Test, Produzione) per ogni connessione: sulle connessioni di produzione
+  Navifox chiede conferma prima di ogni modifica.
+- Password cifrate con la protezione dati di Windows (DPAPI); importazione ed esportazione delle connessioni.
+- Pagina iniziale con connessioni e tabelle recenti, **barra comandi Ctrl+K** per trovare qualsiasi comando, database o tabella.
+
+### Dati
+- Griglia modificabile con paginazione, filtri, ordinamento dal menu dell'intestazione e **transazioni** esplicite.
+- Selezione di righe e colonne (anche con Maiusc + frecce), copia come TSV, **INSERT** o **UPDATE**.
+- **Vista modulo**, editor di campo testo / esadecimale / JSON / immagine.
+- Chiavi esterne: scelta del valore dalla tabella collegata e apertura dei record riferiti.
+- Ricerca nei dati della tabella e **ricerca in tutto il database**.
+- Import (CSV, testo delimitato, Excel, JSON) ed export (CSV, testo, HTML, Excel, SQL, XML, JSON, Markdown), stampa.
+
+### Editor SQL
+- Evidenziazione, autocompletamento di tabelle e colonne, formattazione, snippet.
+- Esecuzione di tutto, della selezione o dell'istruzione corrente; **EXPLAIN**; più risultati per script.
+- **Query Builder** visuale, console, registro cronologia, **query salvate** nella libreria.
+- **Grafici** dai risultati: barre, linee, area, torta.
+- **Modalità sicura**: conferma per `UPDATE`/`DELETE` senza `WHERE`, `DROP` e `TRUNCATE`.
+
+### Assistente SQL (Claude)
+Con una chiave API di [Anthropic](https://www.anthropic.com/) l'assistente, che conosce la struttura del database collegato:
+- **spiega** una query;
+- **scrive l'SQL** a partire da una richiesta in italiano;
+- **suggerisce indici** e riscritture partendo dal piano di esecuzione;
+- **corregge** l'ultimo errore.
+
+Vengono inviate solo la query e la struttura (nomi di tabelle e colonne), mai i dati delle righe.
+La chiave è salvata cifrata sul computer (oppure letta da `ANTHROPIC_API_KEY`).
+
+### Struttura del database
+- **Progetta tabella**: campi, indici, chiavi esterne, trigger, opzioni, commenti, con anteprima delle istruzioni SQL.
+- Editor di viste, funzioni, procedure, trigger, eventi (MySQL) e sequenze (PostgreSQL).
+- **Modello ER**: diagramma automatico, nuove relazioni trascinando da una colonna a un'altra tabella,
+  eliminazione delle relazioni, nuova tabella dal diagramma, **script SQL completo del modello**, esportazione PNG.
+
+![Progetta tabella](docs/screenshots/progetta-tabella.png)
+
+### Strumenti
+- **Trasferimento dati** tra database e connessioni dello stesso tipo, con registro di tutte le istruzioni e avanzamento in percentuale.
+- **Sincronizzazione** di struttura e dati con anteprima delle differenze.
+- **Backup** (dump SQL) e ripristino, **automazione** di query, dump ed esportazioni pianificate.
+- **Server Monitor**: processi, variabili, stato, storico delle query al secondo e **query più lente**.
+- **Utenti e privilegi** per MySQL/MariaDB e PostgreSQL.
+- Preferiti, gruppi di tabelle, aree di lavoro e ripristino della sessione, notifiche, menu e scorciatoie per le schede.
+
+![Grafico nel tema scuro](docs/screenshots/grafico-tema-scuro.png)
+
+## Installazione
+
+Scarica `Navifox-win-Setup.exe` dalle [Release](https://github.com/Code965/Navifox/releases) ed eseguilo.
+Non serve installare .NET: l'applicazione lo include. Gli aggiornamenti si scaricano e si installano dall'app
+(**Aiuto › Verifica aggiornamenti**, oppure automaticamente all'avvio).
+
+Requisiti: Windows 10 o 11 a 64 bit.
+
+> Gli eseguibili non sono ancora firmati digitalmente: al primo avvio Windows SmartScreen può mostrare
+> «editore sconosciuto» (**Ulteriori informazioni › Esegui comunque**).
+
+I dati dell'applicazione (connessioni, impostazioni, query salvate, backup) si trovano in `%APPDATA%\Navifox`.
+
+## Compilare dai sorgenti
+
+Serve l'SDK [.NET 10](https://dotnet.microsoft.com/download). Puoi installarne una copia locale nella cartella `.dotnet`
+(esclusa da git) con `dotnet-install.ps1`.
+
+```powershell
+dotnet build Navifox.sln
+dotnet run --project App/Navifox.App.csproj
+dotnet test Tests/Navifox.Tests.csproj
+```
+
+I test di integrazione con server reali si attivano con la variabile d'ambiente `NAVIFOX_IT=1` e usano database temporanei.
+
+Per creare una release (installer e pacchetti di aggiornamento con [Velopack](https://velopack.io/)):
+
+```powershell
+.\release.ps1 1.2.0 -Notes "Novità della versione"
+```
+
+### Struttura del progetto
+
+| Cartella | Contenuto |
+|---|---|
+| `Core` | modelli, generazione SQL (Progetta tabella, oggetti di schema), divisione degli script, analisi di sicurezza delle query |
+| `Dialects` | un provider per ogni database (MySQL, PostgreSQL, SQL Server, SQLite), tunnel SSH, archivio cifrato delle connessioni |
+| `App` | interfaccia Avalonia (MVVM), servizi, assistente SQL, aggiornamenti |
+| `Tests` | test xUnit |
+
+## Contribuire
+
+Segnalazioni e proposte sono benvenute nelle [Issue](https://github.com/Code965/Navifox/issues).
+Per le modifiche al codice apri una pull request: compila senza errori e fai passare `dotnet test`.
+
+## Licenza
+
+Navifox è software libero distribuito con licenza **GNU General Public License v3.0**: puoi usarlo, studiarlo,
+modificarlo e ridistribuirlo, a condizione che le versioni modificate distribuite restino sotto la stessa licenza.
+Testo completo in [`LICENSE`](LICENSE); le librerie usate e le loro licenze sono elencate in
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
+MySQL, MariaDB, PostgreSQL, SQL Server, SQLite e gli altri nomi citati sono marchi dei rispettivi proprietari;
+Navifox non è affiliato né approvato da loro.
