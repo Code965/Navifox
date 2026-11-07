@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.InfoPanelView"
+             x:DataType="vm:InfoPanelViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <!-- schede: ⓘ informazioni · DDL -->
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <Grid ColumnDefinitions="*,Auto,Auto,*">
+        <ToggleButton Grid.Column="1" Classes="info-tab" IsChecked="{Binding IsInfoTab, Mode=OneWay}" Command="{Binding ShowInfoCommand}" ToolTip.Tip="Informazioni">
+          <c:NfIcon Kind="info" Width="15" Height="15" />
+        </ToggleButton>
+        <ToggleButton Grid.Column="2" Classes="info-tab" IsChecked="{Binding IsDdlTab, Mode=OneWay}" Command="{Binding ShowDdlCommand}" IsEnabled="{Binding HasDdl}" ToolTip.Tip="DDL">
+          <c:NfIcon Kind="code" Width="15" Height="15" />
+        </ToggleButton>
+        <ProgressBar Grid.Column="3" IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="40" Height="2" MinWidth="0" HorizontalAlignment="Right" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <!-- ⓘ informazioni -->
+    <ScrollViewer Grid.Row="1" IsVisible="{Binding IsInfoTab}" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="18,16,14,16" Spacing="14">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+          <Border Width="54" Height="54" CornerRadius="14" Background="{DynamicResource AccentSoftBrush}">
+            <c:NfIcon Kind="{Binding IconKind}" Width="30" Height="30" StrokeWidth="1.7" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+          </Border>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+            <SelectableTextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Properties}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PropertyItem">
+              <StackPanel Spacing="1" Margin="0,0,0,11">
+                <TextBlock Text="{Binding Label}" FontSize="13.5" Foreground="{DynamicResource SecondaryTextBrush}" />
+                <SelectableTextBlock Text="{Binding Value}" FontSize="12.5" Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding Message}" FontSize="12" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- DDL -->
+    <Grid Grid.Row="1" IsVisible="{Binding IsDdlTab}" RowDefinitions="*,Auto">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto">
+        <SelectableTextBlock x:Name="DdlText" Margin="12,12" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" TextWrapping="NoWrap" />
+      </ScrollViewer>
+      <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,3">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Button Classes="objbar" Click="OnCopyDdl" ToolTip.Tip="Copia DDL">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="copy" Classes="objbar-icon" /><TextBlock Text="Copia" /></StackPanel>
+          </Button>
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsDdlLoading}" Width="40" Height="2" MinWidth="0" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

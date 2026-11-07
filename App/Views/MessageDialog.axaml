@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:MosaicDB.App.Views"
+        x:Class="MosaicDB.App.Views.MessageDialog"
+        x:DataType="views:MessageDialogModel"
+        Title="{Binding Title}" Width="460" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource SurfaceBrush}">
+  <Grid RowDefinitions="*,Auto">
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16" Margin="22,22,22,18">
+      <Border Width="40" Height="40" CornerRadius="20" Background="{Binding IconBackground}" VerticalAlignment="Top">
+        <TextBlock Text="{Binding Glyph}" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+      <StackPanel Grid.Column="1" Spacing="8">
+        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+        <SelectableTextBlock Text="{Binding Message}" Foreground="{DynamicResource BodyTextBrush}" TextWrapping="Wrap" MaxHeight="320" />
+      </StackPanel>
+    </Grid>
+    <Border Grid.Row="1" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,11">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button x:Name="CancelButton" Content="{Binding CancelText}" IsVisible="{Binding HasCancel}" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+        <Button x:Name="ConfirmButton" Content="{Binding ConfirmText}" Classes="dialog-primary" Classes.danger="{Binding IsDanger}" MinWidth="90" HorizontalContentAlignment="Center" IsDefault="True" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

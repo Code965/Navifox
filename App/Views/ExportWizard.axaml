@@ -1,0 +1,154 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MosaicDB.App.ViewModels"
+        x:Class="MosaicDB.App.Views.ExportWizard"
+        x:DataType="vm:ExportWizardViewModel"
+        Title="Export Wizard" Width="780" Height="600" MinWidth="640" MinHeight="520"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource SurfaceBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- Intestazione -->
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,16" Background="{DynamicResource SurfaceBrush}">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+        <Border Width="40" Height="40" CornerRadius="11" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+          <TextBlock Text="⇡" FontSize="20" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Grid.Column="1" Text="{Binding StepTitle}" FontSize="16" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" Margin="20,14,20,10">
+      <!-- 1. Formato -->
+      <StackPanel IsVisible="{Binding IsStep1}" Spacing="6">
+        <TextBlock Text="Formato di export:" Classes="field-label" Margin="0,0,0,4" />
+        <ListBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat, Mode=TwoWay}" Background="Transparent" Classes="format-list">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ExportFormatOption">
+              <StackPanel Orientation="Horizontal" Spacing="10" Opacity="{Binding IsAvailable, Converter={x:Static vm:WizardConverters.AvailableOpacity}}">
+                <Border Width="14" Height="14" CornerRadius="7" BorderThickness="1.5" BorderBrush="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center">
+                  <Ellipse Classes="radio-dot" Width="6" Height="6" />
+                </Border>
+                <TextBlock Text="{Binding Glyph}" Width="20" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextAlignment="Center" />
+                <TextBlock Text="{Binding Display}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Text="{Binding FormatHint}" Foreground="{DynamicResource SecondaryTextBrush}" />
+      </StackPanel>
+
+      <!-- 2. Record e destinazione -->
+      <StackPanel IsVisible="{Binding IsStep2}" Spacing="14">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Record da esportare" Classes="field-label" />
+          <RadioButton GroupName="scope" Content="{Binding AllLabel}" IsChecked="{Binding ScopeAll, Mode=TwoWay}" />
+          <RadioButton GroupName="scope" Content="{Binding PageLabel}" IsChecked="{Binding ScopePage, Mode=TwoWay}" />
+          <RadioButton GroupName="scope" Content="{Binding SelectedLabel}" IsChecked="{Binding ScopeSelected, Mode=TwoWay}" IsEnabled="{Binding HasSelection}" />
+        </StackPanel>
+        <StackPanel Spacing="5">
+          <TextBlock Text="File di destinazione" Classes="field-label" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Text="{Binding Path, Mode=TwoWay}" />
+            <Button Grid.Column="1" Content="Sfoglia…" Classes="small-muted" Command="{Binding BrowseCommand}" />
+          </Grid>
+        </StackPanel>
+        <StackPanel Spacing="5" Width="260" HorizontalAlignment="Left">
+          <TextBlock Text="Codifica" Classes="field-label" />
+          <ComboBox ItemsSource="{Binding Encodings}" SelectedItem="{Binding SelectedEncoding, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- 3. Colonne -->
+      <Grid IsVisible="{Binding IsStep3}" RowDefinitions="Auto,*">
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBlock Text="Colonne" Classes="field-label" VerticalAlignment="Center" />
+          <Button Content="Seleziona tutto" Classes="objbar" Command="{Binding SelectAllColumnsCommand}" CommandParameter="all" />
+          <Button Content="Deseleziona tutto" Classes="objbar" Command="{Binding SelectAllColumnsCommand}" CommandParameter="none" />
+        </StackPanel>
+        <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+          <ListBox ItemsSource="{Binding Columns}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SelectableColumn">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Content="{Binding Name}" />
+                  <TextBlock Grid.Column="2" Text="{Binding Type}" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" FontSize="12" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
+      </Grid>
+
+      <!-- 4. Opzioni -->
+      <ScrollViewer IsVisible="{Binding IsStep4}">
+        <StackPanel Spacing="12" MaxWidth="560" HorizontalAlignment="Left">
+          <CheckBox Content="Includi la riga di intestazione (nomi colonna)" IsChecked="{Binding IncludeHeader}" IsVisible="{Binding HasHeaderOption}" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14" IsVisible="{Binding IsDelimited}">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Delimitatore di campo" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding Delimiters}" SelectedItem="{Binding SelectedDelimiter, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Qualificatore di testo" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding Qualifiers}" SelectedItem="{Binding SelectedQualifier, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+          </Grid>
+          <CheckBox Content="Racchiudi sempre i testi tra qualificatori" IsChecked="{Binding QuoteAllText}" IsVisible="{Binding IsDelimited}" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Fine riga" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding LineEndings}" SelectedItem="{Binding SelectedLineEnding, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Testo per i NULL" Classes="field-label" />
+              <TextBox Text="{Binding NullText}" Watermark="(vuoto)" />
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Formato data/ora" Classes="field-label" />
+              <TextBox Text="{Binding DateFormat}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Separatore decimale" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding DecimalSeparators}" SelectedItem="{Binding DecimalSeparator, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+          </Grid>
+          <StackPanel Spacing="8" IsVisible="{Binding IsSql}">
+            <CheckBox Content="Includi l’istruzione CREATE TABLE" IsChecked="{Binding IncludeCreateTable}" />
+            <StackPanel Spacing="5" Width="200" HorizontalAlignment="Left">
+              <TextBlock Text="Righe per istruzione INSERT" Classes="field-label" />
+              <NumericUpDown Value="{Binding SqlBatchSize}" Minimum="1" Maximum="10000" Increment="50" FormatString="0" />
+            </StackPanel>
+          </StackPanel>
+          <CheckBox Content="JSON indentato (leggibile)" IsChecked="{Binding PrettyJson}" IsVisible="{Binding IsJson}" />
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- 5. Riepilogo e avvio -->
+      <Grid IsVisible="{Binding IsStep5}" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+        <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
+          <SelectableTextBlock Text="{Binding Summary}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
+        </Border>
+        <ProgressBar Grid.Row="1" Value="{Binding ProgressValue}" IsIndeterminate="{Binding ProgressIndeterminate}" Height="6" Minimum="0" Maximum="100" />
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding ProgressText}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Apri cartella" Classes="small-muted" Command="{Binding OpenFolderCommand}" IsVisible="{Binding IsFinished}" />
+        </Grid>
+        <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+          <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
+        </Border>
+      </Grid>
+    </Grid>
+
+    <Border Grid.Row="2" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,10">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+        <TextBlock Text="{Binding ErrorMessage}" Foreground="#B42318" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <Button Grid.Column="1" Content="‹ Indietro" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" />
+        <Button Grid.Column="2" Content="Avanti ›" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding NextCommand}" IsEnabled="{Binding CanGoNext}" IsVisible="{Binding !IsLastStep}" />
+        <Button Grid.Column="3" Content="»" Classes="small-muted" MinWidth="40" HorizontalContentAlignment="Center" Command="{Binding JumpToEndCommand}" IsEnabled="{Binding CanGoNext}" IsVisible="{Binding !IsLastStep}" ToolTip.Tip="Vai al riepilogo" />
+        <Button Grid.Column="4" Content="Avvia" Classes="dialog-primary" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding StartCommand}" IsVisible="{Binding IsLastStep}" IsEnabled="{Binding !IsRunning}" />
+        <Button Grid.Column="5" Content="Chiudi" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding CloseCommand}" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

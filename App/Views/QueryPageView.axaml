@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             xmlns:m="using:MosaicDB.Core.Models"
+             x:Class="MosaicDB.App.Views.QueryPageView"
+             x:DataType="vm:QueryTabViewModel">
+  <Grid>
+    <!-- ───── Editor query ───── -->
+    <Grid IsVisible="{Binding IsEditor}" RowDefinitions="Auto,*,5,*,Auto">
+      <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,3">
+        <StackPanel Spacing="3">
+          <WrapPanel>
+            <Button Classes="objbar" Command="{Binding SaveCommand}" ToolTip.Tip="Salva (Ctrl+S)">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="download" Classes="objbar-icon" /><TextBlock Text="Salva" /></StackPanel>
+            </Button>
+            <Button Classes="objbar" Padding="3,4" Margin="-2,0,0,0">
+              <c:NfIcon Kind="chevron-down" Width="12" Height="12" />
+              <Button.Flyout>
+                <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                  <MenuItem Header="Salva con nome…" Command="{Binding SaveAsCommand}" />
+                  <MenuItem Header="Apri file SQL…" Command="{Binding OpenFileCommand}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Border Classes="toolbar-sep" />
+            <Button Classes="objbar" Command="{Binding QueryBuilderCommand}" ToolTip.Tip="Componi una SELECT in modo visuale">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="network" Classes="objbar-icon" /><TextBlock Text="Query Builder" /></StackPanel>
+            </Button>
+            <Button Classes="objbar" Command="{Binding BeautifyCommand}" ToolTip.Tip="Formatta SQL (Ctrl+Maiusc+F)">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="sliders" Classes="objbar-icon" /><TextBlock Text="Formatta SQL" /></StackPanel>
+            </Button>
+            <Button x:Name="SnippetButton" Classes="objbar" ToolTip.Tip="Inserisci un modello di codice">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="code" Classes="objbar-icon" /><TextBlock Text="Snippet" /><c:NfIcon Kind="chevron-down" Width="11" Height="11" /></StackPanel>
+            </Button>
+          </WrapPanel>
+          <Grid ColumnDefinitions="260,200,Auto" ColumnSpacing="6">
+            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}" HorizontalAlignment="Stretch" MinHeight="28" FontSize="12.5">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="m:ConnectionProfile">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <c:DialectBadge Profile="{Binding .}" Size="22" />
+                  <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ., Converter={x:Static c:DialectVisuals.SummaryConverter}}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
+                  </StackPanel>
+                </Grid>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Databases}" SelectedItem="{Binding SelectedDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch" MinHeight="28" FontSize="12.5" PlaceholderText="(nessun database)">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="database" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" /></StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+              <Button x:Name="RunButton" Classes="objbar" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Esegui (Ctrl+Invio o F5) · con una selezione esegue solo quella">
+                <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="play" Classes="objbar-icon run" /><TextBlock Text="Esegui" FontWeight="SemiBold" /></StackPanel>
+              </Button>
+              <Button Classes="objbar" Padding="3,4" Margin="-2,0,0,0" IsEnabled="{Binding !IsBusy}">
+                <c:NfIcon Kind="chevron-down" Width="12" Height="12" />
+                <Button.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                    <MenuItem Header="Esegui tutto" Command="{Binding ExecuteAllCommand}" InputGesture="Ctrl+R" />
+                    <MenuItem x:Name="RunSelectionItem" Header="Esegui selezione" InputGesture="Ctrl+Enter" />
+                    <MenuItem x:Name="RunCurrentItem" Header="Esegui istruzione corrente" InputGesture="Ctrl+Shift+Enter" />
+                  </MenuFlyout>
+                </Button.Flyout>
+              </Button>
+              <Button Classes="objbar" Command="{Binding StopCommand}" IsEnabled="{Binding IsBusy}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="stop" Classes="objbar-icon" /><TextBlock Text="Interrompi" /></StackPanel>
+              </Button>
+              <Button x:Name="ExplainButton" Classes="objbar" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Piano di esecuzione dell’istruzione corrente">
+                <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="layers" Classes="objbar-icon" /><TextBlock Text="Explain" /></StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+      <c:SqlEditor x:Name="SqlEditor" Grid.Row="1" Padding="6,8" />
+      <GridSplitter Grid.Row="2" Background="{DynamicResource BorderBrush}" ResizeDirection="Rows" />
+      <TabControl Grid.Row="3" SelectedIndex="{Binding ResultTabIndex, Mode=TwoWay}" Classes="workspace" Padding="0">
+        <TabItem Header="Risultato">
+          <DataGrid x:Name="ResultGrid" Classes="nf-grid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
+                    CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="False" />
+        </TabItem>
+        <TabItem Header="Messaggi">
+          <ListBox ItemsSource="{Binding Messages}" Background="Transparent" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="x:String"><SelectableTextBlock Text="{Binding .}" TextWrapping="Wrap" /></DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </TabItem>
+      </TabControl>
+      <Border Grid.Row="4" Classes="grid-statusbar">
+        <DockPanel>
+          <ProgressBar DockPanel.Dock="Right" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="100" Height="3" MinWidth="0" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <!-- ───── Console ───── -->
+    <Grid IsVisible="{Binding IsConsole}" RowDefinitions="*,Auto" Background="#16181C">
+      <TextBox x:Name="ConsoleOutput" Text="{Binding ConsoleText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+               FontFamily="Cascadia Mono,Consolas,monospace" FontSize="13" Foreground="#E9E7E4" Background="Transparent"
+               BorderThickness="0" CornerRadius="0" Padding="12,10" CaretBrush="Transparent"
+               ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+      <Border Grid.Row="1" BorderBrush="#2A2F36" BorderThickness="0,1,0,0" Padding="12,6">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+          <TextBlock Text="{Binding Prompt}" Foreground="#FF7A2F" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="13" VerticalAlignment="Center" />
+          <TextBox x:Name="ConsoleInputBox" Grid.Column="1" Text="{Binding ConsoleInput, Mode=TwoWay}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="13"
+                   Foreground="#E9E7E4" Background="Transparent" BorderThickness="0" CaretBrush="#FF7A2F" Padding="0,4" />
+          <ProgressBar Grid.Column="2" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="60" Height="3" MinWidth="0" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

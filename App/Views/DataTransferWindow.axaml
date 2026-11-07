@@ -1,0 +1,212 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MosaicDB.App.ViewModels"
+        xmlns:m="using:MosaicDB.Core.Models"
+        xmlns:c="using:MosaicDB.App.Controls"
+        x:Class="MosaicDB.App.Views.DataTransferWindow"
+        x:DataType="vm:DataTransferViewModel"
+        Title="Trasferimento dati" Width="1000" Height="680" MinWidth="820" MinHeight="560"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource AppBackgroundBrush}">
+  <Window.Styles>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style Selector="Border.step-dot">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Background" Value="{DynamicResource SubtleSurfaceBrush}" />
+    </Style>
+    <Style Selector="Border.step-dot.on">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.step-dot TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.step-dot.on TextBlock">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- testata: origine → destinazione + passi -->
+    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,14">
+      <Grid ColumnDefinitions="*,Auto,*">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Classes="step-dot" Classes.on="{Binding IsStep1}"><TextBlock Text="1" /></Border>
+          <Border Classes="step-dot" Classes.on="{Binding IsStep2}"><TextBlock Text="2" /></Border>
+          <Border Classes="step-dot" Classes.on="{Binding IsStep3}"><TextBlock Text="3" /></Border>
+          <TextBlock Text="{Binding StepTitle}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+          <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SourceTitle}" FontWeight="SemiBold" HorizontalAlignment="Right" />
+            <TextBlock Text="{Binding SourceSubtitle}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" />
+          </StackPanel>
+          <c:DialectBadge Profile="{Binding SourceProfile}" Size="30" />
+          <c:NfIcon Kind="chevron-right" Width="20" Height="20" StrokeWidth="2.6" Foreground="{DynamicResource AccentBrush}" />
+          <Grid>
+            <c:DialectBadge Profile="{Binding TargetProfile}" Size="30" IsVisible="{Binding TargetIsConnection}" />
+            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" IsVisible="{Binding TargetIsFile}">
+              <c:NfIcon Kind="file-code" Width="17" Height="17" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+            </Border>
+          </Grid>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{Binding TargetTitle}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding TargetSubtitle}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <!-- ═══ PASSO 1: origine e destinazione ═══ -->
+      <Grid IsVisible="{Binding IsStep1}" ColumnDefinitions="*,Auto,*" Margin="34,26,34,10">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Origine" Classes="section" />
+          <TextBlock Text="Connessione" Classes="field-label" />
+          <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SourceProfile, Mode=TwoWay}" HorizontalAlignment="Stretch" MinHeight="44">
+            <ComboBox.ItemTemplate><DataTemplate x:DataType="m:ConnectionProfile">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                <c:DialectBadge Profile="{Binding .}" Size="22" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding ., Converter={x:Static c:DialectVisuals.SummaryConverter}}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="Database" Classes="field-label" Margin="0,6,0,0" />
+          <ComboBox ItemsSource="{Binding SourceDatabases}" SelectedItem="{Binding SourceDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate><DataTemplate x:DataType="x:String">
+              <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="database" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" /></StackPanel>
+            </DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="Informazioni" Classes="section" Margin="0,26,0,4" />
+          <ItemsControl ItemsSource="{Binding SourceInfo}">
+            <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:PropertyItem">
+              <Grid ColumnDefinitions="160,*" Margin="0,2"><TextBlock Text="{Binding Label}" Foreground="{DynamicResource SecondaryTextBrush}" /><SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" /></Grid>
+            </DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Margin="28,62,28,0" VerticalAlignment="Top" Spacing="8">
+          <Button Classes="tb-icon" Command="{Binding SwapCommand}" IsEnabled="{Binding TargetIsConnection}" ToolTip.Tip="Scambia origine e destinazione" Width="36" Height="34">
+            <c:NfIcon Kind="transfer" Width="18" Height="18" />
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Spacing="8">
+          <TextBlock Text="Destinazione" Classes="section" />
+          <StackPanel Orientation="Horizontal" Spacing="22">
+            <RadioButton GroupName="target" Content="Connessione" IsChecked="{Binding TargetIsConnection, Mode=TwoWay}" />
+            <RadioButton GroupName="target" Content="File SQL" IsChecked="{Binding TargetIsFile, Mode=TwoWay}" />
+          </StackPanel>
+          <StackPanel Spacing="8" IsVisible="{Binding TargetIsConnection}">
+            <ComboBox ItemsSource="{Binding TargetProfiles}" SelectedItem="{Binding TargetProfile, Mode=TwoWay}" HorizontalAlignment="Stretch" MinHeight="44">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="m:ConnectionProfile">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <c:DialectBadge Profile="{Binding .}" Size="22" />
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ., Converter={x:Static c:DialectVisuals.SummaryConverter}}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Solo connessioni dello stesso tipo dell’origine." FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" />
+            <TextBlock Text="Database" Classes="field-label" />
+            <ComboBox ItemsSource="{Binding TargetDatabases}" SelectedItem="{Binding TargetDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="x:String">
+                <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="database" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" /></StackPanel>
+              </DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Spacing="6" IsVisible="{Binding TargetIsFile}">
+            <TextBlock Text="File di destinazione" Classes="field-label" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding TargetFile, Mode=TwoWay}" Watermark="C:\…\export.sql" />
+              <Button Grid.Column="1" Content="Sfoglia…" Classes="small-muted" Command="{Binding BrowseFileCommand}" />
+            </Grid>
+            <TextBlock Text="Viene creato uno script SQL con struttura e/o dati delle tabelle scelte." FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+          <TextBlock Text="Informazioni" Classes="section" Margin="0,26,0,4" IsVisible="{Binding TargetIsConnection}" />
+          <ItemsControl ItemsSource="{Binding TargetInfo}" IsVisible="{Binding TargetIsConnection}">
+            <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:PropertyItem">
+              <Grid ColumnDefinitions="160,*" Margin="0,2"><TextBlock Text="{Binding Label}" Foreground="{DynamicResource SecondaryTextBrush}" /><SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" /></Grid>
+            </DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Grid>
+
+      <!-- ═══ PASSO 2: tabelle e opzioni ═══ -->
+      <Grid IsVisible="{Binding IsStep2}" ColumnDefinitions="*,280" ColumnSpacing="12" Margin="16,12,16,10">
+        <Border Classes="card">
+          <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,240" ColumnSpacing="4" Margin="8,6">
+              <TextBlock Text="Tabelle" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <Button Grid.Column="1" Classes="objbar" Content="Tutte" Command="{Binding SelectAllCommand}" CommandParameter="all" ToolTip.Tip="Seleziona le tabelle visibili" />
+              <Button Grid.Column="2" Classes="objbar" Content="Nessuna" Command="{Binding SelectAllCommand}" CommandParameter="none" ToolTip.Tip="Deseleziona le tabelle visibili" />
+              <TextBlock Grid.Column="3" Text="{Binding SelectionLabel}" FontSize="12" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" Margin="8,0" />
+              <Grid Grid.Column="4">
+                <TextBox Text="{Binding TableFilter, Mode=TwoWay}" Watermark="Filtra tabelle…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
+                <c:NfIcon Kind="search" Width="13" Height="13" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
+              </Grid>
+            </Grid>
+            <ListBox Grid.Row="1" ItemsSource="{Binding VisibleTables}" Background="Transparent" Classes="dense">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:TransferTable">
+                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="7">
+                    <CheckBox Classes="crit-check" IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding !IsView}" />
+                    <c:NfIcon Grid.Column="1" Kind="{Binding Glyph}" Width="14" Height="14" Foreground="{DynamicResource SecondaryTextBrush}" />
+                    <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="3" Text="{Binding State}" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+        <Border Grid.Column="1" Classes="card" Padding="12" VerticalAlignment="Top">
+          <StackPanel Spacing="8">
+            <TextBlock Text="OPZIONI" Classes="field-label" />
+            <CheckBox Classes="crit-check" Content="Crea le tabelle (elimina se esistono)" IsChecked="{Binding CreateTables, Mode=TwoWay}" />
+            <CheckBox Classes="crit-check" Content="Copia i dati" IsChecked="{Binding CopyData, Mode=TwoWay}" />
+            <CheckBox Classes="crit-check" Content="Svuota le tabelle di destinazione" IsChecked="{Binding EmptyTarget, Mode=TwoWay}" IsEnabled="{Binding !CreateTables}" IsVisible="{Binding TargetIsConnection}" />
+            <CheckBox Classes="crit-check" Content="Continua in caso di errore" IsChecked="{Binding ContinueOnError, Mode=TwoWay}" IsVisible="{Binding TargetIsConnection}" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- ═══ PASSO 3: riepilogo e avvio ═══ -->
+      <Grid IsVisible="{Binding IsStep3}" RowDefinitions="Auto,Auto,*" RowSpacing="10" Margin="16,12,16,10">
+        <Border Classes="card" Padding="14,12" MaxHeight="260">
+          <ScrollViewer><SelectableTextBlock Text="{Binding Summary}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" /></ScrollViewer>
+        </Border>
+        <ProgressBar Grid.Row="1" Value="{Binding Progress}" Height="6" MinWidth="0" Maximum="100" />
+        <Border Grid.Row="2" Classes="card">
+          <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" />
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- piede -->
+    <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,10">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+        <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="1" Content="‹ Indietro" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" />
+        <Button Grid.Column="2" Content="Avanti ›" Classes="dialog-primary" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" />
+        <Button Grid.Column="3" Content="Interrompi" Classes="small-muted" Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}" IsVisible="{Binding IsLastStep}" />
+        <Button Grid.Column="4" Content="Avvia" Classes="dialog-primary" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding StartCommand}" IsEnabled="{Binding !IsRunning}" IsVisible="{Binding IsLastStep}" />
+        <Button Grid.Column="5" Content="Chiudi" Classes="small-muted" MinWidth="80" HorizontalContentAlignment="Center" Command="{Binding CloseCommand}" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

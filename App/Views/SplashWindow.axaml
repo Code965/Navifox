@@ -1,0 +1,76 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MosaicDB.App.Views.SplashWindow"
+        Title="NaviFox" Width="760" Height="400" CanResize="False" ShowInTaskbar="True"
+        SystemDecorations="None" WindowStartupLocation="CenterScreen" Topmost="False"
+        RequestedThemeVariant="Dark" Background="#0B0C0E" TransparencyLevelHint="Transparent">
+  <Border CornerRadius="14" ClipToBounds="True" BorderBrush="#2A2F36" BorderThickness="1">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#0B0C0E" Offset="0" />
+        <GradientStop Color="#121418" Offset="0.55" />
+        <GradientStop Color="#1E140E" Offset="1" />
+      </LinearGradientBrush>
+    </Border.Background>
+    <Grid>
+      <!-- bagliore arancione -->
+      <Ellipse Width="560" Height="560" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-180,0" Opacity="0.55" IsHitTestVisible="False">
+        <Ellipse.Fill>
+          <RadialGradientBrush>
+            <GradientStop Color="#55FF7A2F" Offset="0" />
+            <GradientStop Color="#00FF7A2F" Offset="1" />
+          </RadialGradientBrush>
+        </Ellipse.Fill>
+      </Ellipse>
+
+      <!-- illustrazione: pile di database isometriche (originale NaviFox) -->
+      <Canvas Width="300" Height="300" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,34,10" IsHitTestVisible="False">
+        <!-- piastra di base -->
+        <Path Data="M150 230 L270 170 L150 110 L30 170 Z" Fill="#1A1D22" Stroke="#2A2F36" StrokeThickness="1.5" />
+        <Path Data="M30 170 L30 186 L150 246 L150 230 Z" Fill="#121418" />
+        <Path Data="M270 170 L270 186 L150 246 L150 230 Z" Fill="#16181C" />
+        <!-- cilindro sinistro -->
+        <Path Data="M70 160 L70 118 A32 12 0 0 1 134 118 L134 160 A32 12 0 0 1 70 160 Z" Fill="#C4501A" />
+        <Path Data="M70 118 A32 12 0 0 1 134 118 A32 12 0 0 1 70 118 Z" Fill="#FFA066" />
+        <Path Data="M70 132 A32 12 0 0 0 134 132 M70 146 A32 12 0 0 0 134 146" Stroke="#7A2E0C" StrokeThickness="2" />
+        <!-- cilindro alto centrale -->
+        <Path Data="M134 150 L134 70 A34 13 0 0 1 202 70 L202 150 A34 13 0 0 1 134 150 Z" Fill="#E8590C" />
+        <Path Data="M134 70 A34 13 0 0 1 202 70 A34 13 0 0 1 134 70 Z" Fill="#FFB07F" />
+        <Path Data="M134 92 A34 13 0 0 0 202 92 M134 114 A34 13 0 0 0 202 114 M134 136 A34 13 0 0 0 202 136" Stroke="#7A2E0C" StrokeThickness="2" />
+        <!-- cilindro destro -->
+        <Path Data="M196 176 L196 146 A28 10 0 0 1 252 146 L252 176 A28 10 0 0 1 196 176 Z" Fill="#3A2A20" Stroke="#FF7A2F" StrokeThickness="1.5" />
+        <Path Data="M196 146 A28 10 0 0 1 252 146 A28 10 0 0 1 196 146 Z" Fill="#5A3A28" Stroke="#FF7A2F" StrokeThickness="1.5" />
+        <!-- collegamenti -->
+        <Path Data="M102 108 C 110 60, 150 40, 168 56 M224 136 C 232 100, 214 80, 202 84" Stroke="#FF7A2F" StrokeThickness="2" StrokeDashArray="3,3" Opacity="0.8" />
+        <Ellipse Canvas.Left="97" Canvas.Top="103" Width="10" Height="10" Fill="#FF7A2F" />
+        <Ellipse Canvas.Left="219" Canvas.Top="131" Width="10" Height="10" Fill="#FF7A2F" />
+        <!-- tessera SQL -->
+        <Border Canvas.Left="22" Canvas.Top="56" Width="74" Height="40" CornerRadius="8" Background="#1A1D22" BorderBrush="#FF7A2F" BorderThickness="1.5">
+          <TextBlock Text="SQL" FontFamily="Cascadia Mono,Consolas,monospace" FontWeight="Bold" Foreground="#FF8A47" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15" />
+        </Border>
+        <Border Canvas.Left="214" Canvas.Top="40" Width="64" Height="34" CornerRadius="8" Background="#FF7A2F">
+          <TextBlock Text="{}{ }" FontFamily="Cascadia Mono,Consolas,monospace" FontWeight="Bold" Foreground="#1A0D05" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" />
+        </Border>
+      </Canvas>
+
+      <!-- marchio e testi -->
+      <StackPanel Margin="46,42,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="0">
+        <Image Source="avares://Navifox/Assets/NaviFoxBrand/png/navifox-mark-512.png" Width="62" Height="62" HorizontalAlignment="Left" />
+      </StackPanel>
+      <StackPanel Margin="46,0,0,8" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="4">
+        <TextBlock FontSize="58" FontWeight="Black" LetterSpacing="-1">
+          <Run Text="Navi" Foreground="#F4F2EF" /><Run Text="Fox" Foreground="#FF7A2F" />
+        </TextBlock>
+        <TextBlock Text="DATABASE STUDIO" FontSize="15" FontWeight="SemiBold" LetterSpacing="4" Foreground="#C9CDD2" />
+      </StackPanel>
+      <StackPanel Margin="46,0,0,44" HorizontalAlignment="Left" VerticalAlignment="Bottom" Spacing="10" Width="330">
+        <TextBlock Text="Gestione database relazionali · MySQL · MariaDB · PostgreSQL" FontSize="13" Foreground="#9BA1A9" TextWrapping="Wrap" />
+        <ProgressBar x:Name="Progress" IsIndeterminate="True" Height="3" MinWidth="0" Foreground="#FF7A2F" Background="#22262C" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock x:Name="StatusText" Text="Avvio…" FontSize="11.5" Foreground="#7A8089" />
+          <TextBlock x:Name="VersionText" Grid.Column="1" FontSize="11.5" Foreground="#5C626B" />
+        </Grid>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>

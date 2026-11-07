@@ -1,0 +1,231 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MosaicDB.App.ViewModels"
+        xmlns:views="using:MosaicDB.App.Views"
+        xmlns:c="using:MosaicDB.App.Controls"
+        x:Class="MosaicDB.App.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Navifox" Width="960" Height="640"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource AppBackgroundBrush}">
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:TableTabViewModel">
+      <views:TablePageView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:QueryTabViewModel">
+      <views:QueryPageView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:ModelTabViewModel"><views:ModelPageView /></DataTemplate>
+    <DataTemplate DataType="vm:ServerMonitorViewModel"><views:ServerMonitorView /></DataTemplate>
+    <DataTemplate DataType="vm:HistoryTabViewModel"><views:HistoryView /></DataTemplate>
+    <DataTemplate DataType="vm:FindTabViewModel"><views:FindView /></DataTemplate>
+    <DataTemplate DataType="vm:AutomationTabViewModel"><views:AutomationView /></DataTemplate>
+    <DataTemplate DataType="vm:ObjectsTabViewModel">
+      <views:ObjectsView />
+    </DataTemplate>
+  </Window.DataTemplates>
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+Shift+L" Command="{Binding ToggleTreeCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+I" Command="{Binding ToggleInfoCommand}" />
+    <KeyBinding Gesture="F6" Command="{Binding OpenConsoleCommand}" CommandParameter="{x:Null}" />
+    <KeyBinding Gesture="Ctrl+L" Command="{Binding OpenHistoryCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding OpenFindCommand}" CommandParameter="{x:Null}" />
+    <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseCurrentTabCommand}" />
+  </Window.KeyBindings>
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <!-- Barra titolo: logo + menu -->
+    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12,0,8,0" Height="38">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+        <Image Source="{DynamicResource NfLogo}" Height="20" VerticalAlignment="Center" ToolTip.Tip="NaviFox" />
+        <Menu Grid.Column="1" Background="Transparent" VerticalAlignment="Center" Classes="top-menu">
+          <MenuItem Header="File">
+            <MenuItem Header="Nuova connessione…" Command="{Binding AddConnectionCommand}"><MenuItem.Icon><c:NfIcon Kind="plus" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Nuova query" Command="{Binding NewQueryCommand}"><MenuItem.Icon><c:NfIcon Kind="file-code" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Console…" Command="{Binding OpenConsoleCommand}"><MenuItem.Icon><c:NfIcon Kind="terminal" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Esci" Command="{Binding ExitCommand}" />
+          </MenuItem>
+          <MenuItem Header="Modifica"><MenuItem Header="Annulla operazione" Command="{Binding CancelOperationCommand}"><MenuItem.Icon><c:NfIcon Kind="stop" /></MenuItem.Icon></MenuItem></MenuItem>
+          <MenuItem Header="Visualizza">
+            <MenuItem Header="Pannello connessioni" Command="{Binding ToggleTreeCommand}" InputGesture="Ctrl+Shift+L"><MenuItem.Icon><c:NfIcon Kind="panel-left" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Pannello informazioni" Command="{Binding ToggleInfoCommand}" InputGesture="Ctrl+Shift+I"><MenuItem.Icon><c:NfIcon Kind="panel-right" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Tema chiaro / scuro" Command="{Binding ToggleThemeCommand}"><MenuItem.Icon><c:NfIcon Kind="sun-moon" /></MenuItem.Icon></MenuItem>
+          </MenuItem>
+          <MenuItem Header="Preferiti" IsEnabled="False" />
+          <MenuItem Header="Strumenti">
+            <MenuItem Header="Trasferimento dati…" Command="{Binding OpenDataTransferCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="transfer" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Sincronizzazione dati…" IsEnabled="False" ToolTip.Tip="Disponibile in una fase successiva"><MenuItem.Icon><c:NfIcon Kind="sync" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Sincronizzazione struttura…" IsEnabled="False" ToolTip.Tip="Disponibile in una fase successiva"><MenuItem.Icon><c:NfIcon Kind="layers" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Console…" Command="{Binding OpenConsoleCommand}" CommandParameter="{x:Null}" InputGesture="F6"><MenuItem.Icon><c:NfIcon Kind="terminal" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Server Monitor">
+              <MenuItem.Icon><c:NfIcon Kind="activity" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="Tutti i server" Command="{Binding OpenServerMonitorCommand}" CommandParameter="{x:Null}" />
+            </MenuItem>
+            <MenuItem Header="Trova nel database/schema…" Command="{Binding OpenFindCommand}" CommandParameter="{x:Null}" InputGesture="Ctrl+Shift+F"><MenuItem.Icon><c:NfIcon Kind="search" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Registro cronologia…" Command="{Binding OpenHistoryCommand}" InputGesture="Ctrl+L"><MenuItem.Icon><c:NfIcon Kind="history" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Automazione…" Command="{Binding OpenAutomationCommand}"><MenuItem.Icon><c:NfIcon Kind="workflow" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Opzioni…" Command="{Binding OpenOptionsCommand}"><MenuItem.Icon><c:NfIcon Kind="settings" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+          </MenuItem>
+          <MenuItem Header="Finestra">
+            <MenuItem Header="Oggetti" Command="{Binding ShowCategoryCommand}" CommandParameter="Tabelle"><MenuItem.Icon><c:NfIcon Kind="list" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Chiudi scheda" Command="{Binding CloseCurrentTabCommand}" InputGesture="Ctrl+W" />
+            <MenuItem Header="Chiudi tutte le schede" Command="{Binding CloseAllTabsCommand}" />
+          </MenuItem>
+          <MenuItem Header="Aiuto"><MenuItem Header="Informazioni su Navifox" IsEnabled="False" /></MenuItem>
+        </Menu>
+        <Button Grid.Column="2" Classes="tb-icon" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="Tema chiaro / scuro">
+          <c:NfIcon Kind="sun-moon" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Toolbar snella con icone lineari -->
+    <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <StackPanel Orientation="Horizontal" Spacing="2">
+          <Button Classes="tb primary" Command="{Binding AddConnectionCommand}" ToolTip.Tip="Nuova connessione">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="plus" /><TextBlock Text="Connessione" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Command="{Binding NewQueryCommand}" ToolTip.Tip="Nuova query sul database selezionato">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="file-code" /><TextBlock Text="Nuova query" /></StackPanel>
+          </Button>
+          <Border Classes="tb-sep" />
+          <Button Classes="tb" Classes.active="{Binding IsTablesActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Tabelle">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="table" /><TextBlock Text="Tabelle" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Classes.active="{Binding IsViewsActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Viste">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="eye" /><TextBlock Text="Viste" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Classes.active="{Binding IsFunctionsActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Funzioni">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="function" /><TextBlock Text="Funzioni" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Classes.active="{Binding IsEventsActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Eventi">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="clock" /><TextBlock Text="Eventi" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Classes.active="{Binding IsTriggersActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Trigger">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="zap" /><TextBlock Text="Trigger" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Classes.active="{Binding IsSequencesActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Sequenze">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="hash" /><TextBlock Text="Sequenze" /></StackPanel>
+          </Button>
+          <Border Classes="tb-sep" />
+          <Button Classes="tb" Classes.active="{Binding IsUsersActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Utenti">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="users" /><TextBlock Text="Utenti" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Classes.active="{Binding IsQueriesActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Query salvate">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="bookmark" /><TextBlock Text="Query" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Classes.active="{Binding IsBackupActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Backup">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="archive" /><TextBlock Text="Backup" /></StackPanel>
+          </Button>
+          <Border Classes="tb-sep" />
+          <Button Classes="tb" Command="{Binding OpenAutomationCommand}" ToolTip.Tip="Attività pianificate: query, dump ed export automatici">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="workflow" /><TextBlock Text="Automazione" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Command="{Binding OpenModelCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Modello relazionale del database selezionato">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="network" /><TextBlock Text="Modello" /></StackPanel>
+          </Button>
+          <Button Classes="tb" Command="{Binding OpenServerMonitorCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Processi, variabili e stato del server">
+            <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="activity" /><TextBlock Text="Monitor" /></StackPanel>
+          </Button>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <Grid x:Name="MainGrid" Grid.Row="2" ColumnDefinitions="280,6,*,6,300" Margin="10,10,10,8">
+      <!-- Pannello connessioni: connessione → database → (schema) → categorie → tabelle -->
+      <Border Grid.Column="0" IsVisible="{Binding IsTreeVisible}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <Grid ColumnDefinitions="*" Margin="10,10,6,8">
+            <TextBlock Text="Connessioni" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" />
+          </Grid>
+          <Grid Grid.Row="1" Margin="8,0,8,6">
+            <TextBox Text="{Binding SearchText, Mode=TwoWay}" Watermark="Cerca connessioni, database, tabelle" Padding="28,5,26,5" MinHeight="28" FontSize="12">
+              <TextBox.KeyBindings>
+                <KeyBinding Gesture="Escape" Command="{Binding ClearTreeFilterCommand}" />
+              </TextBox.KeyBindings>
+            </TextBox>
+            <c:NfIcon Kind="search" Width="14" Height="14" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
+            <Button Content="✕" Classes="tree-tool" HorizontalAlignment="Right" Margin="0,0,2,0" IsVisible="{Binding HasTreeFilter}" Command="{Binding ClearTreeFilterCommand}" ToolTip.Tip="Cancella filtro (Esc)" />
+          </Grid>
+          <TreeView x:Name="ConnectionTree" Grid.Row="2" ItemsSource="{Binding RootNodes}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}" Background="Transparent" Margin="0,0,0,4">
+            <TreeView.Styles>
+              <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                <Setter Property="IsVisible" Value="{Binding IsVisible}" />
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="Padding" Value="0" />
+              </Style>
+            </TreeView.Styles>
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                  <c:NfIcon Kind="{Binding Glyph}" Classes="tree-icon" Classes.open="{Binding IsLoaded}" Classes.connection="{Binding IsConnection}" Width="15" Height="15" />
+                  <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center" />
+                  <c:DialectBadge Profile="{Binding Profile}" ShowName="True" IsVisible="{Binding IsConnection}" />
+                  <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EndpointConverter}}" IsVisible="{Binding IsConnection}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                  <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="28" Height="2" MinWidth="0" VerticalAlignment="Center" />
+                </StackPanel>
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+        </Grid>
+      </Border>
+      <GridSplitter Grid.Column="1" Width="6" Background="Transparent" ResizeDirection="Columns" IsVisible="{Binding IsTreeVisible}" />
+
+      <!-- Area di lavoro a schede: «Oggetti» fissa + tabelle aperte -->
+      <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+        <Grid>
+          <TabControl ItemsSource="{Binding OpenTabs}" SelectedItem="{Binding SelectedTab, Mode=TwoWay}" Classes="workspace" Padding="0">
+            <TabControl.ItemTemplate>
+              <DataTemplate DataType="vm:WorkspaceTabViewModel">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:NfIcon Kind="{Binding TabGlyph}" Foreground="{DynamicResource AccentBrush}" Width="14" Height="14" />
+                  <TextBlock Text="{Binding TabTitle}" VerticalAlignment="Center" />
+                  <Button Content="×" Classes="tab-close" IsVisible="{Binding CanClose}"
+                          Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding .}" />
+                </StackPanel>
+              </DataTemplate>
+            </TabControl.ItemTemplate>
+          </TabControl>
+
+          <Border IsVisible="{Binding ShowWelcome}" Background="{DynamicResource InsetBrush}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="17" MaxWidth="560" Margin="24">
+              <Border Width="72" Height="72" Background="{DynamicResource AccentSoftBrush}" CornerRadius="20" HorizontalAlignment="Center">
+                <Image Source="{DynamicResource NfMark}" Width="44" Height="44" Stretch="Uniform" />
+              </Border>
+              <TextBlock Text="Il tuo spazio dati, in un unico posto" FontSize="26" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center" TextWrapping="Wrap" />
+              <TextBlock Text="Collega MySQL, MariaDB o PostgreSQL per esplorare database, schemi e tabelle. Apri più tabelle affiancate nel tuo flusso di lavoro." FontSize="15" Foreground="{DynamicResource SecondaryTextBrush}" TextAlignment="Center" TextWrapping="Wrap" LineHeight="23" />
+              <Button Content="＋  Aggiungi una connessione" Command="{Binding AddConnectionCommand}" Classes="welcome-button" HorizontalAlignment="Center" Padding="18,11" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- Pannello informazioni -->
+      <GridSplitter Grid.Column="3" Width="6" Background="Transparent" ResizeDirection="Columns" IsVisible="{Binding IsInfoVisible}" />
+      <Border Grid.Column="4" IsVisible="{Binding IsInfoVisible}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+        <views:InfoPanelView DataContext="{Binding Info}" />
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,8">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="20">
+        <StackPanel Orientation="Horizontal" Spacing="6"><Ellipse Width="7" Height="7" Fill="#45A989" VerticalAlignment="Center" /><TextBlock Text="{Binding ConnectionCount}" Foreground="#5C6878" /><TextBlock Text="connessioni attive" Foreground="#8A97A6" /></StackPanel>
+        <TextBlock Grid.Column="1" Text="{Binding ActiveContext}" Foreground="#5C6878" />
+        <TextBlock Grid.Column="3" Text="{Binding StatusMessage}" Foreground="#718092" TextTrimming="CharacterEllipsis" MaxWidth="600" />
+        <TextBlock Grid.Column="4" Text="{Binding ElapsedTime}" Foreground="#8A97A6" />
+        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="2" Margin="-8,-4">
+          <ToggleButton Classes="panel-toggle" IsChecked="{Binding IsTreeVisible, Mode=TwoWay}" ToolTip.Tip="Mostra/nascondi il pannello connessioni (Ctrl+Maiusc+L)">
+            <c:NfIcon Kind="panel-left" Width="15" Height="15" />
+          </ToggleButton>
+          <ToggleButton Classes="panel-toggle" IsChecked="{Binding IsInfoVisible, Mode=TwoWay}" ToolTip.Tip="Mostra/nascondi il pannello informazioni (Ctrl+Maiusc+I)">
+            <c:NfIcon Kind="panel-right" Width="15" Height="15" />
+          </ToggleButton>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:s="using:MosaicDB.App.Services"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.HistoryView"
+             x:DataType="vm:HistoryTabViewModel">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <Grid ColumnDefinitions="*,Auto">
+        <WrapPanel>
+          <Button Classes="objbar" Command="{Binding OpenInQueryCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="file-code" Classes="objbar-icon" /><TextBlock Text="Apri in una query" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding CopyCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="copy" Classes="objbar-icon" /><TextBlock Text="Copia" /></StackPanel>
+          </Button>
+          <ToggleButton Classes="objbar" IsChecked="{Binding OnlyErrors, Mode=TwoWay}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="filter" Classes="objbar-icon" /><TextBlock Text="Solo errori" /></StackPanel>
+          </ToggleButton>
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding ClearCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Svuota" /></StackPanel>
+          </Button>
+        </WrapPanel>
+        <Grid Grid.Column="1" Width="240" VerticalAlignment="Center">
+          <TextBox Text="{Binding FilterText, Mode=TwoWay}" Watermark="Cerca nella cronologia…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
+          <c:NfIcon Kind="search" Width="13" Height="13" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
+        </Grid>
+      </Grid>
+    </Border>
+    <DataGrid x:Name="HistoryGrid" Grid.Row="1" Classes="nf-grid history-grid" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected, Mode=TwoWay}"
+              AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Ora" Binding="{Binding TimeLabel}" Width="150" x:DataType="s:SqlHistoryEntry" />
+        <DataGridTextColumn Header="Connessione" Binding="{Binding Target}" Width="190" x:DataType="s:SqlHistoryEntry" />
+        <DataGridTextColumn Header="Durata" Binding="{Binding DurationLabel}" Width="80" x:DataType="s:SqlHistoryEntry" />
+        <DataGridTemplateColumn Header="Esito" Width="70">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="s:SqlHistoryEntry">
+              <c:NfIcon Kind="{Binding Succeeded, Converter={x:Static vm:WizardConverters.OkIcon}}" Width="13" Height="13" Classes="history-state" Classes.error="{Binding !Succeeded}" ToolTip.Tip="{Binding Error}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Istruzione" Width="*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="s:SqlHistoryEntry">
+              <TextBlock Text="{Binding SqlOneLine}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" VerticalAlignment="Center" Margin="6,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Sql}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+    <Border Grid.Row="2" Classes="grid-statusbar"><TextBlock Text="{Binding CountLabel}" VerticalAlignment="Center" /></Border>
+  </Grid>
+</UserControl>

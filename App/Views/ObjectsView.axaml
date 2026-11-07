@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.ObjectsView"
+             x:DataType="vm:ObjectsTabViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Ctrl+F" Command="{Binding ToggleSearchCommand}" />
+  </UserControl.KeyBindings>
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <!-- Toolbar contestuale -->
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
+      <Grid ColumnDefinitions="*,Auto">
+        <WrapPanel Orientation="Horizontal">
+          <Button Classes="objbar" Command="{Binding OpenSelectedCommand}" ToolTip.Tip="Apri la tabella selezionata (doppio clic o Invio)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="table" Classes="objbar-icon" /><TextBlock Text="Apri tabella" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" IsEnabled="False"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="pencil" Classes="objbar-icon" /><TextBlock Text="Progetta tabella" /></StackPanel></Button>
+          <Button Classes="objbar" IsEnabled="False"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova tabella" /></StackPanel></Button>
+          <Button Classes="objbar" IsEnabled="False"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina tabella" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding ImportCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="import" Classes="objbar-icon" /><TextBlock Text="Import Wizard" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding ExportCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="export" Classes="objbar-icon" /><TextBlock Text="Export Wizard" /></StackPanel></Button>
+        </WrapPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top">
+          <Button Classes="objbar" Command="{Binding RefreshCommand}" IsEnabled="{Binding HasSource}" ToolTip.Tip="Aggiorna elenco">
+            <c:NfIcon Kind="refresh" Classes="objbar-icon" />
+          </Button>
+          <ToggleButton Classes="objbar" IsChecked="{Binding IsSearchOpen, Mode=TwoWay}" ToolTip.Tip="Cerca negli oggetti (Ctrl+F)">
+            <c:NfIcon Kind="search" Classes="objbar-icon" />
+          </ToggleButton>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Barra di ricerca (lente) -->
+    <Border Grid.Row="1" IsVisible="{Binding IsSearchOpen}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,6">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <TextBlock Text="⌕" FontSize="16" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" />
+        <TextBox x:Name="SearchBox" Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Watermark="Filtra per nome o commento…">
+          <TextBox.KeyBindings>
+            <KeyBinding Gesture="Escape" Command="{Binding CloseSearchCommand}" />
+          </TextBox.KeyBindings>
+        </TextBox>
+        <Button Grid.Column="2" Content="✕" Classes="objbar" Command="{Binding CloseSearchCommand}" ToolTip.Tip="Chiudi ricerca (Esc)" />
+      </Grid>
+    </Border>
+
+    <!-- Intestazione contesto -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,8,12,6">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding Context}" IsVisible="{Binding HasSource}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <ProgressBar Grid.Column="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="90" Height="3" MinWidth="0" VerticalAlignment="Center" />
+    </Grid>
+
+    <DataGrid x:Name="ObjectsGrid" Grid.Row="3" ItemsSource="{Binding VisibleObjects}" SelectedItem="{Binding SelectedObject, Mode=TwoWay}"
+              AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="None" HeadersVisibility="Column"
+              CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" RowHeight="26"
+              SelectionMode="Extended" IsVisible="{Binding HasSource}">
+      <DataGrid.Columns>
+        <DataGridTemplateColumn Header="Nome" Width="260" SortMemberPath="Name">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:ObjectRowViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="7" Margin="8,0" VerticalAlignment="Center">
+                <c:NfIcon Kind="{Binding Glyph}" Foreground="{DynamicResource AccentBrush}" Width="14" Height="14" />
+                <TextBlock Text="{Binding Name}" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Auto Increment" Width="135" SortMemberPath="AutoIncrementValue">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:ObjectRowViewModel">
+              <TextBlock Text="{Binding AutoIncrement}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Data modifica" Binding="{Binding Modified}" Width="150" SortMemberPath="ModifiedValue" x:DataType="vm:ObjectRowViewModel" />
+        <DataGridTemplateColumn Header="Dimensione dati" Width="135" SortMemberPath="DataSizeValue">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:ObjectRowViewModel">
+              <TextBlock Text="{Binding DataSize}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Engine" Binding="{Binding Engine}" Width="90" x:DataType="vm:ObjectRowViewModel" />
+        <DataGridTemplateColumn Header="Righe" Width="100" SortMemberPath="RowsValue">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:ObjectRowViewModel">
+              <TextBlock Text="{Binding Rows}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Commento" Binding="{Binding Comment}" Width="*" MinWidth="120" x:DataType="vm:ObjectRowViewModel" />
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <!-- Stato vuoto -->
+    <StackPanel Grid.Row="3" IsVisible="{Binding !HasSource}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24">
+      <c:NfIcon Kind="table" Width="36" Height="36" StrokeWidth="1.4" HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" />
+      <TextBlock Text="{Binding Context}" Foreground="{DynamicResource SecondaryTextBrush}" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+    </StackPanel>
+
+    <Border Grid.Row="4" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,5">
+      <TextBlock Text="{Binding CountLabel}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+    </Border>
+  </Grid>
+</UserControl>

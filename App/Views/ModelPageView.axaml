@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.ModelPageView"
+             x:DataType="vm:ModelTabViewModel">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <Grid ColumnDefinitions="*,Auto">
+        <WrapPanel Orientation="Horizontal">
+          <Button Classes="objbar" Click="OnZoomOut" ToolTip.Tip="Riduci (−)"><c:NfIcon Kind="zoom-out" Classes="objbar-icon" /></Button>
+          <TextBlock Text="{Binding ZoomLabel}" MinWidth="44" TextAlignment="Center" VerticalAlignment="Center" FontSize="12" />
+          <Button Classes="objbar" Click="OnZoomIn" ToolTip.Tip="Ingrandisci (+)"><c:NfIcon Kind="zoom-in" Classes="objbar-icon" /></Button>
+          <Button Classes="objbar" Click="OnFit" ToolTip.Tip="Adatta alla finestra (0)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="maximize" Classes="objbar-icon" /><TextBlock Text="Adatta" /></StackPanel>
+          </Button>
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Click="OnRelayout" ToolTip.Tip="Disponi automaticamente le tabelle">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="network" Classes="objbar-icon" /><TextBlock Text="Riorganizza" /></StackPanel>
+          </Button>
+          <ToggleButton Classes="objbar" IsChecked="{Binding KeysOnly, Mode=TwoWay}" ToolTip.Tip="Mostra solo chiavi primarie ed esterne">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="key" Classes="objbar-icon" /><TextBlock Text="Solo chiavi" /></StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="objbar" IsChecked="{Binding ShowTypes, Mode=TwoWay}" ToolTip.Tip="Mostra i tipi di dato">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="keyword" Classes="objbar-icon" /><TextBlock Text="Tipi" /></StackPanel>
+          </ToggleButton>
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding LoadCommand}" ToolTip.Tip="Ricarica dal database">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="refresh" Classes="objbar-icon" /><TextBlock Text="Aggiorna" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Click="OnExport" ToolTip.Tip="Esporta il diagramma come immagine PNG">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="image" Classes="objbar-icon" /><TextBlock Text="Esporta PNG" /></StackPanel>
+          </Button>
+        </WrapPanel>
+        <Grid Grid.Column="1" Width="220" VerticalAlignment="Center">
+          <TextBox Text="{Binding SearchText, Mode=TwoWay}" Watermark="Trova tabella…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
+          <c:NfIcon Kind="search" Width="13" Height="13" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
+        </Grid>
+      </Grid>
+    </Border>
+    <c:ErCanvas x:Name="Canvas" Grid.Row="1" />
+    <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Top" Height="3" MinWidth="0" />
+    <Border Grid.Row="2" Classes="grid-statusbar">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding SelectionInfo}" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

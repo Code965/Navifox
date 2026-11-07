@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:s="using:MosaicDB.App.Services"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.FindView"
+             x:DataType="vm:FindTabViewModel">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="10,8">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+        <Grid>
+          <TextBox Text="{Binding SearchText, Mode=TwoWay}" Watermark="Testo da cercare…" Padding="30,5,8,5" MinHeight="30">
+            <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" /></TextBox.KeyBindings>
+          </TextBox>
+          <c:NfIcon Kind="search" Width="14" Height="14" HorizontalAlignment="Left" Margin="10,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
+        </Grid>
+        <ComboBox Grid.Column="1" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode, Mode=TwoWay}" MinHeight="30" />
+        <CheckBox Grid.Column="2" Classes="crit-check" Content="Corrispondenza esatta" IsChecked="{Binding ExactMatch, Mode=TwoWay}" />
+        <Button Grid.Column="3" Classes="dialog-primary" Command="{Binding SearchCommand}" IsEnabled="{Binding !IsRunning}" MinWidth="80" HorizontalContentAlignment="Center" Content="Cerca" />
+        <Button Grid.Column="4" Classes="small-muted" Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}" Content="Interrompi" />
+      </Grid>
+    </Border>
+    <DataGrid x:Name="FindGrid" Grid.Row="1" Classes="nf-grid find-grid" ItemsSource="{Binding Results}" SelectedItem="{Binding Selected, Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Tabella" Binding="{Binding Table}" Width="240" x:DataType="vm:FindResult" />
+        <DataGridTextColumn Header="Colonna" Binding="{Binding Column}" Width="240" x:DataType="vm:FindResult" />
+        <DataGridTextColumn Header="Tipo" Binding="{Binding Kind}" Width="90" x:DataType="vm:FindResult" />
+        <DataGridTextColumn Header="Righe trovate" Binding="{Binding MatchesLabel}" Width="*" x:DataType="vm:FindResult" />
+      </DataGrid.Columns>
+    </DataGrid>
+    <Border Grid.Row="2" Classes="grid-statusbar">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <ProgressBar Grid.Column="1" Value="{Binding Progress}" IsVisible="{Binding IsRunning}" Width="160" Height="4" MinWidth="0" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

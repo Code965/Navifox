@@ -1,0 +1,233 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.TablePageView"
+             x:DataType="vm:TableTabViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="F5" Command="{Binding LoadCommand}" />
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding ApplyChangesCommand}" />
+    <KeyBinding Gesture="Ctrl+F" Command="{Binding ToggleFilterCommand}" />
+    <KeyBinding Gesture="Ctrl+Insert" Command="{Binding AddRowCommand}" />
+  </UserControl.KeyBindings>
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <!-- ───── Toolbar ───── -->
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <Grid ColumnDefinitions="*,Auto">
+        <WrapPanel Orientation="Horizontal">
+          <Button Classes="objbar" Command="{Binding BeginTransactionCommand}" IsVisible="{Binding !IsTransaction}" ToolTip.Tip="Le modifiche restano provvisorie finché non premi Commit">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="transaction" Classes="objbar-icon" /><TextBlock Text="Inizia transazione" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding CommitCommand}" IsVisible="{Binding IsTransaction}" ToolTip.Tip="Conferma la transazione">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="check" Classes="objbar-icon" /><TextBlock Text="Commit" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding RollbackCommand}" IsVisible="{Binding IsTransaction}" ToolTip.Tip="Annulla la transazione">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="undo" Classes="objbar-icon" /><TextBlock Text="Rollback" /></StackPanel>
+          </Button>
+          <Border Classes="toolbar-sep" />
+          <ToggleButton Classes="objbar" IsChecked="{Binding IsFieldPanelOpen, Mode=TwoWay}" ToolTip.Tip="Editor di campo: mostra il valore completo della cella">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="file-text" Classes="objbar-icon" /><TextBlock Text="{Binding FieldModeLabel}" /></StackPanel>
+          </ToggleButton>
+          <Button Classes="objbar" Padding="3,4" Margin="-2,0,0,0" ToolTip.Tip="Modalità dell’editor di campo">
+            <c:NfIcon Kind="chevron-down" Width="12" Height="12" />
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                <MenuItem Header="Testo" Command="{Binding SetFieldModeCommand}" CommandParameter="text" />
+                <MenuItem Header="Esadecimale" Command="{Binding SetFieldModeCommand}" CommandParameter="hex" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <ToggleButton Classes="objbar" IsChecked="{Binding IsFilterOpen, Mode=TwoWay}" Classes.active="{Binding IsFilterActive}" ToolTip.Tip="Filtro (Ctrl+F)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="filter" Classes="objbar-icon" Classes.active="{Binding IsFilterActive}" /><TextBlock Text="Filtro" /></StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="objbar" IsChecked="{Binding IsSortOpen, Mode=TwoWay}" Classes.active="{Binding IsSortActive}" ToolTip.Tip="Ordinamento">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="sort" Classes="objbar-icon" /><TextBlock Text="Ordina" /></StackPanel>
+          </ToggleButton>
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding ImportCommand}" ToolTip.Tip="Import Wizard">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="import" Classes="objbar-icon" /><TextBlock Text="Importa" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding ExportCommand}" ToolTip.Tip="Export Wizard">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="export" Classes="objbar-icon" /><TextBlock Text="Esporta" /></StackPanel>
+          </Button>
+        </WrapPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="8,0">
+          <Border Classes="tx-pill" IsVisible="{Binding IsTransaction}"><TextBlock Text="TRANSAZIONE" FontSize="10" FontWeight="Bold" Foreground="White" /></Border>
+          <TextBlock Text="{Binding Context}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ───── Barra filtri (stile criteri: ☑ colonna = <?> ＋ (·)＋) ───── -->
+    <Border Grid.Row="1" IsVisible="{Binding IsFilterOpen}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid RowDefinitions="Auto,*,Auto" MinHeight="150">
+        <!-- nessun criterio -->
+        <Border Classes="criteria-row selected" IsVisible="{Binding !HasFilters}" Margin="4,4,4,0">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Button Classes="crit-chip" Command="{Binding AddFilterCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Aggiungi un criterio">
+              <c:NfIcon Kind="plus" Width="11" Height="11" StrokeWidth="3" />
+            </Button>
+            <Button Classes="crit-chip" Command="{Binding AddFilterOrCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Aggiungi un criterio in OR">
+              <c:NfIcon Kind="group" Width="12" Height="12" StrokeWidth="2.5" />
+            </Button>
+            <TextBlock Text="Fai clic su «+» per aggiungere un criterio di filtro" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="6,0,0,0" />
+          </StackPanel>
+        </Border>
+        <!-- criteri -->
+        <ItemsControl Grid.Row="0" ItemsSource="{Binding Filters}" IsVisible="{Binding HasFilters}" Margin="4,4,4,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FilterConditionViewModel">
+              <Border Classes="criteria-row" Classes.selected="{Binding IsSelected}" Tag="{Binding .}" PointerPressed="OnFilterRowPressed">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                  <CheckBox Classes="crit-check" IsChecked="{Binding IsEnabled, Mode=TwoWay}" />
+                  <Button Classes="crit-link connector" Content="{Binding Connector}" Tag="connector" Click="OnCriteriaLinkClick" IsVisible="{Binding !IsFirst}" />
+                  <Button Classes="crit-link column" Content="{Binding Column}" Tag="column" Click="OnCriteriaLinkClick" IsVisible="{Binding ShowColumn}" />
+                  <Button Classes="crit-link operator" Content="{Binding Operator.Label}" Tag="operator" Click="OnCriteriaLinkClick" />
+                  <TextBox Classes="crit-value" Text="{Binding Value, Mode=TwoWay}" Watermark="&lt;?&gt;" IsVisible="{Binding NeedsValue}" />
+                  <TextBlock Text="e" IsVisible="{Binding NeedsSecondValue}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Margin="2,0" />
+                  <TextBox Classes="crit-value" Text="{Binding Value2, Mode=TwoWay}" Watermark="&lt;?&gt;" IsVisible="{Binding NeedsSecondValue}" />
+                  <Button Classes="crit-chip" Margin="6,0,0,0" ToolTip.Tip="Aggiungi un criterio"
+                          Command="{Binding $parent[UserControl].((vm:TableTabViewModel)DataContext).AddFilterCommand}" CommandParameter="{Binding .}">
+                    <c:NfIcon Kind="plus" Width="11" Height="11" StrokeWidth="3" />
+                  </Button>
+                  <Button Classes="crit-chip" ToolTip.Tip="Aggiungi un criterio in OR"
+                          Command="{Binding $parent[UserControl].((vm:TableTabViewModel)DataContext).AddFilterOrCommand}" CommandParameter="{Binding .}">
+                    <c:NfIcon Kind="group" Width="12" Height="12" StrokeWidth="2.5" />
+                  </Button>
+                  <Button Classes="crit-chip remove" IsVisible="{Binding IsSelected}" ToolTip.Tip="Rimuovi criterio"
+                          Command="{Binding $parent[UserControl].((vm:TableTabViewModel)DataContext).RemoveFilterCommand}" CommandParameter="{Binding .}">
+                    <c:NfIcon Kind="x" Width="11" Height="11" StrokeWidth="3" />
+                  </Button>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <!-- ↑ ↓ ✓ Applica -->
+        <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,4">
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Button Classes="objbar" Command="{Binding MoveFilterUpCommand}" IsEnabled="{Binding HasFilters}" ToolTip.Tip="Sposta su"><c:NfIcon Kind="arrow-up" Width="14" Height="14" /></Button>
+            <Button Classes="objbar" Command="{Binding MoveFilterDownCommand}" IsEnabled="{Binding HasFilters}" ToolTip.Tip="Sposta giù"><c:NfIcon Kind="arrow-down" Width="14" Height="14" /></Button>
+            <Button Classes="objbar" Command="{Binding ApplyFilterCommand}" IsEnabled="{Binding CanApplyFilter}" ToolTip.Tip="Applica il filtro">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="check" Width="14" Height="14" StrokeWidth="2.6" /><TextBlock Text="Applica" /></StackPanel>
+            </Button>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- ───── Barra ordinamento ───── -->
+    <Border Grid.Row="2" IsVisible="{Binding IsSortOpen}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel>
+        <ItemsControl ItemsSource="{Binding Sorts}" Margin="0,4">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SortConditionViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,2">
+                <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}" MinWidth="0" Padding="0" VerticalAlignment="Center" />
+                <ComboBox Classes="link column" ItemsSource="{Binding Columns}" SelectedItem="{Binding Column, Mode=TwoWay}" />
+                <ComboBox Classes="link op" ItemsSource="{Binding Directions}" SelectedItem="{Binding Direction, Mode=TwoWay}" />
+                <Button Classes="chip" Content="＋" Command="{Binding $parent[UserControl].((vm:TableTabViewModel)DataContext).AddSortCommand}" CommandParameter="{Binding .}" />
+                <Button Classes="chip" Content="✕" Command="{Binding $parent[UserControl].((vm:TableTabViewModel)DataContext).RemoveSortCommand}" CommandParameter="{Binding .}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,3">
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Button Classes="objbar" Command="{Binding AddSortCommand}" CommandParameter="{x:Null}">
+              <StackPanel Orientation="Horizontal" Spacing="5"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Criterio" /></StackPanel>
+            </Button>
+            <Button Classes="objbar" Command="{Binding ApplySortCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="5"><c:NfIcon Kind="check" Classes="objbar-icon" /><TextBlock Text="Applica" /></StackPanel>
+            </Button>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <!-- ───── Griglia + editor di campo ───── -->
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto">
+      <DataGrid x:Name="ResultGrid" Classes="nf-grid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False"
+                IsReadOnly="{Binding !CanEdit}" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True">
+        <DataGrid.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="Copia" Click="OnCopyCell" InputGesture="Ctrl+C" />
+            <MenuItem Header="Imposta a NULL" Command="{Binding SetNullCommand}" />
+            <MenuItem Header="Filtra per questo valore" Command="{Binding FilterByCurrentValueCommand}" />
+            <Separator />
+            <MenuItem Header="Aggiungi riga" Command="{Binding AddRowCommand}" />
+            <MenuItem Header="Elimina righe selezionate" Command="{Binding DeleteRowsCommand}" />
+            <Separator />
+            <MenuItem Header="Aggiorna" Command="{Binding LoadCommand}" InputGesture="F5" />
+          </ContextMenu>
+        </DataGrid.ContextMenu>
+      </DataGrid>
+      <GridSplitter Grid.Column="1" Width="4" IsVisible="{Binding IsFieldPanelOpen}" Background="{DynamicResource BorderBrush}" ResizeDirection="Columns" />
+      <Border Grid.Column="2" Width="320" IsVisible="{Binding IsFieldPanelOpen}" Background="{DynamicResource SurfaceBrush}">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="10,6">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding CurrentCellTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding FieldModeLabel}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <TextBox Grid.Row="1" IsVisible="{Binding IsTextMode}" Text="{Binding CurrentCellText, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}"
+                   AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" CornerRadius="0" Padding="10" FontSize="13" />
+          <TextBox Grid.Row="1" IsVisible="{Binding IsHexMode}" Text="{Binding CurrentCellHex}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                   BorderThickness="0" CornerRadius="0" Padding="10" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
+          <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,3">
+            <StackPanel Orientation="Horizontal">
+              <Button Classes="objbar" Content="Imposta NULL" Command="{Binding SetNullCommand}" IsEnabled="{Binding CanEdit}" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ───── Barra inferiore ───── -->
+    <Border Grid.Row="4" Classes="grid-statusbar" Padding="4,2">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="bar-icon" Command="{Binding AddRowCommand}" ToolTip.Tip="Aggiungi riga (Ctrl+Ins)"><c:NfIcon Kind="plus" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding DeleteRowsCommand}" ToolTip.Tip="Elimina righe selezionate"><c:NfIcon Kind="minus" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding ApplyChangesCommand}" IsEnabled="{Binding HasPendingChanges}" ToolTip.Tip="Applica modifiche (Ctrl+S)"><c:NfIcon Kind="check" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding DiscardChangesCommand}" IsEnabled="{Binding HasPendingChanges}" ToolTip.Tip="Annulla modifiche"><c:NfIcon Kind="x" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding LoadCommand}" ToolTip.Tip="Aggiorna (F5)"><c:NfIcon Kind="refresh" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding StopCommand}" IsEnabled="{Binding IsBusy}" ToolTip.Tip="Interrompi"><c:NfIcon Kind="stop" Width="14" Height="14" /></Button>
+        </StackPanel>
+        <TextBlock Grid.Column="1" Text="{Binding SqlPreview}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" ToolTip.Tip="{Binding StatusMessage}" Classes.error="{Binding HasError}" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="60" Height="3" MinWidth="0" Margin="0,0,8,0" VerticalAlignment="Center" />
+          <Button Classes="bar-icon" Command="{Binding FirstPageCommand}" ToolTip.Tip="Prima pagina"><c:NfIcon Kind="chevrons-left" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding PreviousCommand}" ToolTip.Tip="Pagina precedente"><c:NfIcon Kind="chevron-left" Width="14" Height="14" /></Button>
+          <TextBlock Text="{Binding PageLabel}" MinWidth="26" TextAlignment="Center" VerticalAlignment="Center" />
+          <Button Classes="bar-icon" Command="{Binding NextCommand}" ToolTip.Tip="Pagina successiva"><c:NfIcon Kind="chevron-right" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding LastPageCommand}" ToolTip.Tip="Ultima pagina"><c:NfIcon Kind="chevrons-right" Width="14" Height="14" /></Button>
+        </StackPanel>
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <TextBlock Text="{Binding RecordLabel}" VerticalAlignment="Center" MinWidth="150" TextAlignment="Right" />
+          <Button Classes="bar-icon" ToolTip.Tip="Limite di record per pagina">
+            <c:NfIcon Kind="settings" Width="14" Height="14" />
+            <Button.Flyout>
+              <Flyout Placement="TopEdgeAlignedRight" ShowMode="Standard">
+                <StackPanel Spacing="10" Margin="4" MinWidth="300">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <CheckBox Classes="crit-check" IsChecked="{Binding LimitRecords, Mode=TwoWay}" Content="Limita i record" />
+                    <NumericUpDown Value="{Binding PageSizeSetting, Mode=TwoWay}" IsEnabled="{Binding LimitRecords}" Minimum="1" Maximum="1000000" Increment="100"
+                                   FormatString="0" Width="120" ShowButtonSpinner="False" />
+                    <TextBlock Text="record per pagina" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding PageInfoLabel}" FontSize="12" Foreground="{DynamicResource MutedTextBrush}" />
+                  <TextBlock Text="Senza limite vengono caricati tutti i record della tabella (con il filtro corrente)." FontSize="12" TextWrapping="Wrap" MaxWidth="320"
+                             Foreground="{DynamicResource MutedTextBrush}" IsVisible="{Binding !LimitRecords}" />
+                  <Button Content="Applica" Classes="dialog-primary" HorizontalAlignment="Right" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding ApplyLimitCommand}" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

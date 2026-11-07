@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.ServerMonitorView"
+             x:DataType="vm:ServerMonitorViewModel">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <!-- toolbar -->
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <Grid ColumnDefinitions="*,Auto">
+        <WrapPanel Orientation="Horizontal">
+          <Button Classes="objbar" Command="{Binding RefreshCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="refresh" Classes="objbar-icon" /><TextBlock Text="Aggiorna" /></StackPanel>
+          </Button>
+          <ComboBox ItemsSource="{Binding Intervals}" SelectedItem="{Binding SelectedInterval, Mode=TwoWay}" MinHeight="26" FontSize="12" Margin="2,0" ToolTip.Tip="Aggiornamento automatico" />
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding CancelQueryCommand}" ToolTip.Tip="Interrompe solo la query in esecuzione">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="stop" Classes="objbar-icon" /><TextBlock Text="Interrompi query" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding EndProcessCommand}" ToolTip.Tip="Termina la sessione">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="x" Classes="objbar-icon" /><TextBlock Text="Termina processo" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding CopyQueryCommand}" ToolTip.Tip="Copia la query del processo">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="copy" Classes="objbar-icon" /><TextBlock Text="Copia query" /></StackPanel>
+          </Button>
+          <Border Classes="toolbar-sep" />
+          <ToggleButton Classes="objbar" IsChecked="{Binding HideIdle, Mode=TwoWay}" ToolTip.Tip="Nascondi le sessioni inattive (Sleep / idle)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="filter" Classes="objbar-icon" /><TextBlock Text="Solo attivi" /></StackPanel>
+          </ToggleButton>
+        </WrapPanel>
+        <Grid Grid.Column="1" Width="220" VerticalAlignment="Center">
+          <TextBox Text="{Binding FilterText, Mode=TwoWay}" Watermark="Filtra…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
+          <c:NfIcon Kind="search" Width="13" Height="13" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- schede di stato per server -->
+    <ItemsControl Grid.Row="1" ItemsSource="{Binding Servers}" Margin="8,8,8,2">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:MonitorServer">
+          <Border Classes="monitor-card" Classes.off="{Binding !IsChecked}" Margin="0,0,8,6">
+            <Grid RowDefinitions="Auto,Auto,Auto">
+              <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                <CheckBox Classes="crit-check" IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                <c:DialectBadge Grid.Column="1" Profile="{Binding Profile}" Size="20" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <c:DialectBadge Profile="{Binding Profile}" ShowName="True" />
+                  <TextBlock Text="{Binding Endpoint}" FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Grid>
+              <TextBlock Grid.Row="1" Text="{Binding Version}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" Margin="0,3,0,6" TextTrimming="CharacterEllipsis" MaxWidth="420" HorizontalAlignment="Left" />
+              <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="16" IsVisible="{Binding !HasError}">
+                <StackPanel><TextBlock Classes="metric-label" Text="Uptime" /><TextBlock Classes="metric" Text="{Binding Uptime}" /></StackPanel>
+                <StackPanel>
+                  <TextBlock Classes="metric-label" Text="Connessioni" />
+                  <TextBlock Classes="metric" Text="{Binding Connections}" />
+                  <ProgressBar Value="{Binding ConnectionUsage}" Maximum="100" Height="3" MinWidth="70" Margin="0,2,0,0" />
+                </StackPanel>
+                <StackPanel><TextBlock Classes="metric-label" Text="Attivi" /><TextBlock Classes="metric" Text="{Binding Running}" /></StackPanel>
+                <StackPanel><TextBlock Classes="metric-label" Text="Query/s" /><TextBlock Classes="metric" Text="{Binding QueriesPerSecond}" /></StackPanel>
+                <StackPanel><TextBlock Classes="metric-label" Text="Query lente" /><TextBlock Classes="metric" Text="{Binding SlowQueries}" /></StackPanel>
+                <StackPanel><TextBlock Classes="metric-label" Text="Traffico" /><TextBlock Classes="metric" Text="{Binding Traffic}" /></StackPanel>
+              </StackPanel>
+              <TextBlock Grid.Row="2" Text="{Binding Error}" IsVisible="{Binding HasError}" Foreground="#B42318" FontSize="12" TextWrapping="Wrap" MaxWidth="420" />
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTab, Mode=TwoWay}" Classes="workspace" Padding="0" Margin="0,2,0,0">
+      <TabItem Header="Processi">
+        <DataGrid x:Name="ProcessGrid" Classes="nf-grid" ItemsSource="{Binding Processes}" SelectedItem="{Binding SelectedProcess, Mode=TwoWay}"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserSortColumns="True" CanUserResizeColumns="True">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Server" Binding="{Binding ServerName}" Width="170" x:DataType="vm:ProcessRow" />
+            <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="70" x:DataType="vm:ProcessRow" />
+            <DataGridTextColumn Header="Utente" Binding="{Binding User}" Width="110" x:DataType="vm:ProcessRow" />
+            <DataGridTextColumn Header="Host" Binding="{Binding Host}" Width="140" x:DataType="vm:ProcessRow" />
+            <DataGridTextColumn Header="Database" Binding="{Binding Db}" Width="110" x:DataType="vm:ProcessRow" />
+            <DataGridTextColumn Header="Comando" Binding="{Binding Command}" Width="100" x:DataType="vm:ProcessRow" />
+            <DataGridTemplateColumn Header="Tempo" Width="80" SortMemberPath="Time">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:ProcessRow">
+                  <TextBlock Text="{Binding TimeLabel}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="6,0" Classes.long="{Binding IsLong}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Stato" Binding="{Binding State}" Width="150" x:DataType="vm:ProcessRow" />
+            <DataGridTemplateColumn Header="Query" Width="520" SortMemberPath="Info">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:ProcessRow">
+                  <TextBlock Text="{Binding InfoShort}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" VerticalAlignment="Center" Margin="6,0"
+                             TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Info}" Classes.long="{Binding IsLong}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+      </TabItem>
+      <TabItem Header="Variabili">
+        <DataGrid Classes="nf-grid" ItemsSource="{Binding Variables}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Server" Binding="{Binding ServerName}" Width="120" x:DataType="vm:ServerSetting" />
+            <DataGridTextColumn Header="Variabile" Binding="{Binding Name}" Width="320" x:DataType="vm:ServerSetting" />
+            <DataGridTextColumn Header="Valore" Binding="{Binding Value}" Width="*" x:DataType="vm:ServerSetting" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </TabItem>
+      <TabItem Header="Stato">
+        <DataGrid Classes="nf-grid" ItemsSource="{Binding Status}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Server" Binding="{Binding ServerName}" Width="120" x:DataType="vm:ServerSetting" />
+            <DataGridTextColumn Header="Indicatore" Binding="{Binding Name}" Width="320" x:DataType="vm:ServerSetting" />
+            <DataGridTextColumn Header="Valore" Binding="{Binding Value}" Width="*" x:DataType="vm:ServerSetting" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </TabItem>
+    </TabControl>
+
+    <Border Grid.Row="3" Classes="grid-statusbar">
+      <DockPanel>
+        <ProgressBar DockPanel.Dock="Right" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="80" Height="3" MinWidth="0" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

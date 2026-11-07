@@ -1,0 +1,143 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:s="using:MosaicDB.App.Services"
+             xmlns:m="using:MosaicDB.Core.Models"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.AutomationView"
+             x:DataType="vm:AutomationTabViewModel">
+  <Grid RowDefinitions="Auto,*,5,160">
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <WrapPanel>
+        <Button Classes="objbar" Command="{Binding NewCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova attività" /></StackPanel>
+        </Button>
+        <Button Classes="objbar" Command="{Binding SaveCommand}" IsEnabled="{Binding HasSelection}">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="check" Classes="objbar-icon" /><TextBlock Text="Salva" /></StackPanel>
+        </Button>
+        <Button Classes="objbar" Command="{Binding RunNowCommand}" IsEnabled="{Binding HasSelection}">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="play" Classes="objbar-icon" /><TextBlock Text="Esegui ora" /></StackPanel>
+        </Button>
+        <Border Classes="toolbar-sep" />
+        <Button Classes="objbar" Command="{Binding DeleteCommand}" IsEnabled="{Binding HasSelection}">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina" /></StackPanel>
+        </Button>
+        <TextBlock Text="{Binding Message}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="12,0" FontSize="12" />
+      </WrapPanel>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="300,*">
+      <!-- elenco attività -->
+      <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+        <Grid>
+          <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:AutomationJobItem">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,3">
+                  <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+                    <c:NfIcon Kind="{Binding StateIcon}" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="1">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsRunning}" Width="30" Height="2" MinWidth="0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Summary}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <TextBlock Text="{Binding LastLabel}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" Classes.error="{Binding HasFailed}" />
+                      <TextBlock Text="{Binding NextLabel}" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" Margin="16">
+            <c:NfIcon Kind="workflow" Width="34" Height="34" StrokeWidth="1.4" Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Center" />
+            <TextBlock Text="Nessuna attività. Crea un’attività per eseguire query, dump o export in automatico." TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- editor -->
+      <ScrollViewer Grid.Column="1" IsVisible="{Binding HasSelection}">
+        <StackPanel Margin="18,14" Spacing="12" MaxWidth="760" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5"><TextBlock Text="Nome" Classes="field-label" /><TextBox Text="{Binding Name, Mode=TwoWay}" /></StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5"><TextBlock Text="Tipo di attività" Classes="field-label" /><ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind, Mode=TwoWay}" HorizontalAlignment="Stretch" /></StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Connessione" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding Profile, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate><DataTemplate x:DataType="m:ConnectionProfile">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <c:DialectBadge Profile="{Binding .}" Size="22" />
+                  <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ., Converter={x:Static c:DialectVisuals.SummaryConverter}}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
+                  </StackPanel>
+                </Grid>
+                </DataTemplate></ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Database" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding Databases}" SelectedItem="{Binding Database, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+          </Grid>
+          <StackPanel Spacing="5" IsVisible="{Binding IsQuery}">
+            <TextBlock Text="Istruzioni SQL" Classes="field-label" />
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Height="180" ClipToBounds="True">
+              <c:SqlEditor x:Name="JobSql" Padding="4,6" />
+            </Border>
+          </StackPanel>
+          <StackPanel Spacing="5" IsVisible="{Binding IsExport}">
+            <TextBlock Text="Tabella" Classes="field-label" />
+            <ComboBox ItemsSource="{Binding TablesList}" SelectedItem="{Binding Table, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+          </StackPanel>
+          <StackPanel Spacing="5" IsVisible="{Binding NeedsFolder}">
+            <TextBlock Text="Cartella di destinazione" Classes="field-label" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding OutputFolder, Mode=TwoWay}" />
+              <Button Grid.Column="1" Content="Sfoglia…" Classes="small-muted" Command="{Binding BrowseFolderCommand}" />
+            </Grid>
+          </StackPanel>
+          <Border Classes="card" Padding="12">
+            <StackPanel Spacing="10">
+              <TextBlock Text="PIANIFICAZIONE" Classes="field-label" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <ComboBox ItemsSource="{Binding Schedules}" SelectedItem="{Binding Schedule, Mode=TwoWay}" Width="180" />
+                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsInterval}">
+                  <TextBlock Text="ogni" VerticalAlignment="Center" />
+                  <NumericUpDown Value="{Binding IntervalMinutes, Mode=TwoWay}" Minimum="1" Maximum="100000" FormatString="0" Width="110" />
+                  <TextBlock Text="minuti" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsDaily}">
+                  <TextBlock Text="alle" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DailyTime, Mode=TwoWay}" Width="80" Watermark="HH:mm" />
+                </StackPanel>
+                <CheckBox Classes="crit-check" Content="Attiva" IsChecked="{Binding Enabled, Mode=TwoWay}" />
+              </StackPanel>
+              <TextBlock Text="Le attività pianificate vengono eseguite finché Navifox è aperto." FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" />
+            </StackPanel>
+          </Border>
+          <StackPanel Spacing="3">
+            <TextBlock Text="Ultimo esito" Classes="field-label" />
+            <SelectableTextBlock Text="{Binding LastResult}" TextWrapping="Wrap" FontSize="12.5" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <GridSplitter Grid.Row="2" Background="{DynamicResource BorderBrush}" ResizeDirection="Rows" />
+    <DataGrid Grid.Row="3" Classes="nf-grid" ItemsSource="{Binding Log}" AutoGenerateColumns="False" IsReadOnly="True">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Ora" Binding="{Binding TimeLabel}" Width="150" x:DataType="s:AutomationLogEntry" />
+        <DataGridTextColumn Header="Attività" Binding="{Binding Job}" Width="180" x:DataType="s:AutomationLogEntry" />
+        <DataGridTextColumn Header="Esito" Binding="{Binding Succeeded}" Width="70" x:DataType="s:AutomationLogEntry" />
+        <DataGridTextColumn Header="Dettagli" Binding="{Binding Message}" Width="*" x:DataType="s:AutomationLogEntry" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </Grid>
+</UserControl>

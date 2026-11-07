@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MosaicDB.App.ViewModels"
+        x:Class="MosaicDB.App.Views.OptionsWindow"
+        x:DataType="vm:OptionsViewModel"
+        Title="Opzioni" Width="520" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource AppBackgroundBrush}">
+  <Grid RowDefinitions="*,Auto">
+    <StackPanel Margin="18" Spacing="12">
+      <Border Classes="card" Padding="14">
+        <StackPanel Spacing="10">
+          <TextBlock Text="ASPETTO" Classes="field-label" />
+          <Grid ColumnDefinitions="160,*"><TextBlock Text="Tema" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card" Padding="14">
+        <StackPanel Spacing="10">
+          <TextBlock Text="DATI E QUERY" Classes="field-label" />
+          <Grid ColumnDefinitions="160,*,Auto" ColumnSpacing="8">
+            <CheckBox Classes="crit-check" Content="Limita i record" IsChecked="{Binding LimitRecords, Mode=TwoWay}" />
+            <NumericUpDown Grid.Column="1" Value="{Binding PageSize, Mode=TwoWay}" Minimum="1" Maximum="1000000" FormatString="0" IsEnabled="{Binding LimitRecords}" ShowButtonSpinner="False" />
+            <TextBlock Grid.Column="2" Text="record per pagina" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" />
+          </Grid>
+          <Grid ColumnDefinitions="160,*,Auto" ColumnSpacing="8">
+            <TextBlock Text="Righe massime query" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Column="1" Value="{Binding QueryMaxRows, Mode=TwoWay}" Minimum="1" Maximum="1000000" FormatString="0" ShowButtonSpinner="False" />
+            <TextBlock Grid.Column="2" Text="righe" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" />
+          </Grid>
+          <CheckBox Classes="crit-check" Content="Registra le istruzioni nel Registro cronologia" IsChecked="{Binding RecordHistory, Mode=TwoWay}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="card" Padding="14">
+        <StackPanel Spacing="10">
+          <TextBlock Text="SERVER MONITOR" Classes="field-label" />
+          <Grid ColumnDefinitions="160,*"><TextBlock Text="Aggiornamento" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding Intervals}" SelectedItem="{Binding MonitorInterval, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+    <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,10">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Content="Annulla" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding CancelCommand}" IsCancel="True" />
+        <Button Content="Salva" Classes="dialog-primary" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding SaveCommand}" IsDefault="True" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

@@ -1,0 +1,242 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MosaicDB.App.ViewModels"
+        x:Class="MosaicDB.App.ConnectionDialog"
+        x:DataType="vm:ConnectionDialogViewModel"
+        Title="Nuova connessione" Width="940" Height="660" MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterOwner" CanResize="True" Background="{DynamicResource AppBackgroundBrush}">
+  <Window.Styles>
+    <!-- Elenco categorie -->
+    <Style Selector="ListBox.categories ListBoxItem">
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="ListBox.categories ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
+    <Style Selector="ListBox.categories ListBoxItem:selected TextBlock.cat-name">
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- Griglia driver -->
+    <Style Selector="ListBox.drivers ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="4" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Width" Value="128" />
+      <Setter Property="Height" Value="120" />
+    </Style>
+    <Style Selector="ListBox.drivers ListBoxItem /template/ ContentPresenter">
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.drivers ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+    </Style>
+    <Style Selector="ListBox.drivers ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.soon-pill">
+      <Setter Property="Background" Value="{DynamicResource SubtleSurfaceBrush}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="6,1" />
+    </Style>
+    <Style Selector="Button.wizard">
+      <Setter Property="MinWidth" Value="96" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="14,7" />
+    </Style>
+    <Style Selector="Button.wizard.primary /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.wizard.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.wizard.primary:disabled /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleSurfaceBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- Intestazione -->
+    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="22,16">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+        <Border Width="42" Height="42" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
+          <Image Source="{DynamicResource NfMark}" Width="26" Height="26" Stretch="Uniform" />
+        </Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock Text="{Binding StepTitle}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" />
+          <TextBlock Text="{Binding StepSubtitle}" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- PASSO 1: scelta driver -->
+    <Grid Grid.Row="1" IsVisible="{Binding IsDriverStep}" RowDefinitions="Auto,*" Margin="16,14,16,8">
+      <Grid ColumnDefinitions="190,*,Auto" ColumnSpacing="12" Margin="0,0,0,10">
+        <Grid Grid.Column="1">
+          <TextBox x:Name="DriverSearchBox" Text="{Binding DriverSearch, Mode=TwoWay}" Watermark="⌕  Cerca un driver (es. Postgres, MariaDB, Supabase…)" Padding="10,6,30,6">
+            <TextBox.KeyBindings>
+              <KeyBinding Gesture="Escape" Command="{Binding ClearDriverSearchCommand}" />
+            </TextBox.KeyBindings>
+          </TextBox>
+          <Button Content="✕" Classes="tree-tool" HorizontalAlignment="Right" Margin="0,0,3,0" Command="{Binding ClearDriverSearchCommand}" ToolTip.Tip="Cancella ricerca" />
+        </Grid>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="Ordina per:" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" />
+          <RadioButton Content="Nome" GroupName="sort" IsChecked="{Binding SortByName, Mode=TwoWay}" />
+          <RadioButton Content="Popolarità" GroupName="sort" IsChecked="{Binding SortByScore, Mode=TwoWay}" />
+        </StackPanel>
+      </Grid>
+
+      <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+        <Grid ColumnDefinitions="190,*">
+          <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <ListBox Classes="categories" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" Background="Transparent" Margin="6">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:DriverCategory">
+                  <Grid ColumnDefinitions="22,*,Auto">
+                    <TextBlock Text="{Binding Glyph}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="cat-name" Text="{Binding Name}" Foreground="{DynamicResource BodyTextBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding CountLabel}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Border>
+
+          <Grid Grid.Column="1">
+            <ListBox x:Name="DriverList" Classes="drivers" ItemsSource="{Binding VisibleDrivers}" SelectedItem="{Binding SelectedDriver, Mode=TwoWay}"
+                     Background="Transparent" Padding="8" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ListBox.ItemsPanel>
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:DriverInfo">
+                  <Grid ToolTip.Tip="{Binding Description}">
+                    <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="{Binding TileOpacity}">
+                      <Border Width="58" Height="58" CornerRadius="16" Background="{Binding BadgeBrush}" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Monogram}" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                      <TextBlock Text="{Binding Name}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="116" MaxLines="2"
+                                 Foreground="{DynamicResource BodyTextBrush}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                    <Border Classes="soon-pill" IsVisible="{Binding IsComingSoon}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,6,0">
+                      <TextBlock Text="presto" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock IsVisible="{Binding HasNoDrivers}" Text="Nessun driver corrisponde alla ricerca." Foreground="{DynamicResource SecondaryTextBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- PASSO 2: parametri di connessione -->
+    <ScrollViewer Grid.Row="1" IsVisible="{Binding IsDetailsStep}">
+      <Border Margin="16,14,16,8" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="22,18">
+        <StackPanel Spacing="12" MaxWidth="640" HorizontalAlignment="Stretch">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <Border Width="40" Height="40" CornerRadius="11" Background="{Binding SelectedDriver.BadgeBrush}">
+              <TextBlock Text="{Binding SelectedDriver.Monogram}" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+              <TextBlock Text="{Binding SelectedDriver.Name}" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource PrimaryTextBrush}" />
+              <TextBlock Text="{Binding SelectedDriver.Description}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+            </StackPanel>
+            <Button Grid.Column="2" Content="Cambia driver" Classes="small-muted" Command="{Binding BackCommand}" VerticalAlignment="Center" />
+          </Grid>
+          <Separator Margin="0,2" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Nome connessione" Classes="field-label" />
+              <TextBox Text="{Binding Name}" Watermark="Ufficio, locale…" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Cartella" Classes="field-label" />
+              <TextBox Text="{Binding Folder}" Watermark="Generale (radice)" />
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="*,140" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Host" Classes="field-label" />
+              <TextBox Text="{Binding Host}" Watermark="localhost" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Porta" Classes="field-label" />
+              <TextBox Text="{Binding PortText}" />
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Utente" Classes="field-label" />
+              <TextBox Text="{Binding UserName}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Password" Classes="field-label" />
+              <TextBox PasswordChar="●" Text="{Binding Password, Mode=TwoWay}" />
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Database iniziale" Classes="field-label" />
+              <TextBox Text="{Binding Database}" Watermark="Facoltativo" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock Text="Crittografia SSL" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding SslModes}" SelectedItem="{Binding SelectedSslMode, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+          </Grid>
+          <CheckBox Content="Aggiungi ai preferiti" IsChecked="{Binding IsFavorite}" />
+          <CheckBox Content="Usa un tunnel SSH" IsChecked="{Binding UseSshTunnel}" />
+          <StackPanel IsVisible="{Binding UseSshTunnel}" Spacing="9" Margin="12,0,0,0">
+            <Grid ColumnDefinitions="*,110" ColumnSpacing="12">
+              <StackPanel Spacing="5"><TextBlock Text="Host SSH" Classes="field-label" /><TextBox Text="{Binding SshHost}" Watermark="bastion.example.net" /></StackPanel>
+              <StackPanel Grid.Column="1" Spacing="5"><TextBlock Text="Porta SSH" Classes="field-label" /><TextBox Text="{Binding SshPortText}" /></StackPanel>
+            </Grid>
+            <StackPanel Spacing="5"><TextBlock Text="Utente SSH" Classes="field-label" /><TextBox Text="{Binding SshUserName}" /></StackPanel>
+            <CheckBox Content="Autenticazione con chiave privata" IsChecked="{Binding SshUsePrivateKey}" />
+            <StackPanel IsVisible="{Binding !SshUsePrivateKey}" Spacing="5"><TextBlock Text="Password SSH" Classes="field-label" /><TextBox PasswordChar="●" Text="{Binding SshPassword, Mode=TwoWay}" /></StackPanel>
+            <StackPanel IsVisible="{Binding SshUsePrivateKey}" Spacing="5"><TextBlock Text="Percorso chiave privata" Classes="field-label" /><TextBox Text="{Binding SshPrivateKeyPath}" Watermark="C:\\Users\\utente\\.ssh\\id_ed25519" /></StackPanel>
+            <StackPanel IsVisible="{Binding SshUsePrivateKey}" Spacing="5"><TextBlock Text="Passphrase chiave (facoltativa)" Classes="field-label" /><TextBox PasswordChar="●" Text="{Binding SshPrivateKeyPassphrase, Mode=TwoWay}" /></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="Impronta host SHA-256" Classes="field-label" /><TextBox Text="{Binding SshHostKeyFingerprint}" Watermark="SHA256:…" /></StackPanel>
+            <TextBlock Text="L’impronta è obbligatoria: il tunnel rifiuta chiavi host non verificate." FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+          <Expander Header="Parametri avanzati" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="8" Margin="8">
+              <TextBlock Text="Stringa di connessione completa (facoltativa)" Classes="field-label" />
+              <TextBox Text="{Binding ConnectionStringOverride}" AcceptsReturn="True" TextWrapping="Wrap" Height="60" Watermark="Server=…;User ID=…;Password=…" />
+              <TextBlock Text="Proprietà aggiuntive, separate da punto e virgola" Classes="field-label" />
+              <TextBox Text="{Binding AdvancedParameters}" Watermark="Pooling=true;Timeout=15" />
+            </StackPanel>
+          </Expander>
+          <TextBlock Text="Le password vengono protette con DPAPI per l’utente Windows corrente." FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
+        </StackPanel>
+      </Border>
+    </ScrollViewer>
+
+    <!-- Piede: Test · Indietro · Avanti · Fine · Annulla -->
+    <Border Grid.Row="2" Padding="16,11" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource SurfaceBrush}">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+        <Button Content="Test connessione" Classes="wizard" Command="{Binding TestCommand}" IsVisible="{Binding IsDetailsStep}" IsEnabled="{Binding !IsTesting}" />
+        <Grid Grid.Column="1" Margin="8,0">
+          <TextBlock Text="{Binding DriverHint}" IsVisible="{Binding IsDriverStep}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding StatusMessage}" IsVisible="{Binding IsDetailsStep}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding StatusMessage}" />
+        </Grid>
+        <Button Grid.Column="2" Content="‹ Indietro" Classes="wizard" Command="{Binding BackCommand}" />
+        <Button Grid.Column="3" Content="Avanti ›" Classes="wizard primary" Command="{Binding NextCommand}" IsVisible="{Binding IsDriverStep}" IsDefault="{Binding IsDriverStep}" />
+        <Button Grid.Column="4" Content="Fine" Classes="wizard primary" Command="{Binding SaveCommand}" IsVisible="{Binding IsDetailsStep}" />
+        <Button Grid.Column="5" Content="Annulla" Classes="wizard" Command="{Binding CancelCommand}" IsCancel="True" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
