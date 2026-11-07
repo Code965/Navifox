@@ -36,6 +36,10 @@
     <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding OpenFindCommand}" CommandParameter="{x:Null}" />
     <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseCurrentTabCommand}" />
     <KeyBinding Gesture="Ctrl+K" Command="{Binding OpenPaletteCommand}" />
+    <KeyBinding Gesture="Ctrl+Tab" Command="{Binding NextTabCommand}" CommandParameter="next" />
+    <KeyBinding Gesture="Ctrl+Shift+Tab" Command="{Binding NextTabCommand}" CommandParameter="prev" />
+    <KeyBinding Gesture="Ctrl+Shift+PageUp" Command="{Binding MoveSelectedTabCommand}" CommandParameter="left" />
+    <KeyBinding Gesture="Ctrl+Shift+PageDown" Command="{Binding MoveSelectedTabCommand}" CommandParameter="right" />
     <KeyBinding Gesture="Ctrl+P" Command="{Binding OpenPaletteCommand}" />
   </Window.KeyBindings>
   <Grid RowDefinitions="Auto,Auto,*,Auto">
@@ -269,7 +273,7 @@
       <!-- Area di lavoro a schede: «Oggetti» fissa + tabelle aperte -->
       <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
         <Grid>
-          <TabControl ItemsSource="{Binding OpenTabs}" SelectedItem="{Binding SelectedTab, Mode=TwoWay}" Classes="workspace" Padding="0">
+          <TabControl x:Name="WorkspaceTabs" ItemsSource="{Binding OpenTabs}" SelectedItem="{Binding SelectedTab, Mode=TwoWay}" Classes="workspace" Padding="0">
             <TabControl.ItemTemplate>
               <DataTemplate DataType="vm:WorkspaceTabViewModel">
                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -309,13 +313,13 @@
 
     <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,8">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="20">
-        <StackPanel Orientation="Horizontal" Spacing="6"><Ellipse Width="7" Height="7" Fill="#45A989" VerticalAlignment="Center" /><TextBlock Text="{Binding ConnectionCount}" Foreground="#5C6878" /><TextBlock Text="connessioni attive" Foreground="#8A97A6" /></StackPanel>
-        <TextBlock Grid.Column="1" Text="{Binding ActiveContext}" Foreground="#5C6878" />
+        <StackPanel Orientation="Horizontal" Spacing="6"><Ellipse Width="7" Height="7" Fill="#45A989" VerticalAlignment="Center" /><TextBlock Text="{Binding ConnectionCount}" Foreground="{DynamicResource SecondaryTextBrush}" /><TextBlock Text="connessioni attive" Foreground="{DynamicResource MutedTextBrush}" /></StackPanel>
+        <TextBlock Grid.Column="1" Text="{Binding ActiveContext}" Foreground="{DynamicResource SecondaryTextBrush}" />
         <Button Grid.Column="2" Classes="update-pill" HorizontalAlignment="Right" IsVisible="{Binding IsUpdateReady}" Command="{Binding ApplyUpdateCommand}" Margin="0,-4">
           <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="download" Width="13" Height="13" /><TextBlock Text="{Binding UpdateLabel}" /></StackPanel>
         </Button>
-        <TextBlock Grid.Column="3" Text="{Binding StatusMessage}" Foreground="#718092" TextTrimming="CharacterEllipsis" MaxWidth="600" />
-        <TextBlock Grid.Column="4" Text="{Binding ElapsedTime}" Foreground="#8A97A6" />
+        <TextBlock Grid.Column="3" Text="{Binding StatusMessage}" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="600" />
+        <TextBlock Grid.Column="4" Text="{Binding ElapsedTime}" Foreground="{DynamicResource MutedTextBrush}" />
         <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="2" Margin="-8,-4">
           <ToggleButton Classes="panel-toggle" IsChecked="{Binding IsTreeVisible, Mode=TwoWay}" ToolTip.Tip="Mostra/nascondi il pannello connessioni (Ctrl+Maiusc+L)">
             <c:NfIcon Kind="panel-left" Width="15" Height="15" />

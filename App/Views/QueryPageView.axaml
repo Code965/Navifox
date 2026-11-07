@@ -97,6 +97,22 @@
           <DataGrid x:Name="ResultGrid" Classes="nf-grid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
                     CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="False" />
         </TabItem>
+        <TabItem Header="Grafico">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
+              <WrapPanel>
+                <TextBlock Text="Tipo" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
+                <ComboBox ItemsSource="{Binding ChartKinds}" SelectedItem="{Binding ChartKind, Mode=TwoWay}" MinWidth="100" Margin="0,0,14,0" FontSize="12" />
+                <TextBlock Text="Etichette" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
+                <ComboBox ItemsSource="{Binding ChartLabelColumns}" SelectedItem="{Binding ChartLabelColumn, Mode=TwoWay}" MinWidth="140" Margin="0,0,14,0" FontSize="12" />
+                <TextBlock Text="Valori" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
+                <ComboBox ItemsSource="{Binding ChartValueColumns}" SelectedItem="{Binding ChartValueColumn, Mode=TwoWay}" MinWidth="140" FontSize="12" />
+              </WrapPanel>
+            </Border>
+            <c:ChartCanvas Grid.Row="1" Points="{Binding ChartPoints}" Kind="{Binding ChartKind}" Margin="10,12" />
+            <TextBlock Grid.Row="2" Text="{Binding ChartInfo}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,0,10,6" />
+          </Grid>
+        </TabItem>
         <TabItem Header="Messaggi">
           <ListBox ItemsSource="{Binding Messages}" Background="Transparent" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12">
             <ListBox.ItemTemplate>

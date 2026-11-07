@@ -43,7 +43,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:MonitorServer">
                 <Border Classes="monitor-server" Classes.off="{Binding !IsChecked}">
-                  <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="8" RowSpacing="2">
+                  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="8" RowSpacing="2">
                     <CheckBox Classes="crit-check" IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Top" Margin="0,1,0,0" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                       <c:DialectBadge Profile="{Binding Profile}" Size="18" VerticalAlignment="Center" />
@@ -66,6 +66,10 @@
                       <TextBlock Classes="mon-chip" ToolTip.Tip="Query lente"><Run Text="{Binding SlowQueries}" FontWeight="SemiBold" /><Run Text=" lente" /></TextBlock>
                       <TextBlock Classes="mon-chip" ToolTip.Tip="Traffico ricevuto / inviato" Text="{Binding Traffic}" />
                     </WrapPanel>
+                    <Grid Grid.Row="4" Grid.Column="1" RowDefinitions="Auto,Auto" Margin="0,6,0,0" IsVisible="{Binding !HasError}">
+                      <c:ChartCanvas Height="30" Points="{Binding QpsHistory}" Kind="Area" Compact="True" />
+                      <TextBlock Grid.Row="1" Text="{Binding QpsPeak}" FontSize="10" Foreground="{DynamicResource MutedTextBrush}" />
+                    </Grid>
                     <TextBlock Grid.Row="2" Grid.RowSpan="2" Grid.Column="1" Text="{Binding Error}" IsVisible="{Binding HasError}" Foreground="#B42318" FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0" />
                   </Grid>
                 </Border>
@@ -114,7 +118,7 @@
           </DataGrid.Columns>
         </DataGrid>
       </TabItem>
-      <TabItem Header="Stato">
+      <TabItem Header="Stato" x:Name="StatusTab">
         <DataGrid Classes="nf-grid" ItemsSource="{Binding Status}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True">
           <DataGrid.Columns>
             <DataGridTextColumn Header="Server" Binding="{Binding ServerName}" Width="120" x:DataType="vm:ServerSetting" />
@@ -122,6 +126,29 @@
             <DataGridTextColumn Header="Valore" Binding="{Binding Value}" Width="*" x:DataType="vm:ServerSetting" />
           </DataGrid.Columns>
         </DataGrid>
+      </TabItem>
+      <TabItem Header="Query lente">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Text="{Binding SlowQueryInfo}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,6" TextWrapping="Wrap" />
+          <DataGrid Grid.Row="1" Classes="nf-grid" ItemsSource="{Binding SlowQueries}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Server" Binding="{Binding ServerName}" Width="140" x:DataType="vm:SlowQueryRow" />
+              <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="110" x:DataType="vm:SlowQueryRow" />
+              <DataGridTextColumn Header="Media" Binding="{Binding AverageLabel}" Width="90" SortMemberPath="AverageMs" x:DataType="vm:SlowQueryRow" />
+              <DataGridTextColumn Header="Max" Binding="{Binding MaxLabel}" Width="90" SortMemberPath="MaxMs" x:DataType="vm:SlowQueryRow" />
+              <DataGridTextColumn Header="Esecuzioni" Binding="{Binding Calls}" Width="90" x:DataType="vm:SlowQueryRow" />
+              <DataGridTextColumn Header="Tempo totale" Binding="{Binding TotalLabel}" Width="100" SortMemberPath="TotalMs" x:DataType="vm:SlowQueryRow" />
+              <DataGridTextColumn Header="Righe" Binding="{Binding Rows}" Width="80" x:DataType="vm:SlowQueryRow" />
+              <DataGridTemplateColumn Header="Query" Width="600">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:SlowQueryRow">
+                    <TextBlock Text="{Binding QueryShort}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" VerticalAlignment="Center" Margin="6,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Query}" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
       </TabItem>
     </TabControl>
     </Grid>

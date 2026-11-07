@@ -348,7 +348,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
             else
             {
                 Messages.Add($"[{DateTime.Now:HH:mm:ss}] ERRORE: {exception.Message}");
-                ResultTabIndex = 1;
+                ResultTabIndex = 2;
             }
         }
         finally
@@ -382,7 +382,8 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
             : lastWithRows?.Result is { } r
                 ? $"{r.Rows.Count:N0} righe{(r.Truncated ? $" (prime {MaxRows:N0})" : string.Empty)} · {results.Count} istruzioni · {elapsed.TotalSeconds:0.000} s"
                 : $"{results.Count} istruzioni eseguite · {elapsed.TotalSeconds:0.000} s";
-        ResultTabIndex = failed is not null || lastWithRows is null ? 1 : 0;
+        ResultTabIndex = failed is not null || lastWithRows is null ? 2 : ResultTabIndex == 1 ? 1 : 0;
+        PrepareChart();
     }
 
     private void WriteConsoleResults(IReadOnlyList<StatementResult> results)

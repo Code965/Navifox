@@ -65,6 +65,22 @@ public partial class MainWindow : Window
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         SetupConnectionDragDrop(viewModel);
         SetupPalette(viewModel);
+        // Tasto destro su una scheda: chiudi/sposta/duplica. Clic centrale: chiudi.
+        WorkspaceTabs.ContextRequested += (_, args) =>
+        {
+            if ((args.Source as Visual)?.FindAncestorOfType<TabItem>(includeSelf: true) is not { DataContext: WorkspaceTabViewModel tab } item) return;
+            new ContextMenu { ItemsSource = BuildMenuItems(viewModel.GetTabActions(tab)) }.Open(item);
+            args.Handled = true;
+        };
+        WorkspaceTabs.AddHandler(PointerReleasedEvent, (_, args) =>
+        {
+            if (args.InitialPressMouseButton == Avalonia.Input.MouseButton.Middle
+                && (args.Source as Visual)?.FindAncestorOfType<TabItem>(includeSelf: true) is { DataContext: WorkspaceTabViewModel { CanClose: true } tab })
+            {
+                viewModel.CloseTabCommand.Execute(tab);
+                args.Handled = true;
+            }
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         // File › Apri recenti: l'elenco si ricostruisce a ogni apertura del sottomenu.
         RecentMenu.ItemsSource = new object[] { new MenuItem { Header = "(nessun file recente)", IsEnabled = false } };
         // Preferiti: aggiungi l'elemento corrente, poi l'elenco (clic = apri), poi rimozione.

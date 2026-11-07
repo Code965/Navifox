@@ -27,6 +27,38 @@ public partial class MonitorServer(ConnectionProfile profile) : ObservableObject
     [ObservableProperty] private bool _hasError;
     public long? LastQueries { get; set; }
     public DateTime LastSample { get; set; }
+
+    // Storico (ultimi 60 campioni) per i mini-grafici.
+    private readonly List<double> _qps = [];
+    private readonly List<double> _connectionSamples = [];
+    [ObservableProperty] private IReadOnlyList<Navifox.App.Controls.ChartPoint>? _qpsHistory;
+    [ObservableProperty] private IReadOnlyList<Navifox.App.Controls.ChartPoint>? _connectionHistory;
+    [ObservableProperty] private string _qpsPeak = string.Empty;
+
+    public void AddSample(double? qps, double? connections)
+    {
+        static IReadOnlyList<Navifox.App.Controls.ChartPoint> Push(List<double> list, double value)
+        {
+            list.Add(value);
+            if (list.Count > 60) list.RemoveAt(0);
+            return list.Select((v, i) => new Navifox.App.Controls.ChartPoint(i.ToString(), v)).ToArray();
+        }
+        if (qps is { } q)
+        {
+            QpsHistory = Push(_qps, q);
+            QpsPeak = $"picco {_qps.Max():N1} q/s";
+        }
+        if (connections is { } c) ConnectionHistory = Push(_connectionSamples, c);
+    }
+}
+
+/// <summary>Query più lente (statistiche del server: performance_schema / pg_stat_statements).</summary>
+public sealed record SlowQueryRow(string ServerName, string Query, long Calls, double AverageMs, double TotalMs, double MaxMs, long Rows, string Database)
+{
+    public string AverageLabel => $"{AverageMs:N1} ms";
+    public string TotalLabel => TotalMs >= 1000 ? $"{TotalMs / 1000:N1} s" : $"{TotalMs:N0} ms";
+    public string MaxLabel => $"{MaxMs:N1} ms";
+    public string QueryShort => Query.Length > 400 ? Query[..400].Replace('\n', ' ') + "…" : Query.Replace('\n', ' ');
 }
 
 public sealed record ProcessRow(MonitorServer Server, long Id, string User, string Host, string Db, string Command, long Time, string State, string Info)
@@ -74,6 +106,8 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
     public ObservableCollection<ProcessRow> Processes { get; } = [];
     public ObservableCollection<ServerSetting> Variables { get; } = [];
     public ObservableCollection<ServerSetting> Status { get; } = [];
+    public ObservableCollection<SlowQueryRow> SlowQueries { get; } = [];
+    [ObservableProperty] private string _slowQueryInfo = string.Empty;
     public IReadOnlyList<string> Intervals { get; } = ["Manuale", "2 s", "5 s", "10 s", "30 s"];
 
     [ObservableProperty] private int _selectedTab;
@@ -120,6 +154,18 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
             var results = await Task.WhenAll(tasks);
             _processes = results.SelectMany(r => r.Processes).ToList();
             _variables = results.SelectMany(r => r.Variables).ToList();
+            if (SelectedTab == 3)
+            {
+                List<SlowQueryRow> slow;
+                lock (_slowQueries)
+                {
+                    slow = _slowQueries.OrderByDescending(q => q.AverageMs).ToList();
+                    _slowQueries.Clear();
+                }
+                SlowQueries.Clear();
+                foreach (var row in slow) SlowQueries.Add(row);
+                if (slow.Count > 0) SlowQueryInfo = $"{slow.Count} query più lente in media (statistiche cumulative del server).";
+            }
             _status = results.SelectMany(r => r.Status).ToList();
             ApplyFilters();
             StatusMessage = $"{servers.Length} server · {_processes.Count} processi · aggiornato alle {DateTime.Now:HH:mm:ss}";
@@ -152,6 +198,8 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
                     processes.Add(new ProcessRow(server, long.TryParse(S(row, id), out var pid) ? pid : 0, S(row, user), S(row, host), S(row, db),
                         S(row, command), long.TryParse(S(row, time), out var t) ? t : 0, S(row, state), S(row, info)));
             }
+            else if (SelectedTab == 3)
+                await LoadSlowQueriesAsync(server, connection, provider);
             else if (SelectedTab == 1)
                 variables.AddRange((await provider.GetServerVariablesAsync(connection, CancellationToken.None)).Select(p => new ServerSetting($"{server.Name} · {Navifox.App.Controls.DialectVisuals.DialectName(server.Profile)}", p.Key, p.Value)));
             else
@@ -180,11 +228,50 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
         if (health.Queries is { } queries)
         {
             if (server.LastQueries is { } previous && (now - server.LastSample).TotalSeconds > 0.5)
-                server.QueriesPerSecond = $"{Math.Max(0, (queries - previous) / (now - server.LastSample).TotalSeconds):N1}";
+            {
+                var rate = Math.Max(0, (queries - previous) / (now - server.LastSample).TotalSeconds);
+                server.QueriesPerSecond = $"{rate:N1}";
+                server.AddSample(rate, health.Connections);
+            }
             else if (health.Uptime is { TotalSeconds: > 0 } uptime)
                 server.QueriesPerSecond = $"{queries / uptime.TotalSeconds:N1}";
             server.LastQueries = queries;
             server.LastSample = now;
+        }
+    }
+
+    private readonly List<SlowQueryRow> _slowQueries = [];
+
+    /// <summary>MySQL: performance_schema.events_statements_summary_by_digest · PostgreSQL: pg_stat_statements (se installata).</summary>
+    private async Task LoadSlowQueriesAsync(MonitorServer server, System.Data.Common.DbConnection connection, Navifox.Core.IDialectProvider provider)
+    {
+        var mysql = server.Profile.Kind == DatabaseKind.MySql;
+        var sql = mysql
+            ? """
+              SELECT DIGEST_TEXT, COUNT_STAR, AVG_TIMER_WAIT / 1000000000, SUM_TIMER_WAIT / 1000000000, MAX_TIMER_WAIT / 1000000000, SUM_ROWS_SENT, COALESCE(SCHEMA_NAME, '')
+              FROM performance_schema.events_statements_summary_by_digest
+              WHERE DIGEST_TEXT IS NOT NULL ORDER BY AVG_TIMER_WAIT DESC LIMIT 50
+              """
+            : """
+              SELECT s.query, s.calls, s.mean_exec_time, s.total_exec_time, s.max_exec_time, s.rows, COALESCE(d.datname, '')
+              FROM pg_stat_statements s LEFT JOIN pg_database d ON d.oid = s.dbid
+              ORDER BY s.mean_exec_time DESC LIMIT 50
+              """;
+        try
+        {
+            var result = await provider.ExecuteAsync(connection, sql, 50, CancellationToken.None);
+            string S(object? v) => Convert.ToString(v, CultureInfo.InvariantCulture) ?? string.Empty;
+            double D(object? v) => double.TryParse(S(v), NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0;
+            long L(object? v) => (long)D(v);
+            var name = $"{server.Name} · {Navifox.App.Controls.DialectVisuals.DialectName(server.Profile)}";
+            lock (_slowQueries)
+                foreach (var row in result.Rows) _slowQueries.Add(new SlowQueryRow(name, S(row[0]), L(row[1]), D(row[2]), D(row[3]), D(row[4]), L(row[5]), S(row[6])));
+        }
+        catch (Exception exception)
+        {
+            SlowQueryInfo = mysql
+                ? $"{server.Name}: statistiche non disponibili ({exception.Message})."
+                : $"{server.Name}: serve l'estensione pg_stat_statements (shared_preload_libraries = 'pg_stat_statements', poi CREATE EXTENSION pg_stat_statements). {exception.Message}";
         }
     }
 
