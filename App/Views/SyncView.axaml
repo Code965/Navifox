@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Navifox.App.ViewModels"
+             xmlns:m="using:Navifox.Core.Models"
+             xmlns:c="using:Navifox.App.Controls"
+             x:Class="Navifox.App.Views.SyncView"
+             x:DataType="vm:SyncTabViewModel">
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <!-- Origine → destinazione -->
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12,10">
+      <Grid ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="5">
+          <TextBlock Text="ORIGINE" Classes="field-label" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SourceProfile, Mode=TwoWay}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="m:ConnectionProfile">
+                  <StackPanel Orientation="Horizontal" Spacing="7"><c:DialectBadge Profile="{Binding .}" Size="16" /><TextBlock Text="{Binding Name}" VerticalAlignment="Center" /></StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding SourceDatabases}" SelectedItem="{Binding SourceDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch" PlaceholderText="database" />
+          </Grid>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="objbar" Command="{Binding SwapCommand}" VerticalAlignment="Bottom" ToolTip.Tip="Scambia origine e destinazione">
+          <c:NfIcon Kind="transfer" Classes="objbar-icon" />
+        </Button>
+        <StackPanel Grid.Column="2" Spacing="5">
+          <TextBlock Text="DESTINAZIONE (viene modificata)" Classes="field-label" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+            <ComboBox ItemsSource="{Binding TargetProfiles}" SelectedItem="{Binding TargetProfile, Mode=TwoWay}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="m:ConnectionProfile">
+                  <StackPanel Orientation="Horizontal" Spacing="7"><c:DialectBadge Profile="{Binding .}" Size="16" /><TextBlock Text="{Binding Name}" VerticalAlignment="Center" /></StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding TargetDatabases}" SelectedItem="{Binding TargetDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch" PlaceholderText="database" />
+          </Grid>
+        </StackPanel>
+        <Button Grid.Column="3" Classes="dialog-primary" Command="{Binding CompareCommand}" VerticalAlignment="Bottom" MinWidth="110" HorizontalContentAlignment="Center" IsEnabled="{Binding !IsRunning}">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="search" Width="14" Height="14" /><TextBlock Text="Confronta" /></StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Opzioni -->
+    <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12,6">
+      <WrapPanel Orientation="Horizontal">
+        <CheckBox Classes="crit-check" Content="Viste" IsChecked="{Binding IncludeViews, Mode=TwoWay}" IsVisible="{Binding IsStructure}" Margin="0,0,16,0" />
+        <CheckBox Classes="crit-check" Content="Elimina gli oggetti che non sono nell'origine" IsChecked="{Binding DropMissing, Mode=TwoWay}" IsVisible="{Binding IsStructure}" Margin="0,0,16,0" />
+        <CheckBox Classes="crit-check" Content="Inserisci le righe mancanti" IsChecked="{Binding DoInsert, Mode=TwoWay}" IsVisible="{Binding IsData}" Margin="0,0,16,0" />
+        <CheckBox Classes="crit-check" Content="Aggiorna le righe diverse" IsChecked="{Binding DoUpdate, Mode=TwoWay}" IsVisible="{Binding IsData}" Margin="0,0,16,0" />
+        <CheckBox Classes="crit-check" Content="Elimina le righe che non sono nell'origine" IsChecked="{Binding DoDelete, Mode=TwoWay}" IsVisible="{Binding IsData}" Margin="0,0,16,0" />
+        <CheckBox Classes="crit-check" Content="Mostra anche gli oggetti uguali" IsChecked="{Binding ShowEqual, Mode=TwoWay}" />
+      </WrapPanel>
+    </Border>
+
+    <!-- Barra azioni -->
+    <Border Grid.Row="2" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <Grid ColumnDefinitions="Auto,*">
+        <WrapPanel>
+          <Button Classes="objbar" Command="{Binding ApplyCommand}" IsEnabled="{Binding !IsRunning}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="play" Classes="objbar-icon" /><TextBlock Text="Applica alla destinazione" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding SaveScriptCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="save" Classes="objbar-icon" /><TextBlock Text="Salva script" /></StackPanel></Button>
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding SelectAllCommand}" CommandParameter="all"><TextBlock Text="Seleziona tutto" /></Button>
+          <Button Classes="objbar" Command="{Binding SelectAllCommand}" CommandParameter="none"><TextBlock Text="Nessuno" /></Button>
+          <Button Classes="objbar" Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="stop" Classes="objbar-icon" /><TextBlock Text="Interrompi" /></StackPanel></Button>
+        </WrapPanel>
+        <TextBlock Grid.Column="1" Text="{Binding Summary}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+      </Grid>
+    </Border>
+
+    <!-- Differenze + script -->
+    <Grid Grid.Row="3" ColumnDefinitions="3*,6,2*">
+      <DataGrid Classes="nf-grid" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="" Width="36">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:SyncItem"><CheckBox Classes="crit-check" IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding HasChanges}" HorizontalAlignment="Center" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Oggetto" Width="200" SortMemberPath="Name">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:SyncItem">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="6,0" VerticalAlignment="Center">
+                  <c:NfIcon Kind="{Binding Glyph}" Width="13" Height="13" Foreground="{DynamicResource AccentBrush}" />
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Stato" Width="110" SortMemberPath="Status">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:SyncItem">
+                <Border Classes="sync-status" Classes.new="{Binding IsNew}" Classes.changed="{Binding IsChanged}" Classes.drop="{Binding IsDrop}" Classes.error="{Binding IsError}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="6,0">
+                  <TextBlock Text="{Binding Status}" />
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Differenze" Binding="{Binding Detail}" Width="*" x:DataType="vm:SyncItem" />
+          <DataGridTextColumn Header="Esito" Binding="{Binding State}" Width="120" x:DataType="vm:SyncItem" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <GridSplitter Grid.Column="1" Width="6" Background="Transparent" ResizeDirection="Columns" />
+      <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto">
+          <SelectableTextBlock Text="{Binding Script}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" Margin="12,10" TextWrapping="NoWrap" />
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="4" Classes="grid-statusbar">
+      <DockPanel>
+        <ProgressBar DockPanel.Dock="Right" Value="{Binding Progress}" Maximum="100" IsVisible="{Binding IsRunning}" Width="160" Height="5" MinWidth="0" VerticalAlignment="Center"
+                     Foreground="{DynamicResource AccentBrush}" />
+        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

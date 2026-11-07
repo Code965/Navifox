@@ -26,6 +26,10 @@ public sealed class AppSettings
     public string UpdateSource { get; set; } = string.Empty;
     /// <summary>File SQL aperti di recente (File › Apri recenti).</summary>
     public List<string> RecentFiles { get; set; } = [];
+    /// <summary>Tabelle aperte di recente («idConnessione|database|schema|tabella») per la pagina iniziale.</summary>
+    public List<string> RecentTables { get; set; } = [];
+    /// <summary>Connessioni aperte di recente (id).</summary>
+    public List<string> RecentConnections { get; set; } = [];
     /// <summary>Cartelle di connessioni create dall'utente (anche vuote).</summary>
     public List<string> ConnectionFolders { get; set; } = [];
     /// <summary>Ordine scelto dall'utente per cartelle («f:percorso») e connessioni («c:id») nell'albero.</summary>

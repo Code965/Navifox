@@ -64,6 +64,7 @@ public partial class MainWindow : Window
             else if (args.Key == Avalonia.Input.Key.V) { viewModel.PasteTablesCommand.Execute(viewModel.SelectedNode); args.Handled = true; }
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         SetupConnectionDragDrop(viewModel);
+        SetupPalette(viewModel);
         // File › Apri recenti: l'elenco si ricostruisce a ogni apertura del sottomenu.
         RecentMenu.ItemsSource = new object[] { new MenuItem { Header = "(nessun file recente)", IsEnabled = false } };
         RecentMenu.SubmenuOpened += (_, _) =>
@@ -90,6 +91,37 @@ public partial class MainWindow : Window
                 viewModel.OpenNodeCommand.Execute(node);
         };
         StartScreenshotIfRequested();
+    }
+
+    /// <summary>Barra comandi: focus sulla ricerca, frecce/Invio/Esc, clic fuori per chiudere.</summary>
+    private void SetupPalette(MainWindowViewModel viewModel)
+    {
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.IsPaletteOpen) && viewModel.IsPaletteOpen)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => PaletteBox.Focus(), Avalonia.Threading.DispatcherPriority.Input);
+        };
+        PaletteBox.AddHandler(KeyDownEvent, (_, args) =>
+        {
+            switch (args.Key)
+            {
+                case Avalonia.Input.Key.Down: viewModel.MovePaletteSelection(1); args.Handled = true; break;
+                case Avalonia.Input.Key.Up: viewModel.MovePaletteSelection(-1); args.Handled = true; break;
+                case Avalonia.Input.Key.Enter: _ = viewModel.RunPaletteItemCommand.ExecuteAsync(null); args.Handled = true; break;
+                case Avalonia.Input.Key.Escape: viewModel.ClosePaletteCommand.Execute(null); args.Handled = true; break;
+            }
+            if (args.Handled && viewModel.SelectedPaletteItem is { } item) PaletteList.ScrollIntoView(item);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        PaletteList.DoubleTapped += (_, _) => _ = viewModel.RunPaletteItemCommand.ExecuteAsync(null);
+        PaletteList.AddHandler(PointerReleasedEvent, (_, args) =>
+        {
+            if ((args.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext is PaletteItem item)
+                _ = viewModel.RunPaletteItemCommand.ExecuteAsync(item);
+        }, Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
+        PaletteOverlay.PointerPressed += (_, args) =>
+        {
+            if (ReferenceEquals(args.Source, PaletteOverlay)) viewModel.ClosePaletteCommand.Execute(null);
+        };
     }
 
     private const string ConnectionFormat = "application/x-navifox-connection";

@@ -18,7 +18,7 @@ public interface IDialogService
     Task<bool> ShowDialogAsync(Window dialog);
     Task ShowExportWizardAsync(ExportWizardViewModel viewModel);
     Task<string?> PickFolderAsync(string title);
-    Task<string?> PromptAsync(string title, string message, string value, string confirmText = "OK");
+    Task<string?> PromptAsync(string title, string message, string value, string confirmText = "OK", bool isPassword = false);
     Task<bool> ShowQueryBuilderAsync(QueryBuilderViewModel viewModel);
     Task ShowDataTransferAsync(DataTransferViewModel viewModel);
     Task<bool> ShowOptionsAsync(OptionsViewModel viewModel);
@@ -87,8 +87,8 @@ public sealed class DialogService(IWindowLocator windowLocator) : IDialogService
         return await dialog.ShowDialog<bool>(Owner);
     }
 
-    public async Task<string?> PromptAsync(string title, string message, string value, string confirmText = "OK") =>
-        await new PromptDialog(title, message, value, confirmText).ShowDialog<string?>(Owner);
+    public async Task<string?> PromptAsync(string title, string message, string value, string confirmText = "OK", bool isPassword = false) =>
+        await new PromptDialog(title, message, value, confirmText, isPassword).ShowDialog<string?>(Owner);
 
     public async Task<string?> PickFolderAsync(string title)
     {

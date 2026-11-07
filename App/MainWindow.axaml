@@ -14,6 +14,8 @@
     <DataTemplate DataType="vm:TableDesignerViewModel"><views:TableDesignerView /></DataTemplate>
     <DataTemplate DataType="vm:SchemaObjectEditorViewModel"><views:SchemaObjectEditorView /></DataTemplate>
     <DataTemplate DataType="vm:SequenceEditorViewModel"><views:SequenceEditorView /></DataTemplate>
+    <DataTemplate DataType="vm:SyncTabViewModel"><views:SyncView /></DataTemplate>
+    <DataTemplate DataType="vm:UsersTabViewModel"><views:UsersView /></DataTemplate>
     <DataTemplate DataType="vm:QueryTabViewModel">
       <views:QueryPageView />
     </DataTemplate>
@@ -33,6 +35,8 @@
     <KeyBinding Gesture="Ctrl+L" Command="{Binding OpenHistoryCommand}" />
     <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding OpenFindCommand}" CommandParameter="{x:Null}" />
     <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseCurrentTabCommand}" />
+    <KeyBinding Gesture="Ctrl+K" Command="{Binding OpenPaletteCommand}" />
+    <KeyBinding Gesture="Ctrl+P" Command="{Binding OpenPaletteCommand}" />
   </Window.KeyBindings>
   <Grid RowDefinitions="Auto,Auto,*,Auto">
     <!-- Barra titolo: logo + menu -->
@@ -120,8 +124,8 @@
           <MenuItem Header="Preferiti" IsEnabled="False" />
           <MenuItem Header="Strumenti">
             <MenuItem Header="Trasferimento dati…" Command="{Binding OpenDataTransferCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="transfer" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
-            <MenuItem Header="Sincronizzazione dati…" IsEnabled="False" ToolTip.Tip="Disponibile in una fase successiva"><MenuItem.Icon><c:NfIcon Kind="sync" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
-            <MenuItem Header="Sincronizzazione struttura…" IsEnabled="False" ToolTip.Tip="Disponibile in una fase successiva"><MenuItem.Icon><c:NfIcon Kind="layers" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Sincronizzazione dati…" Command="{Binding OpenDataSyncCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="sync" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Sincronizzazione struttura…" Command="{Binding OpenStructureSyncCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="layers" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Console…" Command="{Binding OpenConsoleCommand}" CommandParameter="{x:Null}" InputGesture="F6"><MenuItem.Icon><c:NfIcon Kind="terminal" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Server Monitor">
               <MenuItem.Icon><c:NfIcon Kind="activity" Classes="menu-icon" /></MenuItem.Icon>
@@ -186,7 +190,7 @@
             <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="hash" /><TextBlock Text="Sequenze" /></StackPanel>
           </Button>
           <Border Classes="tb-sep" />
-          <Button Classes="tb" Classes.active="{Binding IsUsersActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Utenti">
+          <Button Classes="tb" Classes.active="{Binding IsUsersActive}" Command="{Binding OpenUsersCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Utenti e privilegi del server">
             <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="users" /><TextBlock Text="Utenti" /></StackPanel>
           </Button>
           <Button Classes="tb" Classes.active="{Binding IsQueriesActive}" Command="{Binding ShowCategoryCommand}" CommandParameter="Query salvate">
@@ -319,6 +323,47 @@
           </ToggleButton>
         </StackPanel>
       </Grid>
+    </Border>
+
+    <!-- ═══ Barra comandi (Ctrl+K) ═══ -->
+    <Border x:Name="PaletteOverlay" Grid.RowSpan="4" IsVisible="{Binding IsPaletteOpen}" Background="#66000000" ZIndex="100">
+      <Border Classes="palette" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,70,0,0" Width="640">
+        <Grid RowDefinitions="Auto,Auto,*,Auto" MaxHeight="520">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="14,10">
+            <c:NfIcon Kind="search" Width="16" Height="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+            <TextBox x:Name="PaletteBox" Grid.Column="1" Classes="palette-input" Text="{Binding PaletteQuery, Mode=TwoWay}"
+                     Watermark="Cerca comandi, connessioni, database, tabelle, funzioni…" />
+          </Grid>
+          <Border Grid.Row="1" Height="1" Background="{DynamicResource BorderBrush}" />
+          <ListBox x:Name="PaletteList" Grid.Row="2" ItemsSource="{Binding PaletteResults}" SelectedItem="{Binding SelectedPaletteItem, Mode=TwoWay}"
+                   Background="Transparent" Padding="6" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem"><Setter Property="Padding" Value="8,5" /><Setter Property="CornerRadius" Value="6" /></Style>
+              <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" /></Style>
+              <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" /></Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PaletteItem">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <c:NfIcon Kind="{Binding Glyph}" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Spacing="0">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border Classes="kbd" IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><TextBlock Text="{Binding Shortcut}" /></Border>
+                    <TextBlock Text="{Binding Group}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Border Grid.Row="3" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,6" CornerRadius="0,0,12,12">
+            <TextBlock FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" Text="↑↓ per scegliere · Invio per aprire · Esc per chiudere" />
+          </Border>
+        </Grid>
+      </Border>
     </Border>
   </Grid>
 </Window>

@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Navifox.App.ViewModels"
+             xmlns:c="using:Navifox.App.Controls"
+             x:Class="Navifox.App.Views.UsersView"
+             x:DataType="vm:UsersTabViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="F5" Command="{Binding LoadCommand}" />
+  </UserControl.KeyBindings>
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <WrapPanel>
+        <Button Classes="objbar" Command="{Binding NewUserCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuovo utente" /></StackPanel></Button>
+        <Button Classes="objbar" Command="{Binding ChangePasswordCommand}" IsEnabled="{Binding HasUser}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="key" Classes="objbar-icon" /><TextBlock Text="Cambia password" /></StackPanel></Button>
+        <Button Classes="objbar" Command="{Binding ToggleLockCommand}" IsEnabled="{Binding HasUser}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="unplug" Classes="objbar-icon" /><TextBlock Text="Blocca / sblocca" /></StackPanel></Button>
+        <Button Classes="objbar" Command="{Binding DeleteUserCommand}" IsEnabled="{Binding HasUser}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina utente" /></StackPanel></Button>
+        <Border Classes="toolbar-sep" />
+        <Button Classes="objbar" Command="{Binding LoadCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="refresh" Classes="objbar-icon" /><TextBlock Text="Aggiorna" /></StackPanel></Button>
+      </WrapPanel>
+    </Border>
+    <Grid Grid.Row="1" ColumnDefinitions="360,1,*">
+      <DataGrid Classes="nf-grid" ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser, Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="Utente" Width="*" SortMemberPath="Display">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:ServerUser">
+                <StackPanel Margin="8,2" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <c:NfIcon Kind="users" Width="13" Height="13" Foreground="{DynamicResource AccentBrush}" />
+                    <TextBlock Text="{Binding Display}" FontWeight="SemiBold" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding Attributes}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+      <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
+      <ScrollViewer Grid.Column="2">
+        <StackPanel Margin="18,14" Spacing="14" IsVisible="{Binding HasUser}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{Binding SelectedUser.Display}" FontSize="17" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding SelectedUser.Attributes}" Foreground="{DynamicResource SecondaryTextBrush}" />
+          </StackPanel>
+          <Border Classes="card" Padding="14">
+            <StackPanel Spacing="10">
+              <TextBlock Text="PERMESSI SU UN DATABASE" Classes="field-label" />
+              <Grid ColumnDefinitions="2*,2*,Auto,Auto" ColumnSpacing="8">
+                <ComboBox ItemsSource="{Binding Databases}" SelectedItem="{Binding GrantDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch" MinWidth="140" PlaceholderText="database" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset, Mode=TwoWay}" HorizontalAlignment="Stretch" MinWidth="150" />
+                <Button Grid.Column="2" Classes="dialog-primary" Content="Concedi" Command="{Binding GrantCommand}" MinWidth="90" HorizontalContentAlignment="Center" />
+                <Button Grid.Column="3" Classes="small-muted" Content="Revoca tutto" Command="{Binding RevokeCommand}" />
+              </Grid>
+              <TextBlock FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap"
+                         Text="Lettura e scrittura: SELECT, INSERT, UPDATE, DELETE (ed EXECUTE su MySQL). Sola lettura: SELECT. Su PostgreSQL i permessi valgono per lo schema public, per le tabelle attuali e per quelle create in futuro." />
+            </StackPanel>
+          </Border>
+          <Border Classes="card" Padding="14">
+            <StackPanel Spacing="6">
+              <TextBlock Text="PRIVILEGI ATTUALI" Classes="field-label" />
+              <ItemsControl ItemsSource="{Binding Grants}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <SelectableTextBlock Text="{Binding .}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" TextWrapping="Wrap" Margin="0,2" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+    <Border Grid.Row="2" Classes="grid-statusbar">
+      <DockPanel>
+        <ProgressBar DockPanel.Dock="Right" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="80" Height="3" MinWidth="0" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

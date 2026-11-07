@@ -572,6 +572,63 @@
     <Setter Property="MinHeight" Value="20" />
   </Style>
   <!-- Pannello informazioni e interruttori pannelli -->
+  <!-- Stato delle differenze (sincronizzazione) -->
+  <Style Selector="Border.sync-status">
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="6,1" />
+    <Setter Property="Background" Value="{DynamicResource InsetBrush}" />
+  </Style>
+  <Style Selector="Border.sync-status TextBlock"><Setter Property="FontSize" Value="11" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+  <Style Selector="Border.sync-status.new"><Setter Property="Background" Value="#2230A46C" /></Style>
+  <Style Selector="Border.sync-status.new TextBlock"><Setter Property="Foreground" Value="#2E8B57" /></Style>
+  <Style Selector="Border.sync-status.changed"><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" /></Style>
+  <Style Selector="Border.sync-status.changed TextBlock"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></Style>
+  <Style Selector="Border.sync-status.drop"><Setter Property="Background" Value="#22E5484D" /></Style>
+  <Style Selector="Border.sync-status.drop TextBlock"><Setter Property="Foreground" Value="#D13438" /></Style>
+  <Style Selector="Border.sync-status.error"><Setter Property="Background" Value="#22E5484D" /></Style>
+  <Style Selector="Border.sync-status.error TextBlock"><Setter Property="Foreground" Value="#D13438" /></Style>
+
+  <!-- Barra comandi -->
+  <Style Selector="Border.palette">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BoxShadow" Value="0 18 48 0 #40000000" />
+  </Style>
+  <Style Selector="TextBox.palette-input">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0,4" />
+  </Style>
+  <Style Selector="TextBox.palette-input:focus /template/ Border#PART_BorderElement, TextBox.palette-input:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Border.kbd">
+    <Setter Property="Background" Value="{DynamicResource InsetBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,1" />
+  </Style>
+  <Style Selector="Border.kbd TextBlock">
+    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+  </Style>
+  <Style Selector="Button.start-item">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.start-item:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+  </Style>
+
   <!-- Ambiente della connessione (DEV/TEST/PROD) e campioni di colore -->
   <Style Selector="Border.env-chip">
     <Setter Property="CornerRadius" Value="4" />

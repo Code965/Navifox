@@ -135,6 +135,7 @@ public partial class MainWindowViewModel : ObservableObject
             Profiles.Clear();
             foreach (var profile in saved) Profiles.Add(profile);
             RebuildConnectionTree();
+            RefreshStartPage();
             StatusMessage = Profiles.Count == 0 ? "Nessuna connessione salvata · crea la tua prima connessione" : $"{Profiles.Count} connessioni salvate";
         }
         catch (Exception exception) { StatusMessage = $"Impossibile leggere le connessioni salvate: {exception.Message}"; }
@@ -388,6 +389,7 @@ public partial class MainWindowViewModel : ObservableObject
                     var databases = await _databaseAccess.ListDatabasesAsync(profile, token);
                     node.SetChildren(databases.Select(database => new TreeNodeViewModel(database, "database", TreeNodeKind.Database, profile, database)));
                     _connectedProfiles.Add(profile.Id);
+                    RememberConnection(profile);
                     OnPropertyChanged(nameof(ConnectionCount));
                     StatusMessage = $"Connesso a {profile.Host}:{profile.EffectivePort} · {databases.Count} database";
                     break;
@@ -567,6 +569,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     private async Task OpenTableAsync(ConnectionProfile profile, string database, string schema, string table)
     {
+        RememberTable(profile, database, schema, table);
         var existing = OpenTabs.OfType<TableTabViewModel>().FirstOrDefault(tab =>
             tab.ProfileId == profile.Id && tab.Database == database && tab.Schema == schema && tab.TableName == table);
         if (existing is not null)

@@ -140,11 +140,85 @@
       </ListBox.ItemTemplate>
     </ListBox>
 
-    <!-- Stato vuoto -->
-    <StackPanel Grid.Row="3" IsVisible="{Binding !HasSource}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24">
-      <c:NfIcon Kind="table" Width="36" Height="36" StrokeWidth="1.4" HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" />
-      <TextBlock Text="{Binding Context}" Foreground="{DynamicResource SecondaryTextBrush}" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
-    </StackPanel>
+    <!-- Pagina iniziale (nessun database selezionato): connessioni, tabelle e file recenti -->
+    <ScrollViewer Grid.Row="3" IsVisible="{Binding !HasSource}">
+      <StackPanel Margin="28,22" Spacing="18" MaxWidth="900" HorizontalAlignment="Left" DataContext="{Binding $parent[Window].DataContext}" x:DataType="vm:MainWindowViewModel">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Benvenuto in Navifox" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"
+                     Text="Scegli una connessione o una tabella recente, oppure premi Ctrl+K per cercare qualsiasi comando, database o tabella." />
+        </StackPanel>
+        <WrapPanel>
+          <Button Classes="objbar" Command="{Binding OpenPaletteCommand}" Margin="0,0,6,0"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="search" Classes="objbar-icon" /><TextBlock Text="Cerca (Ctrl+K)" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding AddConnectionCommand}" Margin="0,0,6,0"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova connessione" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding NewQueryCommand}" CommandParameter="{x:Null}" Margin="0,0,6,0"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="file-code" Classes="objbar-icon" /><TextBlock Text="Nuova query" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding OpenExternalSqlCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="folder" Classes="objbar-icon" /><TextBlock Text="Apri file SQL" /></StackPanel></Button>
+        </WrapPanel>
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+          <Border Classes="card" Padding="12">
+            <StackPanel Spacing="4">
+              <TextBlock Text="CONNESSIONI" Classes="field-label" Margin="8,0,0,4" />
+              <ItemsControl ItemsSource="{Binding RecentConnectionEntries}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RecentEntry">
+                    <Button Classes="start-item" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).OpenRecentEntryCommand}" CommandParameter="{Binding .}">
+                      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                        <c:NfIcon Kind="{Binding Glyph}" Width="16" Height="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1">
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="18">
+            <Border Classes="card" Padding="12">
+              <StackPanel Spacing="4">
+                <TextBlock Text="TABELLE RECENTI" Classes="field-label" Margin="8,0,0,4" />
+                <TextBlock Text="Le tabelle che apri compariranno qui." Foreground="{DynamicResource MutedTextBrush}" FontSize="12" Margin="8,0" IsVisible="{Binding !HasRecentTables}" />
+                <ItemsControl ItemsSource="{Binding RecentTableEntries}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecentEntry">
+                      <Button Classes="start-item" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).OpenRecentEntryCommand}" CommandParameter="{Binding .}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                          <c:NfIcon Kind="{Binding Glyph}" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="2" Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+            <Border Classes="card" Padding="12" IsVisible="{Binding HasRecentFiles}">
+              <StackPanel Spacing="4">
+                <TextBlock Text="FILE SQL RECENTI" Classes="field-label" Margin="8,0,0,4" />
+                <ItemsControl ItemsSource="{Binding RecentFileEntries}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecentEntry">
+                      <Button Classes="start-item" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).OpenRecentEntryCommand}" CommandParameter="{Binding .}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                          <c:NfIcon Kind="{Binding Glyph}" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                          <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </ScrollViewer>
 
     <Border Grid.Row="4" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,5">
       <TextBlock Text="{Binding CountLabel}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />

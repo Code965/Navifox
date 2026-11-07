@@ -38,7 +38,7 @@ public partial class MainWindowViewModel
                 new("Struttura e dati", TableOperationCommand, new TableOperation(node, "duplicate-data")),
                 new("Solo struttura", TableOperationCommand, new TableOperation(node, "duplicate-structure")),
             ]),
-            new("Imposta privilegi", Glyph: "users", IsEnabled: false, ToolTip: Soon),
+            new("Imposta privilegi…", OpenUsersCommand, node, "users"),
             ContextAction.Separator,
             new("Import Wizard…", TableOperationCommand, new TableOperation(node, "import"), "import", !view),
             new("Export Wizard…", TableOperationCommand, new TableOperation(node, "export"), "export"),
