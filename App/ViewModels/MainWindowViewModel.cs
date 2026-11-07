@@ -37,6 +37,7 @@ public partial class MainWindowViewModel : ObservableObject
         OpenTabs.Add(ObjectsTab);
         SelectedTab = ObjectsTab;
         Info = new InfoPanelViewModel(databaseAccess);
+        LibraryStore.QueriesChanged += OnSavedQueriesChanged;
         ObjectsTab.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName is nameof(ObjectsTabViewModel.SelectedObject)) UpdateInfoTarget();
@@ -136,6 +137,8 @@ public partial class MainWindowViewModel : ObservableObject
             foreach (var profile in saved) Profiles.Add(profile);
             RebuildConnectionTree();
             RefreshStartPage();
+            await RestoreSessionAsync();
+            await ProcessPendingOpenAsync();
             StatusMessage = Profiles.Count == 0 ? "Nessuna connessione salvata · crea la tua prima connessione" : $"{Profiles.Count} connessioni salvate";
         }
         catch (Exception exception) { StatusMessage = $"Impossibile leggere le connessioni salvate: {exception.Message}"; }
@@ -201,6 +204,7 @@ public partial class MainWindowViewModel : ObservableObject
         // L'espansione con doppio clic è gestita dal TreeViewItem stesso; qui si aprono solo le tabelle.
         if (node.Kind == TreeNodeKind.Table) await OpenTableAsync(node.Profile!, node.Database!, node.Schema!, node.Name);
         else if (node.Kind == TreeNodeKind.DbObject) OpenSchemaObjectEditor(node);
+        else if (node.Kind is TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile) await OpenLibraryItemAsync(node);
     }
 
     [RelayCommand]
@@ -330,7 +334,10 @@ public partial class MainWindowViewModel : ObservableObject
                 ObjectsTab.Clear();
                 StatusMessage = $"L’elenco «{node.Name}» è previsto in una fase successiva.";
                 break;
-            case TreeNodeKind.Table or TreeNodeKind.DbObject when node.Parent is { } category:
+            case TreeNodeKind.TableGroup when node.CategoryNode is { } groupCategory:
+                if (ObjectsTab.Source != groupCategory) ShowCategoryObjects(groupCategory);
+                break;
+            case TreeNodeKind.Table or TreeNodeKind.DbObject or TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile when node.CategoryNode is { } category:
                 if (ObjectsTab.Source != category) ShowCategoryObjects(category, node.Name);
                 else ObjectsTab.SelectedObject = ObjectsTab.VisibleObjects.FirstOrDefault(row => row.Name == node.Name);
                 break;
@@ -415,6 +422,9 @@ public partial class MainWindowViewModel : ObservableObject
                     node.SetChildren(items.Select(info => new TreeNodeViewModel(info.Name, ObjectRowViewModel.GlyphFor(info.Kind), TreeNodeKind.DbObject, profile, node.Database, node.Schema, node.Category) { Info = info }));
                     break;
                 }
+                case TreeNodeKind.Category when node.IsLocalCategory:
+                    LoadLocalCategory(node);
+                    break;
                 case TreeNodeKind.Category when node.IsObjectCategory:
                 {
                     var all = await _databaseAccess.ListTablesAsync(profile, node.Database!, node.Schema!, token);
@@ -424,6 +434,7 @@ public partial class MainWindowViewModel : ObservableObject
                     node.Objects = objects;
                     var glyph = wanted == "VIEW" ? "eye" : "table";
                     node.SetChildren(objects.Select(info => new TreeNodeViewModel(info.Name, glyph, TreeNodeKind.Table, profile, node.Database, node.Schema, node.Category) { Info = info }));
+                    if (node.Category == "Tabelle") ApplyTableGroups(node);
                     break;
                 }
             }
@@ -555,6 +566,8 @@ public partial class MainWindowViewModel : ObservableObject
             if (source.Children.FirstOrDefault(child => child.Name == row.Name) is { } node) OpenSchemaObjectEditor(node);
             return Task.CompletedTask;
         }
+        if (source.IsLocalCategory)
+            return source.Children.FirstOrDefault(child => child.Name == row.Name) is { } item ? OpenLibraryItemAsync(item) : Task.CompletedTask;
         return OpenTableAsync(source.Profile, source.Database, source.Schema, row.Name);
     }
 

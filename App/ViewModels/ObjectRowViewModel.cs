@@ -16,6 +16,8 @@ public sealed class ObjectRowViewModel(DatabaseObjectInfo info)
         "TRIGGER" => "zap",
         "EVENT" => "clock",
         "SEQUENCE" => "hash",
+        "QUERY" => "bookmark",
+        "BACKUP" => "archive",
         _ => "table"
     };
     public string Rows => info.EstimatedRows is long value ? value.ToString("N0") : "";

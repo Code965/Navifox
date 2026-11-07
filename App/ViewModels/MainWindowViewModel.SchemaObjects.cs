@@ -70,21 +70,29 @@ public partial class MainWindowViewModel
     [RelayCommand]
     private void EditSelectedObject()
     {
-        if (SelectedObjectNode() is { } node) OpenSchemaObjectEditor(node);
+        if (SelectedObjectNode() is not { } node) return;
+        if (node.Kind is TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile) _ = OpenLibraryItemAsync(node);
+        else OpenSchemaObjectEditor(node);
     }
 
     [RelayCommand]
     private void NewInCurrentCategory(string? routineType)
     {
-        if (ObjectsTab.Source is { SchemaKind: { } kind } category) NewSchemaObject(new NewSchemaObjectRequest(category, kind, routineType ?? "FUNCTION"));
+        if (ObjectsTab.Source is { Category: "Query salvate" } queries) NewQueryCommand.Execute(queries);
+        else if (ObjectsTab.Source is { Category: "Backup" } backups) _ = CreateBackupAsync(backups);
+        else if (ObjectsTab.Source is { SchemaKind: { } kind } category) NewSchemaObject(new NewSchemaObjectRequest(category, kind, routineType ?? "FUNCTION"));
         else if (ObjectsTab.Source is { Category: "Viste" } views) NewSchemaObject(new NewSchemaObjectRequest(views, SchemaObjectKind.View));
     }
 
     [RelayCommand]
-    private Task DeleteSelectedSchemaObjectAsync() => SelectedObjectNode() is { } node ? DeleteSchemaObjectAsync(node) : Task.CompletedTask;
+    private Task DeleteSelectedSchemaObjectAsync() => SelectedObjectNode() is { } node
+        ? node.Kind is TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile ? DeleteLibraryItemAsync(node) : DeleteSchemaObjectAsync(node)
+        : Task.CompletedTask;
 
     [RelayCommand]
-    private Task RunSelectedRoutineAsync() => SelectedObjectNode() is { } node ? RunRoutineAsync(node) : Task.CompletedTask;
+    private Task RunSelectedRoutineAsync() => SelectedObjectNode() is { } node
+        ? node.Kind == TreeNodeKind.SavedQuery ? RunSavedQueryAsync(node) : RunRoutineAsync(node)
+        : Task.CompletedTask;
 
     [RelayCommand]
     private void OpenSchemaObject(TreeNodeViewModel? node)

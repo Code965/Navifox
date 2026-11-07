@@ -29,7 +29,7 @@ public partial class MainWindowViewModel
         [
             new($"Apri {what}", OpenNodeCommand, node, view ? "eye" : "table"),
             new($"Progetta {what}", view ? OpenSchemaObjectCommand : DesignTableCommand, node, "pencil"),
-            new("Nuova tabella", NewTableCommand, node.Parent, "plus"),
+            new("Nuova tabella", NewTableCommand, node.CategoryNode, "plus"),
             new($"Elimina {what}", TableOperationCommand, new TableOperation(node, "drop"), "trash"),
             new("Svuota tabella", TableOperationCommand, new TableOperation(node, "empty"), "x", !view),
             new("Tronca tabella", TableOperationCommand, new TableOperation(node, "truncate"), "x", !view),
@@ -48,7 +48,7 @@ public partial class MainWindowViewModel
                 new("Struttura e dati…", TableOperationCommand, new TableOperation(node, "dump-data")),
                 new("Solo struttura…", TableOperationCommand, new TableOperation(node, "dump-structure")),
             ]),
-            new("Stampa tabelle", Glyph: "printer", IsEnabled: false, ToolTip: Soon),
+            new("Stampa tabella…", PrintCommand, node, "printer", !view),
             new("Manutenzione", Glyph: "sliders", IsEnabled: !view, Children: mysql
                 ?
                 [
@@ -66,13 +66,14 @@ public partial class MainWindowViewModel
                 ]),
             new("Reverse tabelle a modello…", TableOperationCommand, new TableOperation(node, "model"), "network"),
             ContextAction.Separator,
-            new("Gestisci gruppo", Glyph: "folder", IsEnabled: false, ToolTip: Soon),
+            new("Gestisci gruppo", Glyph: "folder", IsEnabled: !view, Children: view ? null : ManageGroupActions(node)),
+            new("Aggiungi ai preferiti", AddFavoriteCommand, node, "star", !view),
             new("Copia", CopyTablesCommand, node, "copy", !view),
             new("Incolla", PasteTablesCommand, node, "download", HasClipboard),
             new("Rinomina", TableOperationCommand, new TableOperation(node, "rename"), "pencil"),
-            new("Crea collegamento rapido…", Glyph: "link", IsEnabled: false, ToolTip: Soon),
+            new("Crea collegamento rapido sul desktop", CreateShortcutCommand, node, "link", !view),
             ContextAction.Separator,
-            new("Aggiorna", RefreshNodeCommand, node.Parent, "refresh"),
+            new("Aggiorna", RefreshNodeCommand, node.CategoryNode, "refresh"),
             new("Informazioni oggetto", TableOperationCommand, new TableOperation(node, "info"), "info"),
         ];
     }

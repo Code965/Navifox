@@ -61,6 +61,9 @@ public partial class App : Application
         _services.GetRequiredService<IWindowLocator>().MainWindow = window;
         if (window.DataContext is MainWindowViewModel viewModel)
         {
+            // Collegamento rapido: Navifox.exe --open "table|…" apre la tabella all'avvio.
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { Args: { } args } && Array.IndexOf(args, "--open") is var at and >= 0 && at + 1 < args.Length)
+                viewModel.PendingOpen = args[at + 1];
             viewModel.ApplySettings();
             window.Opened += (_, _) => _ = viewModel.CheckUpdatesOnStartupAsync();
         }

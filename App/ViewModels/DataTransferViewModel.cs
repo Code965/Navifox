@@ -657,6 +657,7 @@ public partial class OptionsViewModel : ObservableObject
         _queryMaxRows = settings.QueryMaxRows;
         _checkUpdatesOnStartup = settings.CheckUpdatesOnStartup;
         _safeMode = settings.SafeMode;
+        _restoreSession = settings.RestoreSession;
         _updateSource = settings.UpdateSource;
     }
 
@@ -675,6 +676,7 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private decimal? _queryMaxRows;
     [ObservableProperty] private bool _checkUpdatesOnStartup;
     [ObservableProperty] private bool _safeMode;
+    [ObservableProperty] private bool _restoreSession;
     [ObservableProperty] private string _updateSource;
 
     [RelayCommand]
@@ -689,6 +691,7 @@ public partial class OptionsViewModel : ObservableObject
         settings.QueryMaxRows = (int)Math.Clamp(QueryMaxRows ?? 1000, 1, 1_000_000);
         settings.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
         settings.SafeMode = SafeMode;
+        settings.RestoreSession = RestoreSession;
         settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;
         settings.Save();
         CloseRequested?.Invoke(true);

@@ -23,7 +23,7 @@ public partial class MainWindowViewModel
         new("Esegui file SQL…", ExecuteSqlFileCommand, node, "play"),
         new("Trova nel database…", OpenFindCommand, node, "search"),
         ContextAction.Separator,
-        new("Nuovo gruppo", Glyph: "folder", IsEnabled: false, ToolTip: Soon),
+        new("Nuovo gruppo…", NewTableGroupCommand, node, "folder"),
         new("Copia tutte le tabelle", CopyTablesCommand, node, "copy", node.Objects is { Count: > 0 }),
         new("Incolla", PasteTablesCommand, node, "download", HasClipboard),
         ContextAction.Separator,
@@ -35,15 +35,15 @@ public partial class MainWindowViewModel
     public IReadOnlyList<ContextAction> GetObjectListActions(ObjectRowViewModel? row)
     {
         if (ObjectsTab.Source is not { } category) return [];
-        if (row is not null && category.Children.FirstOrDefault(child => child.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject && child.Name == row.Name) is { } item)
-            return item.Kind == TreeNodeKind.DbObject ? SchemaObjectActions(item) : TableContextActions(item);
+        if (row is not null && category.SelfAndDescendants().FirstOrDefault(child => child.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject or TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile && child.Name == row.Name) is { } item)
+            return GetContextActions(item);
         return category.Category == "Tabelle" ? TablesCategoryActions(category) : GetContextActions(category);
     }
 
     private TreeNodeViewModel? SelectedObjectNode()
     {
         if (ObjectsTab.Source is not { } category || ObjectsTab.SelectedObject is not { } row) return null;
-        return category.Children.FirstOrDefault(child => child.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject && child.Name == row.Name);
+        return category.SelfAndDescendants().FirstOrDefault(child => child.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject or TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile && child.Name == row.Name);
     }
 
     [RelayCommand]
@@ -79,7 +79,7 @@ public partial class MainWindowViewModel
     {
         if (ObjectsTab.Source is not { } category) return;
         var rows = SelectedObjectRows.Count > 0 ? SelectedObjectRows : ObjectsTab.SelectedObject is { } one ? [one] : [];
-        var nodes = rows.Select(r => category.Children.FirstOrDefault(c => c.Kind == TreeNodeKind.Table && c.Name == r.Name)).OfType<TreeNodeViewModel>().ToArray();
+        var nodes = rows.Select(r => category.SelfAndDescendants().FirstOrDefault(c => c.Kind == TreeNodeKind.Table && c.Name == r.Name)).OfType<TreeNodeViewModel>().ToArray();
         if (nodes.Length == 0)
         {
             StatusMessage = "Seleziona una o più tabelle da eliminare.";

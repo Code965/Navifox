@@ -19,6 +19,7 @@
               <Button.Flyout>
                 <MenuFlyout Placement="BottomEdgeAlignedLeft">
                   <MenuItem Header="Salva con nome…" Command="{Binding SaveAsCommand}" />
+                  <MenuItem Header="Salva in Query salvate" Command="{Binding SaveToLibraryCommand}" InputGesture="Ctrl+Shift+S" />
                   <MenuItem Header="Apri file SQL…" Command="{Binding OpenFileCommand}" />
                 </MenuFlyout>
               </Button.Flyout>

@@ -5,7 +5,8 @@ using Navifox.Core.Models;
 namespace Navifox.App.ViewModels;
 
 /// <summary>DbObject = funzione, procedura, trigger, evento o sequenza (categoria nel campo Category).</summary>
-public enum TreeNodeKind { Group, Connection, Database, Schema, Category, Table, DbObject, Placeholder }
+/// <summary>TableGroup = gruppo di tabelle dell'utente; SavedQuery / BackupFile = elementi delle categorie locali «Query salvate» e «Backup».</summary>
+public enum TreeNodeKind { Group, Connection, Database, Schema, Category, Table, DbObject, TableGroup, SavedQuery, BackupFile, Placeholder }
 
 public partial class TreeNodeViewModel : ObservableObject
 {
@@ -70,7 +71,19 @@ public partial class TreeNodeViewModel : ObservableObject
 
     public bool IsPlaceholder => Kind == TreeNodeKind.Placeholder;
     public bool IsConnection => Kind == TreeNodeKind.Connection;
-    public bool IsObjectCategory => Kind == TreeNodeKind.Category && (Category is "Tabelle" or "Viste" || SchemaKind is not null);
+    public bool IsObjectCategory => Kind == TreeNodeKind.Category && (Category is "Tabelle" or "Viste" or "Query salvate" or "Backup" || SchemaKind is not null);
+    public bool IsLocalCategory => Kind == TreeNodeKind.Category && Category is "Query salvate" or "Backup";
+
+    /// <summary>Categoria che contiene il nodo (anche attraverso un gruppo di tabelle).</summary>
+    public TreeNodeViewModel? CategoryNode
+    {
+        get
+        {
+            for (var node = Parent; node is not null; node = node.Parent)
+                if (node.Kind == TreeNodeKind.Category) return node;
+            return null;
+        }
+    }
     public bool IsTableCategory => Kind == TreeNodeKind.Category && Category is "Tabelle" or "Viste";
     private bool IsLazy => Kind is TreeNodeKind.Connection or TreeNodeKind.Database or TreeNodeKind.Schema || IsObjectCategory;
 

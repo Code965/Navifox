@@ -45,7 +45,9 @@
         <Image Source="{DynamicResource NfLogo}" Height="20" VerticalAlignment="Center" ToolTip.Tip="NaviFox" />
         <Menu Grid.Column="1" Background="Transparent" VerticalAlignment="Center" Classes="top-menu">
           <MenuItem Header="File">
-            <MenuItem Header="Nuovo progetto" IsEnabled="False" ToolTip.Tip="Disponibile in una fase successiva" />
+            <MenuItem Header="Apri area di lavoro…" Command="{Binding OpenWorkspaceCommand}"><MenuItem.Icon><c:NfIcon Kind="folder" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Salva area di lavoro…" Command="{Binding SaveWorkspaceCommand}" ToolTip.Tip="Salva le schede aperte (tabelle e query) in un file .nfx"><MenuItem.Icon><c:NfIcon Kind="save" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <Separator />
             <MenuItem Header="Nuova connessione">
               <MenuItem.Icon><c:NfIcon Kind="plus" Classes="menu-icon" /></MenuItem.Icon>
               <MenuItem Header="MySQL…" Command="{Binding AddConnectionWithDriverCommand}" CommandParameter="MySQL" />
@@ -121,7 +123,7 @@
             <Separator />
             <MenuItem Header="Tema chiaro / scuro" Command="{Binding ToggleThemeCommand}"><MenuItem.Icon><c:NfIcon Kind="sun-moon" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
           </MenuItem>
-          <MenuItem Header="Preferiti" IsEnabled="False" />
+          <MenuItem x:Name="FavoritesMenu" Header="Preferiti" />
           <MenuItem Header="Strumenti">
             <MenuItem Header="Trasferimento dati…" Command="{Binding OpenDataTransferCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="transfer" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Sincronizzazione dati…" Command="{Binding OpenDataSyncCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="sync" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
@@ -324,6 +326,27 @@
         </StackPanel>
       </Grid>
     </Border>
+
+    <!-- ═══ Notifiche ═══ -->
+    <ItemsControl Grid.RowSpan="4" ItemsSource="{Binding Toasts}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,18,46" ZIndex="90" Width="340">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ToastMessage">
+          <Border Classes="toast" Classes.error="{Binding IsError}" Margin="0,6,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <Border Classes="toast-icon" Classes.error="{Binding IsError}" VerticalAlignment="Top">
+                <c:NfIcon Kind="{Binding Glyph}" Width="13" Height="13" Foreground="White" />
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Message}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="2" Classes="tab-close" Content="×" VerticalAlignment="Top"
+                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DismissToastCommand}" CommandParameter="{Binding .}" />
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
 
     <!-- ═══ Barra comandi (Ctrl+K) ═══ -->
     <Border x:Name="PaletteOverlay" Grid.RowSpan="4" IsVisible="{Binding IsPaletteOpen}" Background="#66000000" ZIndex="100">

@@ -30,6 +30,13 @@ public sealed class AppSettings
     public List<string> RecentTables { get; set; } = [];
     /// <summary>Connessioni aperte di recente (id).</summary>
     public List<string> RecentConnections { get; set; } = [];
+    /// <summary>Preferiti: «table|id|database|schema|tabella» oppure «query|id».</summary>
+    public List<string> Favorites { get; set; } = [];
+    /// <summary>Gruppi di tabelle (Gestisci gruppo).</summary>
+    public List<TableGroupEntry> TableGroups { get; set; } = [];
+    /// <summary>Riapre all'avvio le schede dell'ultima sessione.</summary>
+    public bool RestoreSession { get; set; } = true;
+    public string? LastSession { get; set; }
     /// <summary>Cartelle di connessioni create dall'utente (anche vuote).</summary>
     public List<string> ConnectionFolders { get; set; } = [];
     /// <summary>Ordine scelto dall'utente per cartelle («f:percorso») e connessioni («c:id») nell'albero.</summary>
@@ -54,4 +61,13 @@ public sealed class AppSettings
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
     }
+}
+
+
+/// <summary>Tabella assegnata a un gruppo (Table null = gruppo vuoto). Key = «idConnessione|database|schema».</summary>
+public sealed class TableGroupEntry
+{
+    public string Key { get; set; } = string.Empty;
+    public string Group { get; set; } = string.Empty;
+    public string? Table { get; set; }
 }

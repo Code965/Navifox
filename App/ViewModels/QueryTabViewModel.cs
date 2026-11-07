@@ -48,6 +48,34 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     [ObservableProperty] private string? _selectedDatabase;
     [ObservableProperty] private string? _filePath;
 
+    /// <summary>Query salvata collegata alla scheda (null = non salvata nella libreria).</summary>
+    public Guid? SavedQueryId { get; private set; }
+    private string? _savedQueryName;
+
+    public void AttachSavedQuery(Services.SavedQuery query)
+    {
+        SavedQueryId = query.Id;
+        _savedQueryName = query.Name;
+        RefreshTitle();
+    }
+
+    /// <summary>Salva il testo nella categoria «Query salvate» del database (aggiorna se già salvata).</summary>
+    [RelayCommand]
+    private async Task SaveToLibraryAsync()
+    {
+        if (_dialogs is null) return;
+        var database = SelectedDatabase ?? string.Empty;
+        var name = _savedQueryName;
+        if (SavedQueryId is null)
+        {
+            name = await _dialogs.PromptAsync("Salva in Query salvate", $"Nome della query (in «{(database.Length == 0 ? _profile.Name : database)}»):", $"Query {_number}", "Salva");
+            if (string.IsNullOrWhiteSpace(name)) return;
+        }
+        var saved = Services.LibraryStore.SaveQuery(new Services.SavedQuery { Id = SavedQueryId ?? Guid.NewGuid(), ProfileId = _profile.Id, Database = database, Name = name!.Trim(), Sql = SqlText });
+        AttachSavedQuery(saved);
+        StatusMessage = $"Query «{saved.Name}» salvata in Query salvate.";
+    }
+
     public string? Database => SelectedDatabase;
 
     partial void OnSelectedProfileChanged(ConnectionProfile? value)
@@ -132,6 +160,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         {
             var target = SelectedDatabase is null ? _profile.Name : $"{SelectedDatabase} ({_profile.Name})";
             if (IsConsole) return $"Console · {target}";
+            if (_savedQueryName is { } saved) return $"{saved} · {target}";
             return FilePath is { } path ? $"{Path.GetFileName(path)} · {target}" : $"Query {_number} · {target}";
         }
     }

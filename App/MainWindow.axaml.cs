@@ -67,6 +67,25 @@ public partial class MainWindow : Window
         SetupPalette(viewModel);
         // File › Apri recenti: l'elenco si ricostruisce a ogni apertura del sottomenu.
         RecentMenu.ItemsSource = new object[] { new MenuItem { Header = "(nessun file recente)", IsEnabled = false } };
+        // Preferiti: aggiungi l'elemento corrente, poi l'elenco (clic = apri), poi rimozione.
+        FavoritesMenu.ItemsSource = new object[] { new MenuItem { Header = "(nessun preferito)", IsEnabled = false } };
+        FavoritesMenu.SubmenuOpened += (_, _) =>
+        {
+            var items = new List<object> { new MenuItem { Header = "Aggiungi ai preferiti", Command = viewModel.AddFavoriteCommand, CommandParameter = viewModel.SelectedTab is TableTabViewModel or QueryTabViewModel ? null : viewModel.SelectedNode, Icon = new Controls.NfIcon { Kind = "star", Width = 14, Height = 14 } }, new Separator() };
+            var favorites = viewModel.Favorites;
+            if (favorites.Count == 0) items.Add(new MenuItem { Header = "(nessun preferito: tasto destro su una tabella › Aggiungi ai preferiti)", IsEnabled = false });
+            foreach (var favorite in favorites)
+                items.Add(new MenuItem { Header = $"{favorite.Title}  ·  {favorite.Subtitle}", Command = viewModel.OpenFavoriteCommand, CommandParameter = favorite.Key, Icon = new Controls.NfIcon { Kind = favorite.Glyph, Width = 14, Height = 14 } });
+            if (favorites.Count > 0)
+            {
+                var remove = new MenuItem { Header = "Rimuovi dai preferiti" };
+                remove.ItemsSource = favorites.Select(f => new MenuItem { Header = f.Title, Command = viewModel.RemoveFavoriteCommand, CommandParameter = f.Key }).ToArray();
+                items.Add(new Separator());
+                items.Add(remove);
+            }
+            FavoritesMenu.ItemsSource = items;
+        };
+        Closing += (_, _) => viewModel.SaveSession();
         RecentMenu.SubmenuOpened += (_, _) =>
         {
             var items = new List<object>();

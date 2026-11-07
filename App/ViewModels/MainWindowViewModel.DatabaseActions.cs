@@ -49,7 +49,8 @@ public partial class MainWindowViewModel
                 new("Struttura e dati…", DumpDatabaseCommand, new DumpRequest(node, true)),
                 new("Solo struttura…", DumpDatabaseCommand, new DumpRequest(node, false)),
             ]),
-            new("Stampa database", Glyph: "printer", IsEnabled: false, ToolTip: Soon),
+            new("Stampa database…", PrintCommand, node, "printer"),
+            new("Backup del database", CreateBackupCommand, node, "archive"),
             new("Reverse database a modello…", OpenModelCommand, node, "network"),
             new("Trova nel database…", OpenFindCommand, node, "search"),
             new("Trasferimento dati…", OpenDataTransferCommand, node, "transfer"),
@@ -62,7 +63,11 @@ public partial class MainWindowViewModel
         TreeNodeKind.Category when node.Category == "Tabelle" => TablesCategoryActions(node),
         TreeNodeKind.Category when node.Category == "Viste" => ViewsCategoryActions(node),
         TreeNodeKind.Category when node.SchemaKind is not null => SchemaCategoryActions(node),
+        TreeNodeKind.Category when node.IsLocalCategory => LocalCategoryActions(node),
         TreeNodeKind.DbObject => SchemaObjectActions(node),
+        TreeNodeKind.SavedQuery => SavedQueryActions(node),
+        TreeNodeKind.BackupFile => BackupActions(node),
+        TreeNodeKind.TableGroup => TableGroupActions(node),
         TreeNodeKind.Schema or TreeNodeKind.Category =>
         [
             new("Nuova query", NewQueryCommand, node, "file-code"),
@@ -261,14 +266,21 @@ public partial class MainWindowViewModel
         if (node?.Profile is not { } profile) return;
         var path = await _dialogs.PickOpenFileAsync("Esegui file SQL", new FileFilter("Script SQL", "*.sql"), new FileFilter("Tutti i file", "*.*"));
         if (path is null) return;
-        var target = node.Database ?? profile.Name;
+        if (!await SqlGuard.ConfirmProductionAsync(_dialogs, profile, $"Stai per eseguire lo script «{Path.GetFileName(path)}» su «{node.Database ?? profile.Name}».")) return;
+        await ExecuteSqlFileOnAsync(profile, node.Database, path);
+    }
+
+    /// <summary>Esegue uno script SQL con avanzamento nella barra di stato (Esegui file SQL, Ripristina backup).</summary>
+    private async Task ExecuteSqlFileOnAsync(ConnectionProfile profile, string? database, string path)
+    {
+        var target = database ?? profile.Name;
         var executed = 0;
         Exception? failure = null;
         var progress = new Progress<ScriptProgress>(value =>
             StatusMessage = $"Esecuzione {Path.GetFileName(path)} su {target}: {value.Executed:N0} istruzioni · {(value.TotalBytes == 0 ? 100 : value.BytesProcessed * 100 / value.TotalBytes)}%");
         await RunOperationAsync(async token =>
         {
-            try { executed = await Task.Run(() => _databaseAccess.ExecuteScriptFileAsync(profile, node.Database, path, progress, token), token); }
+            try { executed = await Task.Run(() => _databaseAccess.ExecuteScriptFileAsync(profile, database, path, progress, token), token); }
             catch (OperationCanceledException) { throw; }
             catch (Exception exception) { failure = exception; }
         }, CancellationToken.None);
@@ -284,7 +296,13 @@ public partial class MainWindowViewModel
         else if (!StatusMessage.StartsWith("Operazione annullata", StringComparison.Ordinal))
             StatusMessage = $"«{Path.GetFileName(path)}» eseguito su {target}: {executed:N0} istruzioni.";
 
-        if (node.Kind is TreeNodeKind.Database or TreeNodeKind.Connection && node.IsLoaded) await RefreshNodeAsync(node);
+        // Lo script può aver creato o eliminato oggetti: si ricarica il database (o la connessione) se già aperto.
+        if (_connectionNodes.TryGetValue(profile.Id, out var connectionNode))
+        {
+            var refresh = database is null ? connectionNode : connectionNode.Children.FirstOrDefault(n => n.Kind == TreeNodeKind.Database && n.Name == database);
+            if (refresh is { IsLoaded: true }) await RefreshNodeAsync(refresh);
+        }
+        if (failure is null) Notify("Script eseguito", $"{Path.GetFileName(path)} → {target}: {executed:N0} istruzioni");
     }
 
     [RelayCommand]

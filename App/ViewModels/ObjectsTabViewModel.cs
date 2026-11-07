@@ -79,8 +79,8 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
     public bool IsEmpty => VisibleObjects.Count == 0;
 
     /// <summary>True per Tabelle/Viste (colonne righe, dimensione, engine…); false per funzioni, trigger, eventi e sequenze.</summary>
-    public bool IsTableList => Source?.SchemaKind is null;
-    public bool IsRoutineList => Source?.SchemaKind == Navifox.Core.Models.SchemaObjectKind.Routine;
+    public bool IsTableList => Source is null || Source.IsTableCategory;
+    public bool IsRoutineList => Source?.SchemaKind == Navifox.Core.Models.SchemaObjectKind.Routine || Source?.Category == "Query salvate";
     public bool IsViewList => Source?.Category == "Viste";
     public string NewLabel => Source?.SchemaKind switch
     {
@@ -88,6 +88,8 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
         Navifox.Core.Models.SchemaObjectKind.Trigger => "Nuovo trigger",
         Navifox.Core.Models.SchemaObjectKind.Event => "Nuovo evento",
         Navifox.Core.Models.SchemaObjectKind.Sequence => "Nuova sequenza",
+        _ when Source?.Category == "Query salvate" => "Nuova query",
+        _ when Source?.Category == "Backup" => "Nuovo backup",
         _ => "Nuovo"
     };
     public string EditLabel => Source?.SchemaKind switch
@@ -96,6 +98,8 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
         Navifox.Core.Models.SchemaObjectKind.Trigger => "Modifica trigger",
         Navifox.Core.Models.SchemaObjectKind.Event => "Modifica evento",
         Navifox.Core.Models.SchemaObjectKind.Sequence => "Progetta sequenza",
+        _ when Source?.Category == "Query salvate" => "Apri query",
+        _ when Source?.Category == "Backup" => "Ripristina",
         _ => "Modifica"
     };
 
