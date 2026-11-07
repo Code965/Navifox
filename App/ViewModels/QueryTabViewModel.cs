@@ -344,6 +344,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         catch (Exception exception)
         {
             StatusMessage = $"Errore: {exception.Message}";
+            RememberError(sql, exception.Message);
             if (console) AppendConsole($"ERRORE: {exception.Message}\n\n");
             else
             {
@@ -377,6 +378,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
                 : $"[{DateTime.Now:HH:mm:ss}] {head}\n    {Describe(result.Result!)} · {result.Elapsed.TotalMilliseconds:N0} ms");
         }
         var failed = results.FirstOrDefault(result => result.Error is not null);
+        if (failed is not null) RememberError(failed.Sql, failed.Error!.Message);
         StatusMessage = failed is not null
             ? $"Errore: {failed.Error!.Message}"
             : lastWithRows?.Result is { } r

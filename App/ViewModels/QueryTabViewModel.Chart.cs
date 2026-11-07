@@ -18,8 +18,9 @@ public partial class QueryTabViewModel
     [ObservableProperty] private IReadOnlyList<ChartPoint>? _chartPoints;
     [ObservableProperty] private string _chartInfo = string.Empty;
 
-    partial void OnChartLabelColumnChanged(string? value) => RebuildChart();
-    partial void OnChartValueColumnChanged(string? value) => RebuildChart();
+    private bool _preparingChart;
+    partial void OnChartLabelColumnChanged(string? value) { if (!_preparingChart) RebuildChart(); }
+    partial void OnChartValueColumnChanged(string? value) { if (!_preparingChart) RebuildChart(); }
 
     private static bool TryNumber(object? value, out double number)
     {
@@ -54,10 +55,13 @@ public partial class QueryTabViewModel
             if (sample.Any(r => TryNumber(r.CellAt(i)?.Value, out _))) ChartValueColumns.Add(Columns[i].Name);
         }
         var firstValue = ChartValueColumns.FirstOrDefault(c => !c.Equals("id", StringComparison.OrdinalIgnoreCase)) ?? ChartValueColumns.FirstOrDefault();
-        _chartLabelColumn = Columns.Select(c => c.Name).FirstOrDefault(c => !ChartValueColumns.Contains(c)) ?? Columns[0].Name;
-        _chartValueColumn = firstValue;
-        OnPropertyChanged(nameof(ChartLabelColumn));
-        OnPropertyChanged(nameof(ChartValueColumn));
+        _preparingChart = true;
+        try
+        {
+            ChartLabelColumn = Columns.Select(c => c.Name).FirstOrDefault(c => !ChartValueColumns.Contains(c)) ?? Columns[0].Name;
+            ChartValueColumn = firstValue;
+        }
+        finally { _preparingChart = false; }
         RebuildChart();
     }
 

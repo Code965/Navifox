@@ -673,6 +673,7 @@ public partial class OptionsViewModel : ObservableObject
         _safeMode = settings.SafeMode;
         _restoreSession = settings.RestoreSession;
         _updateSource = settings.UpdateSource;
+        _anthropicApiKey = SqlAssistant.ApiKey ?? string.Empty;
     }
 
     public string CurrentVersion => $"Versione installata: {UpdateService.CurrentVersion}";
@@ -692,6 +693,7 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private bool _safeMode;
     [ObservableProperty] private bool _restoreSession;
     [ObservableProperty] private string _updateSource;
+    [ObservableProperty] private string _anthropicApiKey;
 
     [RelayCommand]
     private void Save()
@@ -707,6 +709,8 @@ public partial class OptionsViewModel : ObservableObject
         settings.SafeMode = SafeMode;
         settings.RestoreSession = RestoreSession;
         settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;
+        // Se la chiave è quella della variabile d'ambiente non la si duplica nelle impostazioni.
+        SqlAssistant.SetApiKey(AnthropicApiKey == Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ? null : AnthropicApiKey);
         settings.Save();
         CloseRequested?.Invoke(true);
     }

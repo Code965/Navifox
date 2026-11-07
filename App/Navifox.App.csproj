@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="..\Assets\NaviFoxBrand\**\*.*" Link="Assets\NaviFoxBrand\%(RecursiveDir)%(Filename)%(Extension)" />
+    <PackageReference Include="Anthropic" Version="13.6.0" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Velopack" Version="1.2.161" />

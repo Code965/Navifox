@@ -54,7 +54,8 @@ public sealed class ChartCanvas : Control
     {
         var formatted = new FormattedText(text, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), size, brush ?? TextBrush)
         {
-            MaxTextWidth = double.IsInfinity(maxWidth) ? 0 : maxWidth, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis, TextAlignment = align,
+            MaxTextWidth = double.IsInfinity(maxWidth) ? 0 : maxWidth, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis,
+            TextAlignment = double.IsInfinity(maxWidth) ? TextAlignment.Left : align,
         };
         var x = align switch { TextAlignment.Center => at.X - (double.IsInfinity(maxWidth) ? formatted.Width : maxWidth) / 2, TextAlignment.Right => at.X - formatted.Width, _ => at.X };
         context.DrawText(formatted, new Point(x, at.Y));

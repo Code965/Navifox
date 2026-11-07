@@ -23,6 +23,18 @@ public partial class QueryPageView : UserControl
         RunButton.Click += (_, _) => Run(RunMode.Auto);
         RunSelectionItem.Click += (_, _) => Run(RunMode.Selection);
         RunCurrentItem.Click += (_, _) => Run(RunMode.Current);
+        AssistExplainItem.Click += (_, _) =>
+        {
+            if (_viewModel is null) return;
+            CaptureEditorState();
+            _viewModel.AssistExplainCommand.Execute(null);
+        };
+        AssistOptimizeItem.Click += (_, _) =>
+        {
+            if (_viewModel is null) return;
+            CaptureEditorState();
+            _viewModel.AssistOptimizeCommand.Execute(null);
+        };
         ExplainButton.Click += (_, _) =>
         {
             if (_viewModel is null) return;

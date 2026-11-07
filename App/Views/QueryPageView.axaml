@@ -34,6 +34,18 @@
             <Button x:Name="SnippetButton" Classes="objbar" ToolTip.Tip="Inserisci un modello di codice">
               <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="code" Classes="objbar-icon" /><TextBlock Text="Snippet" /><c:NfIcon Kind="chevron-down" Width="11" Height="11" /></StackPanel>
             </Button>
+            <Border Classes="toolbar-sep" />
+            <Button x:Name="AssistantButton" Classes="objbar" ToolTip.Tip="Assistente SQL (Claude): spiega, genera, ottimizza e corregge le query">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="star" Classes="objbar-icon" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="Assistente" /><c:NfIcon Kind="chevron-down" Width="11" Height="11" /></StackPanel>
+              <Button.Flyout>
+                <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                  <MenuItem x:Name="AssistExplainItem" Header="Spiega la query" />
+                  <MenuItem Header="Genera SQL da una descrizione…" Command="{Binding AssistGenerateCommand}" />
+                  <MenuItem x:Name="AssistOptimizeItem" Header="Ottimizza e suggerisci indici" />
+                  <MenuItem Header="Correggi l'ultimo errore" Command="{Binding AssistFixCommand}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
           </WrapPanel>
           <Grid ColumnDefinitions="300,200,Auto" ColumnSpacing="6" VerticalAlignment="Center">
             <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="30" MinHeight="30" Padding="10,0" VerticalContentAlignment="Center" FontSize="12.5">
@@ -119,6 +131,43 @@
               <DataTemplate x:DataType="x:String"><SelectableTextBlock Text="{Binding .}" TextWrapping="Wrap" /></DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
+        </TabItem>
+        <TabItem Header="Assistente">
+          <Grid RowDefinitions="Auto,*">
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2">
+                  <Button Classes="objbar" Command="{Binding InsertAssistantSqlCommand}" IsVisible="{Binding HasAssistantSql}" ToolTip.Tip="Inserisci l'SQL proposto al cursore">
+                    <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Inserisci SQL" /></StackPanel>
+                  </Button>
+                  <Button Classes="objbar" Command="{Binding ReplaceWithAssistantSqlCommand}" IsVisible="{Binding HasAssistantSql}" ToolTip.Tip="Sostituisci il testo dell'editor con l'SQL proposto">
+                    <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="file-code" Classes="objbar-icon" /><TextBlock Text="Sostituisci" /></StackPanel>
+                  </Button>
+                  <Button Classes="objbar" Command="{Binding CopyAssistantCommand}" ToolTip.Tip="Copia la risposta">
+                    <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="copy" Classes="objbar-icon" /><TextBlock Text="Copia" /></StackPanel>
+                  </Button>
+                  <Button Classes="objbar" Command="{Binding StopAssistantCommand}" IsVisible="{Binding AssistantBusy}">
+                    <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="stop" Classes="objbar-icon" /><TextBlock Text="Interrompi" /></StackPanel>
+                  </Button>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                  <c:NfIcon Kind="star" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" />
+                  <TextBlock Text="{Binding AssistantTitle}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis" MaxWidth="520" />
+                  <ProgressBar IsIndeterminate="True" Width="70" Height="3" MinWidth="0" IsVisible="{Binding AssistantBusy}" VerticalAlignment="Center" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <ScrollViewer Grid.Row="1" Padding="14,10">
+              <Grid>
+                <SelectableTextBlock Text="{Binding AssistantText}" TextWrapping="Wrap" FontSize="12.5" LineHeight="19" />
+                <StackPanel Spacing="10" MaxWidth="560" HorizontalAlignment="Left" IsVisible="{Binding !AssistantText.Length}">
+                  <TextBlock Text="Assistente SQL" FontWeight="SemiBold" FontSize="14" />
+                  <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12.5"
+                             Text="Claude conosce la struttura del database collegato: chiedigli di spiegare una query, di scriverla partendo da una frase in italiano, di suggerire indici partendo dal piano di esecuzione o di correggere l'ultimo errore. Usa il pulsante «Assistente» nella barra in alto." />
+                </StackPanel>
+              </Grid>
+            </ScrollViewer>
+          </Grid>
         </TabItem>
       </TabControl>
       <Border Grid.Row="4" Classes="grid-statusbar">

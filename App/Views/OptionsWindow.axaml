@@ -3,9 +3,10 @@
         xmlns:vm="using:Navifox.App.ViewModels"
         x:Class="Navifox.App.Views.OptionsWindow"
         x:DataType="vm:OptionsViewModel"
-        Title="Opzioni" Width="520" SizeToContent="Height" CanResize="False"
+        Title="Opzioni" Width="540" SizeToContent="Height" MaxHeight="780" CanResize="False"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource AppBackgroundBrush}">
   <Grid RowDefinitions="*,Auto">
+    <ScrollViewer>
     <StackPanel Margin="18" Spacing="12">
       <Border Classes="card" Padding="14">
         <StackPanel Spacing="10">
@@ -40,6 +41,13 @@
       </Border>
       <Border Classes="card" Padding="14">
         <StackPanel Spacing="10">
+          <TextBlock Text="ASSISTENTE SQL (CLAUDE)" Classes="field-label" />
+          <Grid ColumnDefinitions="160,*"><TextBlock Text="Chiave API Anthropic" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding AnthropicApiKey, Mode=TwoWay}" PasswordChar="•" Watermark="sk-ant-…" /></Grid>
+          <TextBlock Text="Salvata cifrata solo su questo computer. All'assistente vengono inviati la query e la struttura del database, mai i dati delle righe." FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="160,-4,0,0" />
+        </StackPanel>
+      </Border>
+      <Border Classes="card" Padding="14">
+        <StackPanel Spacing="10">
           <TextBlock Text="AGGIORNAMENTI" Classes="field-label" />
           <CheckBox Classes="crit-check" Content="Controlla gli aggiornamenti all'avvio" IsChecked="{Binding CheckUpdatesOnStartup, Mode=TwoWay}" />
           <Grid ColumnDefinitions="160,*"><TextBlock Text="Sorgente" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding UpdateSource, Mode=TwoWay}" Watermark="Cartella, \\server\condivisione, URL o GitHub" /></Grid>
@@ -48,6 +56,7 @@
         </StackPanel>
       </Border>
     </StackPanel>
+    </ScrollViewer>
     <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,10">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
         <Button Content="Annulla" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding CancelCommand}" IsCancel="True" />
