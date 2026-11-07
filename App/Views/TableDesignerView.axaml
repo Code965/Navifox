@@ -1,0 +1,300 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.TableDesignerView"
+             x:DataType="vm:TableDesignerViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding LoadCommand}" />
+  </UserControl.KeyBindings>
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <!-- ───── Toolbar ───── -->
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <WrapPanel Orientation="Horizontal">
+        <Button Classes="objbar" Command="{Binding SaveCommand}" ToolTip.Tip="Salva la struttura (Ctrl+S)">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="save" Classes="objbar-icon" /><TextBlock Text="Salva" /></StackPanel>
+        </Button>
+        <Border Classes="toolbar-sep" />
+        <!-- Campi -->
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding IsFieldsSection}">
+          <Button Classes="objbar" Command="{Binding AddFieldCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Aggiungi campo" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding InsertFieldCommand}" ToolTip.Tip="Inserisce un campo prima di quello selezionato"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="column" Classes="objbar-icon" /><TextBlock Text="Inserisci campo" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding DeleteFieldCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina campo" /></StackPanel></Button>
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding PrimaryKeyCommand}" ToolTip.Tip="Aggiunge o toglie il campo dalla chiave primaria"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="key" Classes="objbar-icon" /><TextBlock Text="Chiave primaria" /></StackPanel></Button>
+          <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding MoveUpCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="arrow-up" Classes="objbar-icon" /><TextBlock Text="Sposta su" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding MoveDownCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="arrow-down" Classes="objbar-icon" /><TextBlock Text="Sposta giù" /></StackPanel></Button>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding IsIndexesSection}">
+          <Button Classes="objbar" Command="{Binding AddIndexCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Aggiungi indice" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding DeleteIndexCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina indice" /></StackPanel></Button>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding IsKeysSection}">
+          <Button Classes="objbar" Command="{Binding AddForeignKeyCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Aggiungi chiave esterna" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding DeleteForeignKeyCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina chiave esterna" /></StackPanel></Button>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding IsTriggersSection}">
+          <Button Classes="objbar" Command="{Binding AddTriggerCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Aggiungi trigger" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding DeleteTriggerCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina trigger" /></StackPanel></Button>
+        </StackPanel>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="70" Height="3" MinWidth="0" VerticalAlignment="Center" Margin="10,0" />
+      </WrapPanel>
+    </Border>
+
+    <!-- ───── Schede ───── -->
+    <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,0">
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <RadioButton Classes="design-tab" GroupName="design" Content="Campi" IsChecked="{Binding IsFieldsSection, Mode=OneWay}" Command="{Binding ShowSectionCommand}" CommandParameter="0" />
+        <RadioButton Classes="design-tab" GroupName="design" Content="Indici" IsChecked="{Binding IsIndexesSection, Mode=OneWay}" Command="{Binding ShowSectionCommand}" CommandParameter="1" />
+        <RadioButton Classes="design-tab" GroupName="design" Content="Chiavi esterne" IsChecked="{Binding IsKeysSection, Mode=OneWay}" Command="{Binding ShowSectionCommand}" CommandParameter="2" />
+        <RadioButton Classes="design-tab" GroupName="design" Content="Trigger" IsChecked="{Binding IsTriggersSection, Mode=OneWay}" Command="{Binding ShowSectionCommand}" CommandParameter="3" />
+        <RadioButton Classes="design-tab" GroupName="design" Content="Opzioni" IsChecked="{Binding IsOptionsSection, Mode=OneWay}" Command="{Binding ShowSectionCommand}" CommandParameter="4" />
+        <RadioButton Classes="design-tab" GroupName="design" Content="Commento" IsChecked="{Binding IsCommentSection, Mode=OneWay}" Command="{Binding ShowSectionCommand}" CommandParameter="5" />
+        <RadioButton Classes="design-tab" GroupName="design" Content="Anteprima SQL" IsChecked="{Binding IsPreviewSection, Mode=OneWay}" Command="{Binding ShowSectionCommand}" CommandParameter="6" />
+      </StackPanel>
+    </Border>
+
+    <Panel Grid.Row="2">
+      <!-- Campi -->
+      <Grid x:Name="FieldsPanel" RowDefinitions="*,Auto" IsVisible="{Binding IsFieldsSection}">
+        <DataGrid x:Name="FieldsGrid" Classes="nf-grid design-grid" ItemsSource="{Binding Fields}" SelectedItem="{Binding SelectedField, Mode=TwoWay}"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserSortColumns="False" CanUserReorderColumns="False" RowHeight="27">
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Header="Nome" Width="190">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel"><TextBox Classes="cell-edit" Text="{Binding Name, Mode=TwoWay}" /></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Tipo" Width="150">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel">
+                  <ComboBox Classes="cell-edit" IsEditable="True" Text="{Binding Type, Mode=TwoWay}"
+                            ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).DataTypes}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Lunghezza" Width="92">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel"><TextBox Classes="cell-edit" Text="{Binding Length, Mode=TwoWay}" HorizontalContentAlignment="Right" /></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Decimali" Width="84">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel"><TextBox Classes="cell-edit" Text="{Binding Decimals, Mode=TwoWay}" HorizontalContentAlignment="Right" /></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Non nullo" Width="88">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel"><CheckBox Classes="crit-check" IsChecked="{Binding NotNull, Mode=TwoWay}" HorizontalAlignment="Center" /></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Virtuale" Width="80">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel"><CheckBox Classes="crit-check" IsChecked="{Binding IsVirtual, Mode=TwoWay}" HorizontalAlignment="Center" ToolTip.Tip="Colonna generata da un'espressione" /></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Chiave" Width="76">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel">
+                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0" VerticalAlignment="Center" IsVisible="{Binding IsKey}">
+                    <c:NfIcon Kind="key" Width="13" Height="13" Foreground="#E0A100" />
+                    <TextBlock Text="{Binding KeyLabel}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Commento" Width="*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignFieldViewModel"><TextBox Classes="cell-edit" Text="{Binding Comment, Mode=TwoWay}" /></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Proprietà del campo selezionato -->
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,10"
+                IsVisible="{Binding HasSelectedField}">
+          <StackPanel Spacing="8" DataContext="{Binding SelectedField}" x:DataType="vm:DesignFieldViewModel" MaxWidth="640" HorizontalAlignment="Left">
+            <Grid ColumnDefinitions="150,*" IsVisible="{Binding !IsVirtual}">
+              <TextBlock Text="Predefinito" VerticalAlignment="Center" />
+              <ComboBox Grid.Column="1" IsEditable="True" Text="{Binding Default, Mode=TwoWay}" Width="380" HorizontalAlignment="Left"
+                        ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).DefaultSuggestions}" PlaceholderText="(nessuno)" />
+            </Grid>
+            <Grid ColumnDefinitions="150,*" IsVisible="{Binding IsVirtual}">
+              <TextBlock Text="Espressione" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding Expression, Mode=TwoWay}" Width="380" HorizontalAlignment="Left" FontFamily="Cascadia Mono,Consolas,monospace" Watermark="es. prezzo * quantita" />
+            </Grid>
+            <CheckBox Classes="crit-check" Content="Memorizzata (STORED)" IsChecked="{Binding Stored, Mode=TwoWay}"
+                      IsVisible="{Binding IsVirtual}" IsEnabled="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).IsMySql}" />
+            <StackPanel Orientation="Horizontal" Spacing="22" Margin="150,0,0,0">
+              <CheckBox Classes="crit-check" Content="Auto Increment" IsChecked="{Binding AutoIncrement, Mode=TwoWay}" IsVisible="{Binding !IsVirtual}"
+                        ToolTip.Tip="MySQL: AUTO_INCREMENT · PostgreSQL: GENERATED BY DEFAULT AS IDENTITY" />
+              <CheckBox Classes="crit-check" Content="Unsigned" IsChecked="{Binding Unsigned, Mode=TwoWay}" IsVisible="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).IsMySql}" />
+              <CheckBox Classes="crit-check" Content="Zerofill" IsChecked="{Binding Zerofill, Mode=TwoWay}" IsVisible="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).IsMySql}" />
+            </StackPanel>
+            <StackPanel Spacing="8" IsVisible="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).IsMySql}">
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="On Update" VerticalAlignment="Center" ToolTip.Tip="Valore impostato a ogni aggiornamento della riga (ON UPDATE)" />
+                <ComboBox Grid.Column="1" IsEditable="True" Text="{Binding OnUpdate, Mode=TwoWay}" Width="380" HorizontalAlignment="Left" PlaceholderText="(nessuno)">
+                  <ComboBoxItem Content="CURRENT_TIMESTAMP" />
+                </ComboBox>
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- Indici -->
+      <DataGrid Classes="nf-grid design-grid" IsVisible="{Binding IsIndexesSection}" ItemsSource="{Binding Indexes}" SelectedItem="{Binding SelectedIndex, Mode=TwoWay}"
+                AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserSortColumns="False" RowHeight="27">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="Nome" Width="220">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignIndexViewModel"><TextBox Classes="cell-edit" Text="{Binding Name, Mode=TwoWay}" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Campi" Width="300">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignIndexViewModel"><TextBox Classes="cell-edit" Text="{Binding Columns, Mode=TwoWay}" Watermark="campo1, campo2(10), campo3 DESC" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Tipo indice" Width="130">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignIndexViewModel">
+                <ComboBox Classes="cell-edit" SelectedItem="{Binding Kind, Mode=TwoWay}" ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).IndexKinds}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Metodo" Width="110">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignIndexViewModel">
+                <ComboBox Classes="cell-edit" SelectedItem="{Binding Method, Mode=TwoWay}" ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).IndexMethods}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Commento" Width="*">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignIndexViewModel"><TextBox Classes="cell-edit" Text="{Binding Comment, Mode=TwoWay}" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <!-- Chiavi esterne -->
+      <DataGrid Classes="nf-grid design-grid" IsVisible="{Binding IsKeysSection}" ItemsSource="{Binding ForeignKeys}" SelectedItem="{Binding SelectedForeignKey, Mode=TwoWay}"
+                AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserSortColumns="False" RowHeight="27">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="Nome" Width="200">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignForeignKeyViewModel"><TextBox Classes="cell-edit" Text="{Binding Name, Mode=TwoWay}" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Campi" Width="150">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignForeignKeyViewModel"><TextBox Classes="cell-edit" Text="{Binding Columns, Mode=TwoWay}" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Database / schema rif." Width="170">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignForeignKeyViewModel"><TextBox Classes="cell-edit" Text="{Binding ReferencedSchema, Mode=TwoWay}" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Tabella rif." Width="180">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignForeignKeyViewModel">
+                <ComboBox Classes="cell-edit" IsEditable="True" Text="{Binding ReferencedTable, Mode=TwoWay}" ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).ReferencedTables}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Campi rif." Width="130">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignForeignKeyViewModel"><TextBox Classes="cell-edit" Text="{Binding ReferencedColumns, Mode=TwoWay}" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="On Delete" Width="120">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignForeignKeyViewModel">
+                <ComboBox Classes="cell-edit" SelectedItem="{Binding OnDelete, Mode=TwoWay}" ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).ForeignKeyRules}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="On Update" Width="*">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:DesignForeignKeyViewModel">
+                <ComboBox Classes="cell-edit" SelectedItem="{Binding OnUpdate, Mode=TwoWay}" ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).ForeignKeyRules}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <!-- Trigger -->
+      <Grid RowDefinitions="*,Auto,200" IsVisible="{Binding IsTriggersSection}">
+        <DataGrid Classes="nf-grid design-grid" ItemsSource="{Binding Triggers}" SelectedItem="{Binding SelectedTrigger, Mode=TwoWay}"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserSortColumns="False" RowHeight="27">
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Header="Nome" Width="240">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignTriggerViewModel"><TextBox Classes="cell-edit" Text="{Binding Name, Mode=TwoWay}" /></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Momento" Width="130">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignTriggerViewModel">
+                  <ComboBox Classes="cell-edit" SelectedItem="{Binding Timing, Mode=TwoWay}" ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).TriggerTimings}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Evento" Width="*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:DesignTriggerViewModel">
+                  <ComboBox Classes="cell-edit" IsEditable="True" Text="{Binding Events, Mode=TwoWay}" ItemsSource="{Binding $parent[UserControl].((vm:TableDesignerViewModel)DataContext).TriggerEvents}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+        <Border Grid.Row="1" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1" Padding="12,6">
+          <TextBlock Classes="field-label" Text="DEFINIZIONE" />
+        </Border>
+        <TextBox Grid.Row="2" Text="{Binding SelectedTrigger.Body, Mode=TwoWay}" IsEnabled="{Binding HasSelectedTrigger}" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                 FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" BorderThickness="0" CornerRadius="0" Padding="12,8"
+                 Watermark="{Binding TriggerHint}" />
+      </Grid>
+
+      <!-- Opzioni -->
+      <ScrollViewer IsVisible="{Binding IsOptionsSection}">
+        <StackPanel Margin="18" Spacing="10" MaxWidth="560" HorizontalAlignment="Left">
+          <StackPanel Spacing="10" IsVisible="{Binding IsMySql}">
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Motore" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" Text="{Binding Engine, Mode=TwoWay}" ItemsSource="{Binding Engines}" HorizontalAlignment="Stretch" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Set di caratteri" VerticalAlignment="Center" /><ComboBox Grid.Column="1" SelectedItem="{Binding Charset, Mode=TwoWay}" ItemsSource="{Binding Charsets}" HorizontalAlignment="Stretch" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Collation" VerticalAlignment="Center" /><ComboBox Grid.Column="1" SelectedItem="{Binding Collation, Mode=TwoWay}" ItemsSource="{Binding Collations}" HorizontalAlignment="Stretch" PlaceholderText="(predefinita)" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Auto Increment" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding AutoIncrement, Mode=TwoWay}" Watermark="prossimo valore" /></Grid>
+          </StackPanel>
+          <TextBlock IsVisible="{Binding IsPostgres}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"
+                     Text="PostgreSQL non ha opzioni di tabella come motore o set di caratteri: la codifica è quella del database. Tablespace, proprietario e parametri di archiviazione si impostano con ALTER TABLE dalla query." />
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Commento -->
+      <TextBox IsVisible="{Binding IsCommentSection}" Text="{Binding TableComment, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" CornerRadius="0" Padding="14,10"
+               Watermark="Commento della tabella" />
+
+      <!-- Anteprima SQL -->
+      <Grid IsVisible="{Binding IsPreviewSection}" RowDefinitions="*,Auto">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto">
+          <SelectableTextBlock x:Name="PreviewText" Margin="14,12" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" TextWrapping="NoWrap" />
+        </ScrollViewer>
+        <Border Grid.Row="1" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,3">
+          <Button Classes="objbar" Click="OnCopyPreview" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="copy" Classes="objbar-icon" /><TextBlock Text="Copia SQL" /></StackPanel></Button>
+        </Border>
+      </Grid>
+    </Panel>
+
+    <Border Grid.Row="3" Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,4">
+      <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
+    </Border>
+  </Grid>
+</UserControl>

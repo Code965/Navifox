@@ -36,14 +36,78 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
     [ObservableProperty] private string _countLabel = string.Empty;
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OpenSelectedCommand), nameof(ImportCommand), nameof(ExportCommand))]
+    [NotifyPropertyChangedFor(nameof(HasSelection))]
     private ObjectRowViewModel? _selectedObject;
+
+    public bool HasSelection => SelectedObject is not null;
+
+    // ───── Visualizza: Elenco / Dettaglio, ordinamento, colonne ─────
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsDetailMode), nameof(ShowDetail), nameof(ShowList))] private bool _isListMode;
+    public bool ShowDetail => HasSource && !IsListMode;
+    public bool ShowList => HasSource && IsListMode;
+    public bool IsDetailMode => !IsListMode;
+    [ObservableProperty] private string _sortKey = string.Empty;
+    [ObservableProperty] private bool _sortDescending;
+
+    /// <summary>Colonne visibili nella vista Dettaglio (intestazione → visibile).</summary>
+    public Dictionary<string, bool> ColumnVisibility { get; } = new()
+    {
+        ["Auto Increment"] = true, ["Data modifica"] = true, ["Dimensione dati"] = true, ["Engine"] = true, ["Righe"] = true, ["Commento"] = true,
+    };
+
+    public event Action? ColumnsChanged;
+
+    public void ToggleColumn(string header)
+    {
+        if (!ColumnVisibility.TryGetValue(header, out var visible)) return;
+        ColumnVisibility[header] = !visible;
+        ColumnsChanged?.Invoke();
+    }
+
+    public void SortBy(string key)
+    {
+        if (SortKey == key) SortDescending = !SortDescending;
+        else
+        {
+            SortKey = key;
+            SortDescending = key is "Righe" or "Dimensione dati" or "Data modifica";
+        }
+        ApplyFilter();
+    }
 
     public bool HasSource => Source is not null;
     public bool IsEmpty => VisibleObjects.Count == 0;
 
+    /// <summary>True per Tabelle/Viste (colonne righe, dimensione, engine…); false per funzioni, trigger, eventi e sequenze.</summary>
+    public bool IsTableList => Source?.SchemaKind is null;
+    public bool IsRoutineList => Source?.SchemaKind == MosaicDB.Core.Models.SchemaObjectKind.Routine;
+    public bool IsViewList => Source?.Category == "Viste";
+    public string NewLabel => Source?.SchemaKind switch
+    {
+        MosaicDB.Core.Models.SchemaObjectKind.Routine => "Nuova funzione",
+        MosaicDB.Core.Models.SchemaObjectKind.Trigger => "Nuovo trigger",
+        MosaicDB.Core.Models.SchemaObjectKind.Event => "Nuovo evento",
+        MosaicDB.Core.Models.SchemaObjectKind.Sequence => "Nuova sequenza",
+        _ => "Nuovo"
+    };
+    public string EditLabel => Source?.SchemaKind switch
+    {
+        MosaicDB.Core.Models.SchemaObjectKind.Routine => "Modifica funzione",
+        MosaicDB.Core.Models.SchemaObjectKind.Trigger => "Modifica trigger",
+        MosaicDB.Core.Models.SchemaObjectKind.Event => "Modifica evento",
+        MosaicDB.Core.Models.SchemaObjectKind.Sequence => "Progetta sequenza",
+        _ => "Modifica"
+    };
+
     public void Show(TreeNodeViewModel category, IEnumerable<ObjectRowViewModel> rows, string? selectName = null)
     {
         Source = category;
+        OnPropertyChanged(nameof(IsTableList));
+        OnPropertyChanged(nameof(IsRoutineList));
+        OnPropertyChanged(nameof(IsViewList));
+        OnPropertyChanged(nameof(NewLabel));
+        OnPropertyChanged(nameof(EditLabel));
+        ColumnsChanged?.Invoke();
         Title = category.Category ?? "Oggetti";
         Context = category.Profile is null
             ? string.Empty
@@ -54,6 +118,8 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
         ApplyFilter();
         SelectedObject = selectName is null ? null : VisibleObjects.FirstOrDefault(row => row.Name == selectName);
         OnPropertyChanged(nameof(HasSource));
+        OnPropertyChanged(nameof(ShowDetail));
+        OnPropertyChanged(nameof(ShowList));
     }
 
     public void Clear()
@@ -64,6 +130,8 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
         Context = "Seleziona un database o la voce «Tabelle» nell’albero.";
         ApplyFilter();
         OnPropertyChanged(nameof(HasSource));
+        OnPropertyChanged(nameof(ShowDetail));
+        OnPropertyChanged(nameof(ShowList));
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
@@ -98,7 +166,19 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
         var query = SearchText.Trim();
         var selected = SelectedObject;
         VisibleObjects.Clear();
-        foreach (var row in _all.Where(row => row.Matches(query))) VisibleObjects.Add(row);
+        IEnumerable<ObjectRowViewModel> rows = _all.Where(row => row.Matches(query));
+        Func<ObjectRowViewModel, IComparable>? key = SortKey switch
+        {
+            "Nome" => row => row.Name,
+            "Righe" => row => row.RowsValue,
+            "Dimensione dati" => row => row.DataSizeValue,
+            "Data modifica" => row => row.ModifiedValue,
+            "Auto Increment" => row => row.AutoIncrementValue,
+            "Tipo" => row => row.Kind,
+            _ => null
+        };
+        if (key is not null) rows = SortDescending ? rows.OrderByDescending(key) : rows.OrderBy(key);
+        foreach (var row in rows) VisibleObjects.Add(row);
         if (selected is not null && VisibleObjects.Contains(selected)) SelectedObject = selected;
         CountLabel = query.Length == 0
             ? $"{_all.Count} {(_all.Count == 1 ? "oggetto" : "oggetti")}"

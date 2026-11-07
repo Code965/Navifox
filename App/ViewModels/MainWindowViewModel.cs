@@ -10,7 +10,8 @@ namespace MosaicDB.App.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    private static readonly string[] CategoryNames = ["Tabelle", "Viste", "Funzioni", "Eventi", "Query salvate", "Backup"];
+    private static readonly string[] MySqlCategories = ["Tabelle", "Viste", "Funzioni", "Trigger", "Eventi", "Query salvate", "Backup"];
+    private static readonly string[] PostgresCategories = ["Tabelle", "Viste", "Funzioni", "Trigger", "Sequenze", "Query salvate", "Backup"];
 
     private readonly IConnectionProfileStore _profileStore;
     private readonly IDatabaseAccessService _databaseAccess;
@@ -144,7 +145,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task AddConnectionAsync()
     {
-        var profile = await _connectionDialog.ShowAsync();
+        var profile = await _connectionDialog.ShowAsync(null, AllFolders(), CurrentFolder());
         if (profile is null) return;
         Profiles.Add(profile);
         RebuildConnectionTree();
@@ -198,6 +199,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (node is null || node.IsPlaceholder) return;
         // L'espansione con doppio clic è gestita dal TreeViewItem stesso; qui si aprono solo le tabelle.
         if (node.Kind == TreeNodeKind.Table) await OpenTableAsync(node.Profile!, node.Database!, node.Schema!, node.Name);
+        else if (node.Kind == TreeNodeKind.DbObject) OpenSchemaObjectEditor(node);
     }
 
     [RelayCommand]
@@ -215,6 +217,10 @@ public partial class MainWindowViewModel : ObservableObject
     {
         var node = SelectedNode is null ? null : ConnectionOf(SelectedNode);
         if (node?.Profile is null) return;
+        if (!await _dialogs.ConfirmAsync("Elimina connessione",
+                $"Eliminare la connessione «{node.Profile.Name}» ({node.Profile.Host})?\n\nViene tolta solo da Navifox: i database sul server non vengono toccati.", "Elimina", danger: true))
+            return;
+        foreach (var tab in OpenTabs.Where(t => t.CanClose && TabProfileId(t) == node.Profile.Id).ToArray()) CloseTab(tab);
         var profile = Profiles.FirstOrDefault(item => item.Id == node.Profile.Id);
         if (profile is not null) Profiles.Remove(profile);
         _connectedProfiles.Remove(node.Profile.Id);
@@ -323,7 +329,7 @@ public partial class MainWindowViewModel : ObservableObject
                 ObjectsTab.Clear();
                 StatusMessage = $"L’elenco «{node.Name}» è previsto in una fase successiva.";
                 break;
-            case TreeNodeKind.Table when node.Parent is { } category:
+            case TreeNodeKind.Table or TreeNodeKind.DbObject when node.Parent is { } category:
                 if (ObjectsTab.Source != category) ShowCategoryObjects(category, node.Name);
                 else ObjectsTab.SelectedObject = ObjectsTab.VisibleObjects.FirstOrDefault(row => row.Name == node.Name);
                 break;
@@ -349,7 +355,11 @@ public partial class MainWindowViewModel : ObservableObject
     private void ShowCategoryObjects(TreeNodeViewModel category, string? selectName = null, bool bringToFront = true)
     {
         if (bringToFront) SelectedTab = ObjectsTab;
-        ObjectsTab.Show(category, (category.Objects ?? []).Select(info => new ObjectRowViewModel(info)), selectName);
+        // Visualizza › Appiattisci elenco oggetti: tabelle e viste dello stesso database/schema in un unico elenco.
+        var objects = IsFlatObjectList && category.IsTableCategory && category.Parent is { } parent
+            ? parent.Children.Where(child => child.IsTableCategory).SelectMany(child => child.Objects ?? [])
+            : category.Objects ?? [];
+        ObjectsTab.Show(category, objects.Select(info => new ObjectRowViewModel(info)), selectName);
         StatusMessage = $"{category.Objects?.Count ?? 0} oggetti in {category.Database}";
     }
 
@@ -396,6 +406,13 @@ public partial class MainWindowViewModel : ObservableObject
                 case TreeNodeKind.Schema:
                     node.SetChildren(CreateCategories(profile, node.Database!, node.Schema!));
                     break;
+                case TreeNodeKind.Category when node.SchemaKind is { } schemaKind:
+                {
+                    var items = await _databaseAccess.ListSchemaObjectsAsync(profile, node.Database!, node.Schema!, schemaKind, token);
+                    node.Objects = items;
+                    node.SetChildren(items.Select(info => new TreeNodeViewModel(info.Name, ObjectRowViewModel.GlyphFor(info.Kind), TreeNodeKind.DbObject, profile, node.Database, node.Schema, node.Category) { Info = info }));
+                    break;
+                }
                 case TreeNodeKind.Category when node.IsObjectCategory:
                 {
                     var all = await _databaseAccess.ListTablesAsync(profile, node.Database!, node.Schema!, token);
@@ -404,7 +421,7 @@ public partial class MainWindowViewModel : ObservableObject
                                                     && (wanted == "VIEW" || !item.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase))).ToArray();
                     node.Objects = objects;
                     var glyph = wanted == "VIEW" ? "eye" : "table";
-                    node.SetChildren(objects.Select(info => new TreeNodeViewModel(info.Name, glyph, TreeNodeKind.Table, profile, node.Database, node.Schema, node.Category)));
+                    node.SetChildren(objects.Select(info => new TreeNodeViewModel(info.Name, glyph, TreeNodeKind.Table, profile, node.Database, node.Schema, node.Category) { Info = info }));
                     break;
                 }
             }
@@ -429,7 +446,8 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     private IEnumerable<TreeNodeViewModel> CreateCategories(ConnectionProfile profile, string database, string schema) =>
-        CategoryNames.Select(category => new TreeNodeViewModel(category, CategoryGlyph(category), TreeNodeKind.Category, profile, database, schema, category));
+        (profile.Kind == DatabaseKind.MySql ? MySqlCategories : PostgresCategories)
+        .Select(category => new TreeNodeViewModel(category, CategoryGlyph(category), TreeNodeKind.Category, profile, database, schema, category));
 
     private static TreeNodeViewModel? FindTablesCategory(TreeNodeViewModel node) =>
         node.Children.FirstOrDefault(child => child.Kind == TreeNodeKind.Category && child.Category == "Tabelle");
@@ -466,17 +484,7 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>Ricostruisce la radice (cartelle + connessioni) riusando i nodi già caricati.</summary>
     private void RebuildConnectionTree()
     {
-        var roots = new List<TreeNodeViewModel>();
-        var ordered = Profiles.OrderByDescending(profile => profile.IsFavorite).ThenBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase).ToArray();
-        foreach (var folder in ordered.Where(HasFolder)
-                     .GroupBy(profile => profile.Folder.Trim(), StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
-        {
-            var group = new TreeNodeViewModel(folder.Key, "folder", TreeNodeKind.Group) { ExpandHandler = OnNodeExpandRequested, IsExpanded = true };
-            group.SetChildren(folder.Select(ConnectionNode));
-            roots.Add(group);
-        }
-        roots.AddRange(ordered.Where(profile => !HasFolder(profile)).Select(ConnectionNode));
+        var roots = BuildFolderTree();
 
         RootNodes.Clear();
         foreach (var root in roots) RootNodes.Add(root);
@@ -484,8 +492,6 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowWelcome));
     }
 
-    /// <summary>Le connessioni sono raggruppate per cartella («Generale» per impostazione predefinita).</summary>
-    private static bool HasFolder(ConnectionProfile profile) => !string.IsNullOrWhiteSpace(profile.Folder);
 
     private TreeNodeViewModel ConnectionNode(ConnectionProfile profile)
     {
@@ -542,6 +548,11 @@ public partial class MainWindowViewModel : ObservableObject
             StatusMessage = "Seleziona una tabella nell’elenco degli oggetti.";
             return Task.CompletedTask;
         }
+        if (source.SchemaKind is not null)
+        {
+            if (source.Children.FirstOrDefault(child => child.Name == row.Name) is { } node) OpenSchemaObjectEditor(node);
+            return Task.CompletedTask;
+        }
         return OpenTableAsync(source.Profile, source.Database, source.Schema, row.Name);
     }
 
@@ -578,7 +589,7 @@ public partial class MainWindowViewModel : ObservableObject
     private string? FindObjectKind(Guid profileId, string database, string schema, string table) =>
         _connectionNodes.TryGetValue(profileId, out var connection)
             ? connection.SelfAndDescendants()
-                .Where(node => node.IsObjectCategory && node.Database == database && node.Schema == schema)
+                .Where(node => node.IsTableCategory && node.Database == database && node.Schema == schema)
                 .SelectMany(node => node.Objects ?? [])
                 .FirstOrDefault(info => info.Name == table)?.Kind
             : null;
@@ -611,6 +622,6 @@ public partial class MainWindowViewModel : ObservableObject
 
     private static string CategoryGlyph(string category) => category switch
     {
-        "Tabelle" => "table", "Viste" => "eye", "Funzioni" => "function", "Eventi" => "clock", "Query salvate" => "bookmark", _ => "archive"
+        "Tabelle" => "table", "Viste" => "eye", "Funzioni" => "function", "Eventi" => "clock", "Trigger" => "zap", "Sequenze" => "hash", "Query salvate" => "bookmark", _ => "archive"
     };
 }

@@ -30,6 +30,18 @@ public interface IDialectProvider
 
     Task<TableDdl> GetDdlAsync(DbConnection connection, string database, string schema, string table, bool isView, CancellationToken cancellationToken);
 
+    /// <summary>Oggetti di schema gestiti dal dialetto oltre a tabelle e viste (es. MySQL: funzioni, trigger, eventi).</summary>
+    IReadOnlyList<SchemaObjectKind> SchemaObjectKinds { get; }
+    Task<IReadOnlyList<DatabaseObjectInfo>> ListSchemaObjectsAsync(DbConnection connection, string database, string schema, SchemaObjectKind kind, CancellationToken cancellationToken);
+    /// <summary>Definizione modificabile: CREATE completo, oppure la sola SELECT per le viste.</summary>
+    Task<string> GetSchemaObjectDefinitionAsync(DbConnection connection, string database, string schema, SchemaObjectKind kind, DatabaseObjectInfo item, CancellationToken cancellationToken);
+    /// <summary>Nomi dei parametri di una funzione/procedura (per «Esegui»).</summary>
+    Task<IReadOnlyList<string>> GetRoutineParametersAsync(DbConnection connection, string schema, DatabaseObjectInfo routine, CancellationToken cancellationToken);
+    Task<SequenceInfo> GetSequenceAsync(DbConnection connection, string schema, string name, CancellationToken cancellationToken);
+
+    /// <summary>Struttura completa e modificabile di una tabella (Progetta tabella): campi, indici, chiavi esterne, trigger, opzioni.</summary>
+    Task<TableDesign> GetTableDesignAsync(DbConnection connection, string database, string schema, string table, CancellationToken cancellationToken);
+
     /// <summary>Tabelle, colonne e chiavi esterne di uno schema (modello relazionale).</summary>
     Task<SchemaModel> GetSchemaModelAsync(DbConnection connection, string database, string schema, CancellationToken cancellationToken);
 

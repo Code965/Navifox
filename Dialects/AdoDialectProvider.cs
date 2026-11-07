@@ -141,6 +141,13 @@ public abstract class AdoDialectProvider : IDialectProvider
 
     // ───────────── Modello relazionale e Server Monitor ─────────────
 
+    public abstract IReadOnlyList<SchemaObjectKind> SchemaObjectKinds { get; }
+    public abstract Task<IReadOnlyList<DatabaseObjectInfo>> ListSchemaObjectsAsync(DbConnection connection, string database, string schema, SchemaObjectKind kind, CancellationToken cancellationToken);
+    public abstract Task<string> GetSchemaObjectDefinitionAsync(DbConnection connection, string database, string schema, SchemaObjectKind kind, DatabaseObjectInfo item, CancellationToken cancellationToken);
+    public abstract Task<IReadOnlyList<string>> GetRoutineParametersAsync(DbConnection connection, string schema, DatabaseObjectInfo routine, CancellationToken cancellationToken);
+    public virtual Task<SequenceInfo> GetSequenceAsync(DbConnection connection, string schema, string name, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Le sequenze non sono disponibili per questo database.");
+    public abstract Task<TableDesign> GetTableDesignAsync(DbConnection connection, string database, string schema, string table, CancellationToken cancellationToken);
     public abstract Task<SchemaModel> GetSchemaModelAsync(DbConnection connection, string database, string schema, CancellationToken cancellationToken);
     public abstract Task<QueryResult> GetProcessListAsync(DbConnection connection, CancellationToken cancellationToken);
     public abstract Task<IReadOnlyList<KeyValuePair<string, string>>> GetServerVariablesAsync(DbConnection connection, CancellationToken cancellationToken);

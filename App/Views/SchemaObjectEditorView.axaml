@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.SchemaObjectEditorView"
+             x:DataType="vm:SchemaObjectEditorViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding LoadCommand}" />
+  </UserControl.KeyBindings>
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <WrapPanel Orientation="Horizontal">
+        <Button Classes="objbar" Command="{Binding SaveCommand}" ToolTip.Tip="Salva (Ctrl+S)">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="save" Classes="objbar-icon" /><TextBlock Text="Salva" /></StackPanel>
+        </Button>
+        <Button Classes="objbar" Command="{Binding LoadCommand}" IsEnabled="{Binding !IsNew}" ToolTip.Tip="Rilegge la definizione dal server (F5)">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="refresh" Classes="objbar-icon" /><TextBlock Text="Ricarica" /></StackPanel>
+        </Button>
+        <Border Classes="toolbar-sep" />
+        <Button Classes="objbar" Command="{Binding RunCommand}" IsVisible="{Binding IsRoutine}" ToolTip.Tip="Apre una query che chiama la funzione o la procedura">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="play" Classes="objbar-icon" /><TextBlock Text="Esegui" /></StackPanel>
+        </Button>
+        <Button Classes="objbar" Command="{Binding RunCommand}" IsVisible="{Binding IsView}" ToolTip.Tip="Esegue la SELECT in una nuova query">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="play" Classes="objbar-icon" /><TextBlock Text="Anteprima" /></StackPanel>
+        </Button>
+        <Button Classes="objbar" Command="{Binding FormatCommand}" IsVisible="{Binding IsView}">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="sliders" Classes="objbar-icon" /><TextBlock Text="Formatta SQL" /></StackPanel>
+        </Button>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="70" Height="3" MinWidth="0" VerticalAlignment="Center" Margin="10,0" />
+      </WrapPanel>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,320" ColumnSpacing="10" Margin="12,8,12,0" IsVisible="{Binding IsView}">
+      <TextBlock Text="Nome vista" VerticalAlignment="Center" />
+      <TextBox Grid.Column="1" Text="{Binding ViewName, Mode=TwoWay}" />
+    </Grid>
+
+    <TextBlock Grid.Row="2" Text="{Binding Hint}" Margin="12,8" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" />
+
+    <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1">
+      <c:SqlEditor x:Name="Editor" />
+    </Border>
+
+    <Border Grid.Row="4" Background="{DynamicResource InsetBrush}" Padding="12,4">
+      <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
+    </Border>
+  </Grid>
+</UserControl>

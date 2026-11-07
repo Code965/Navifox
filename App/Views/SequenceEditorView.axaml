@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MosaicDB.App.ViewModels"
+             xmlns:c="using:MosaicDB.App.Controls"
+             x:Class="MosaicDB.App.Views.SequenceEditorView"
+             x:DataType="vm:SequenceEditorViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding LoadCommand}" />
+  </UserControl.KeyBindings>
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <WrapPanel Orientation="Horizontal">
+        <Button Classes="objbar" Command="{Binding SaveCommand}" ToolTip.Tip="Salva (Ctrl+S)">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="save" Classes="objbar-icon" /><TextBlock Text="Salva" /></StackPanel>
+        </Button>
+        <Button Classes="objbar" Command="{Binding LoadCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="refresh" Classes="objbar-icon" /><TextBlock Text="Ricarica" /></StackPanel>
+        </Button>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="70" Height="3" MinWidth="0" VerticalAlignment="Center" Margin="10,0" />
+      </WrapPanel>
+    </Border>
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="18" Spacing="12" MaxWidth="620" HorizontalAlignment="Left">
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="10">
+            <TextBlock Text="SEQUENZA" Classes="field-label" />
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Nome" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Tipo" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding DataTypes}" SelectedItem="{Binding DataType, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Incremento" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Increment, Mode=TwoWay}" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Valore iniziale" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Start, Mode=TwoWay}" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Minimo" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Min, Mode=TwoWay}" Watermark="predefinito" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Massimo" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Max, Mode=TwoWay}" Watermark="predefinito" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Cache" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Cache, Mode=TwoWay}" /></Grid>
+            <CheckBox Classes="crit-check" Content="Ciclica (riparte dal minimo dopo il massimo)" IsChecked="{Binding Cycle, Mode=TwoWay}" Margin="170,0,0,0" />
+          </StackPanel>
+        </Border>
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="10">
+            <TextBlock Text="STATO" Classes="field-label" />
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Valore attuale" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Current, Mode=TwoWay}" Watermark="non ancora usata" ToolTip.Tip="Cambiandolo si esegue setval()" /></Grid>
+            <Grid ColumnDefinitions="170,*"><TextBlock Text="Di proprietà di" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding OwnedBy, Mode=TwoWay}" Watermark="schema.tabella.colonna (vuoto = nessuna)" /></Grid>
+          </StackPanel>
+        </Border>
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="8">
+            <TextBlock Text="ANTEPRIMA SQL" Classes="field-label" />
+            <SelectableTextBlock Text="{Binding SqlPreview}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+    <Border Grid.Row="2" Background="{DynamicResource InsetBrush}" Padding="12,4">
+      <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
+    </Border>
+  </Grid>
+</UserControl>

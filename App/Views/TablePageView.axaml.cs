@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Controls.Primitives;
@@ -31,6 +32,13 @@ public partial class TablePageView : UserControl
         };
         ResultGrid.CellEditEnded += (_, _) => _viewModel?.SetCurrent(ResultGrid.SelectedItem as TableRowViewModel, CurrentIndex());
         ResultGrid.AddHandler(KeyDownEvent, OnGridKeyDown, RoutingStrategies.Tunnel);
+        // Clic sull'indicatore a sinistra = riga intera; clic su una cella = torna alla selezione di cella.
+        ResultGrid.AddHandler(PointerPressedEvent, (_, args) =>
+        {
+            if (args.Source is not Avalonia.Visual source) return;
+            if (source.FindAncestorOfType<DataGridRowHeader>(includeSelf: true) is not null) SetSelectionKind(SelectionKind.Row);
+            else if (source.FindAncestorOfType<DataGridCell>(includeSelf: true) is not null) SetSelectionKind(SelectionKind.Cell);
+        }, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -54,12 +62,36 @@ public partial class TablePageView : UserControl
     {
         if (e.PropertyName is nameof(TableTabViewModel.IsSortActive) or nameof(TableTabViewModel.IsFilterActive) or nameof(TableTabViewModel.SqlPreview)) RefreshHeaders();
         if (e.PropertyName == nameof(TableTabViewModel.CanEdit)) RebuildColumns();
+        // Nuova pagina di righe: le colonne si adattano al contenuto.
+        if (e.PropertyName == nameof(TableTabViewModel.Rows))
+        {
+            _fitted = false;
+            ScheduleFit();
+        }
     }
+
+    private bool _fitted;
 
     private void RebuildColumns()
     {
         if (_viewModel is null) return;
-        ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns, _viewModel.CanEdit, HeaderGlyph);
+        ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns, _viewModel.CanEdit, HeaderGlyph, SelectColumn, SortColumn);
+        _selectionMode = SelectionKind.Cell;
+        ResultGrid.Classes.Remove("row-mode");
+        ResultGrid.Classes.Remove("col-mode");
+        _fitted = false;
+        ScheduleFit();
+    }
+
+
+    private void ScheduleFit()
+    {
+        if (_fitted || _viewModel is not { Rows.Count: > 0 }) return;
+        _fitted = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_viewModel is not null) ResultGridBuilder.FitToContent(ResultGrid, _viewModel.Rows);
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     private void RefreshHeaders()
@@ -70,7 +102,7 @@ public partial class TablePageView : UserControl
             if (column.Tag is not int index || index >= _viewModel.Columns.Count) continue;
             var name = _viewModel.Columns[index].Name;
             var glyph = HeaderGlyph(index);
-            column.Header = glyph is null ? name : $"{name}  {glyph}";
+            ResultGridBuilder.SetHeaderText(column, glyph is null ? name : $"{name}  {glyph}");
         }
     }
 
@@ -105,13 +137,79 @@ public partial class TablePageView : UserControl
     private static readonly Avalonia.Data.Converters.IValueConverter DeletedOpacity =
         new Avalonia.Data.Converters.FuncValueConverter<bool, double>(deleted => deleted ? 0.4 : 1);
 
+    private enum SelectionKind { Cell, Row, Column }
+    private SelectionKind _selectionMode;
+
+    private void SetSelectionKind(SelectionKind kind)
+    {
+        _selectionMode = kind;
+        ResultGrid.Classes.Set("row-mode", kind == SelectionKind.Row);
+        ResultGrid.Classes.Set("col-mode", kind == SelectionKind.Column);
+        if (kind != SelectionKind.Column) ResultGridBuilder.SetHighlightColumn(ResultGrid, -1);
+    }
+
+    /// <summary>
+    /// Clic sull'intestazione: seleziona l'intera colonna; Maiusc+clic o Maiusc+←/→ estendono la selezione ad altre colonne
+    /// (Ctrl+C copia tutti i valori). ←/→ senza Maiusc spostano la colonna selezionata.
+    /// </summary>
+    private void SelectColumn(int index, bool extend = false)
+    {
+        var extending = extend && _selectionMode == SelectionKind.Column && ResultGridBuilder.GetHighlightColumn(ResultGrid) >= 0;
+        SetSelectionKind(SelectionKind.Column);
+        ResultGrid.SelectedItem = null;
+        if (extending) ResultGridBuilder.SetHighlightEnd(ResultGrid, index);
+        else ResultGridBuilder.SetHighlightColumn(ResultGrid, index);
+        ReportColumnSelection();
+        ResultGrid.Focus();
+    }
+
+    private void ReportColumnSelection()
+    {
+        if (_viewModel is null) return;
+        var columns = ResultGridBuilder.HighlightedColumns(ResultGrid).Where(i => i < _viewModel.Columns.Count).ToArray();
+        if (columns.Length == 0) return;
+        var label = columns.Length == 1 ? $"Colonna «{_viewModel.Columns[columns[0]].Name}»" : $"{columns.Length} colonne ({_viewModel.Columns[columns[0]].Name} … {_viewModel.Columns[columns[^1]].Name})";
+        _viewModel.StatusMessage = $"{label} selezionat{(columns.Length == 1 ? "a" : "e")} · {_viewModel.Rows.Count:N0} righe · Ctrl+C per copiare · Maiusc+←/→ per estendere";
+    }
+
+    /// <summary>Frecce in modalità colonna: ←/→ sposta, Maiusc+←/→ estende l'intervallo.</summary>
+    private bool HandleColumnKeys(KeyEventArgs e)
+    {
+        if (_selectionMode != SelectionKind.Column || e.Key is not (Key.Left or Key.Right) || _viewModel is null) return false;
+        var count = _viewModel.Columns.Count;
+        if (count == 0) return false;
+        var delta = e.Key == Key.Left ? -1 : 1;
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            var end = ResultGridBuilder.GetHighlightEnd(ResultGrid);
+            ResultGridBuilder.SetHighlightEnd(ResultGrid, Math.Clamp((end < 0 ? ResultGridBuilder.GetHighlightColumn(ResultGrid) : end) + delta, 0, count - 1));
+        }
+        else
+        {
+            var columns = ResultGridBuilder.HighlightedColumns(ResultGrid);
+            var next = Math.Clamp((delta < 0 ? columns.FirstOrDefault() : columns.LastOrDefault()) + delta, 0, count - 1);
+            ResultGridBuilder.SetHighlightColumn(ResultGrid, next);
+        }
+        ReportColumnSelection();
+        if (ResultGrid.Columns.FirstOrDefault(c => c.Tag is int i && i == ResultGridBuilder.GetHighlightEnd(ResultGrid)) is { } column && _viewModel.Rows.Count > 0)
+            ResultGrid.ScrollIntoView(_viewModel.Rows[0], column);
+        e.Handled = true;
+        return true;
+    }
+
+    private void SortColumn(int index, bool? descending)
+    {
+        if (_viewModel is null || index >= _viewModel.Columns.Count) return;
+        _ = _viewModel.SortColumnAsync(_viewModel.Columns[index].Name, descending);
+    }
+
     private int CurrentIndex() => ResultGrid.CurrentColumn?.Tag is int index ? index : -1;
 
     private void SyncCurrent() => _viewModel?.SetCurrent(ResultGrid.SelectedItem as TableRowViewModel, CurrentIndex());
 
     private void OnGridKeyDown(object? sender, KeyEventArgs e)
     {
-        if (_viewModel is null) return;
+        if (_viewModel is null || HandleColumnKeys(e)) return;
         if (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             _ = CopyCurrentAsync();
@@ -130,8 +228,17 @@ public partial class TablePageView : UserControl
     {
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard is null || _viewModel is null) return;
-        // Più righe selezionate: copia come testo separato da tabulazioni (incollabile in Excel).
-        if (_viewModel.SelectedRows.Count > 1)
+        // Colonne selezionate: intestazioni + tutti i valori caricati, separati da tabulazione (incollabile in Excel).
+        if (_selectionMode == SelectionKind.Column && ResultGridBuilder.HighlightedColumns(ResultGrid).Where(i => i < _viewModel.Columns.Count).ToArray() is { Length: > 0 } selected)
+        {
+            var lines = new[] { string.Join('\t', selected.Select(i => _viewModel.Columns[i].Name)) }
+                .Concat(_viewModel.Rows.Select(row => string.Join('\t', selected.Select(i => row.IsNull(i) ? string.Empty : row.TextAt(i)))));
+            await clipboard.SetTextAsync(string.Join(Environment.NewLine, lines));
+            _viewModel.StatusMessage = $"Copiate {selected.Length} colonne × {_viewModel.Rows.Count:N0} righe.";
+            return;
+        }
+        // Righe intere (indicatore a sinistra) o più righe: testo separato da tabulazioni (incollabile in Excel).
+        if (_viewModel.SelectedRows.Count > 1 || _selectionMode == SelectionKind.Row && _viewModel.SelectedRows.Count > 0)
         {
             var lines = _viewModel.SelectedRows.Select(row => string.Join('\t', Enumerable.Range(0, row.CellCount).Select(index => row.IsNull(index) ? string.Empty : row.TextAt(index))));
             await clipboard.SetTextAsync(string.Join(Environment.NewLine, lines));

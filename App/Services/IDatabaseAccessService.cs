@@ -7,6 +7,12 @@ namespace MosaicDB.App.Services;
 public sealed record StatementResult(string Sql, QueryResult? Result, Exception? Error, TimeSpan Elapsed);
 
 /// <summary>Errore di uno script: indica quale istruzione è fallita.</summary>
+/// <summary>Salvataggio di un oggetto non riuscito; <see cref="Outcome"/> dice se la versione precedente è stata ripristinata.</summary>
+public sealed class SchemaObjectSaveException(Exception inner, string outcome) : Exception(inner.Message, inner)
+{
+    public string Outcome { get; } = outcome;
+}
+
 public sealed class ScriptExecutionException(int statementNumber, string statement, Exception inner)
     : Exception($"Istruzione {statementNumber}: {inner.Message}", inner)
 {
@@ -45,6 +51,15 @@ public interface IDatabaseAccessService
     Task<string> GetDdlTextAsync(ConnectionProfile profile, string database, string schema, string table, bool isView, CancellationToken cancellationToken);
 
     Task<SchemaModel> GetSchemaModelAsync(ConnectionProfile profile, string database, string schema, CancellationToken cancellationToken);
+    Task<TableDesign> GetTableDesignAsync(ConnectionProfile profile, string database, string schema, string table, CancellationToken cancellationToken);
+    /// <summary>Esegue le istruzioni così come sono (senza suddividerle), in ordine, sulla stessa connessione.</summary>
+    Task ExecuteStatementsAsync(ConnectionProfile profile, string? database, IReadOnlyList<string> statements, CancellationToken cancellationToken, bool atomic = false);
+    Task<IReadOnlyList<DatabaseObjectInfo>> ListSchemaObjectsAsync(ConnectionProfile profile, string database, string schema, SchemaObjectKind kind, CancellationToken cancellationToken);
+    Task<string> GetSchemaObjectDefinitionAsync(ConnectionProfile profile, string database, string schema, SchemaObjectKind kind, DatabaseObjectInfo item, CancellationToken cancellationToken);
+    Task<IReadOnlyList<string>> GetRoutineParametersAsync(ConnectionProfile profile, string database, string schema, DatabaseObjectInfo routine, CancellationToken cancellationToken);
+    Task<SequenceInfo> GetSequenceAsync(ConnectionProfile profile, string database, string schema, string name, CancellationToken cancellationToken);
+    /// <summary>Esegue un piano di salvataggio (con eventuale alternativa e ripristino della versione precedente).</summary>
+    Task ExecuteSavePlanAsync(ConnectionProfile profile, string? database, SchemaObjectSavePlan plan, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<CharsetInfo>> ListCharsetsAsync(ConnectionProfile profile, CancellationToken cancellationToken);
     Task<DatabaseOptions> GetDatabaseOptionsAsync(ConnectionProfile profile, string database, CancellationToken cancellationToken);

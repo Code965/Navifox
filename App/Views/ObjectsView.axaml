@@ -6,18 +6,42 @@
              x:DataType="vm:ObjectsTabViewModel">
   <UserControl.KeyBindings>
     <KeyBinding Gesture="Ctrl+F" Command="{Binding ToggleSearchCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
   </UserControl.KeyBindings>
   <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
     <!-- Toolbar contestuale -->
     <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
       <Grid ColumnDefinitions="*,Auto">
-        <WrapPanel Orientation="Horizontal">
+        <WrapPanel Orientation="Horizontal" IsVisible="{Binding !IsTableList}">
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EditSelectedObjectCommand}" IsEnabled="{Binding HasSelection}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="pencil" Classes="objbar-icon" /><TextBlock Text="{Binding EditLabel}" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NewInCurrentCategoryCommand}" CommandParameter="FUNCTION">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="{Binding NewLabel}" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NewInCurrentCategoryCommand}" CommandParameter="PROCEDURE" IsVisible="{Binding IsRoutineList}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova procedura" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteSelectedSchemaObjectCommand}" IsEnabled="{Binding HasSelection}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RunSelectedRoutineCommand}" IsEnabled="{Binding HasSelection}" IsVisible="{Binding IsRoutineList}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="play" Classes="objbar-icon" /><TextBlock Text="Esegui" /></StackPanel>
+          </Button>
+        </WrapPanel>
+        <WrapPanel Orientation="Horizontal" IsVisible="{Binding IsTableList}">
           <Button Classes="objbar" Command="{Binding OpenSelectedCommand}" ToolTip.Tip="Apri la tabella selezionata (doppio clic o Invio)">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="table" Classes="objbar-icon" /><TextBlock Text="Apri tabella" /></StackPanel>
           </Button>
-          <Button Classes="objbar" IsEnabled="False"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="pencil" Classes="objbar-icon" /><TextBlock Text="Progetta tabella" /></StackPanel></Button>
-          <Button Classes="objbar" IsEnabled="False"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova tabella" /></StackPanel></Button>
-          <Button Classes="objbar" IsEnabled="False"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina tabella" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DesignTableCommand}" CommandParameter="{x:Null}" IsEnabled="{Binding HasSelection}" ToolTip.Tip="Modifica la struttura della tabella selezionata">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="pencil" Classes="objbar-icon" /><TextBlock Text="Progetta tabella" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NewTableCommand}" CommandParameter="{x:Null}" IsEnabled="{Binding HasSource}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova tabella" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteSelectedObjectsCommand}" IsEnabled="{Binding HasSelection}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina tabella" /></StackPanel>
+          </Button>
           <Button Classes="objbar" Command="{Binding ImportCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="import" Classes="objbar-icon" /><TextBlock Text="Import Wizard" /></StackPanel></Button>
           <Button Classes="objbar" Command="{Binding ExportCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="export" Classes="objbar-icon" /><TextBlock Text="Export Wizard" /></StackPanel></Button>
         </WrapPanel>
@@ -57,7 +81,7 @@
     <DataGrid x:Name="ObjectsGrid" Grid.Row="3" ItemsSource="{Binding VisibleObjects}" SelectedItem="{Binding SelectedObject, Mode=TwoWay}"
               AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="None" HeadersVisibility="Column"
               CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" RowHeight="26"
-              SelectionMode="Extended" IsVisible="{Binding HasSource}">
+              SelectionMode="Extended" IsVisible="{Binding ShowDetail}">
       <DataGrid.Columns>
         <DataGridTemplateColumn Header="Nome" Width="260" SortMemberPath="Name">
           <DataGridTemplateColumn.CellTemplate>
@@ -92,9 +116,29 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Dettagli" Binding="{Binding Detail}" Width="380" x:DataType="vm:ObjectRowViewModel" IsVisible="False" />
         <DataGridTextColumn Header="Commento" Binding="{Binding Comment}" Width="*" MinWidth="120" x:DataType="vm:ObjectRowViewModel" />
       </DataGrid.Columns>
     </DataGrid>
+
+    <!-- Visualizza › Elenco: solo icona e nome, su più colonne -->
+    <ListBox x:Name="ObjectsList" Grid.Row="3" ItemsSource="{Binding VisibleObjects}" SelectedItem="{Binding SelectedObject, Mode=TwoWay}" IsVisible="{Binding ShowList}"
+             SelectionMode="Multiple" Background="Transparent" Padding="8,4" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+      <ListBox.Styles>
+        <Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,3" /><Setter Property="MinHeight" Value="0" /></Style>
+      </ListBox.Styles>
+      <ListBox.ItemsPanel>
+        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" ItemWidth="240" /></ItemsPanelTemplate>
+      </ListBox.ItemsPanel>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:ObjectRowViewModel">
+          <StackPanel Orientation="Horizontal" Spacing="7" Margin="2,1">
+            <c:NfIcon Kind="{Binding Glyph}" Foreground="{DynamicResource AccentBrush}" Width="14" Height="14" />
+            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
 
     <!-- Stato vuoto -->
     <StackPanel Grid.Row="3" IsVisible="{Binding !HasSource}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24">

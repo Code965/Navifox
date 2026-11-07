@@ -22,6 +22,14 @@ public sealed class AppSettings
     public bool CheckUpdatesOnStartup { get; set; } = true;
     /// <summary>Sorgente aggiornamenti; vuota = quella incorporata nella release.</summary>
     public string UpdateSource { get; set; } = string.Empty;
+    /// <summary>File SQL aperti di recente (File › Apri recenti).</summary>
+    public List<string> RecentFiles { get; set; } = [];
+    /// <summary>Cartelle di connessioni create dall'utente (anche vuote).</summary>
+    public List<string> ConnectionFolders { get; set; } = [];
+    /// <summary>Ordine scelto dall'utente per cartelle («f:percorso») e connessioni («c:id») nell'albero.</summary>
+    public List<string> TreeOrder { get; set; } = [];
+    /// <summary>Cartelle chiuse dall'utente (percorsi).</summary>
+    public List<string> CollapsedFolders { get; set; } = [];
 
     public static void Load()
     {

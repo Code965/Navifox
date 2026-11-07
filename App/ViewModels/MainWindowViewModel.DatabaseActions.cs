@@ -27,7 +27,9 @@ public partial class MainWindowViewModel
             ContextAction.Separator,
             new("Aggiorna", RefreshNodeCommand, node, "refresh", node.IsLoaded),
             ContextAction.Separator,
-            new("Elimina connessione", DeleteSelectedConnectionCommand, null, "trash"),
+            .. ConnectionOrganizeActions(node),
+            ContextAction.Separator,
+            new("Elimina connessione…", DeleteSelectedConnectionCommand, null, "trash"),
         ],
         TreeNodeKind.Database =>
         [
@@ -54,6 +56,10 @@ public partial class MainWindowViewModel
             ContextAction.Separator,
             new("Aggiorna", RefreshNodeCommand, node, "refresh"),
         ],
+        TreeNodeKind.Category when node.Category == "Tabelle" => TablesCategoryActions(node),
+        TreeNodeKind.Category when node.Category == "Viste" => ViewsCategoryActions(node),
+        TreeNodeKind.Category when node.SchemaKind is not null => SchemaCategoryActions(node),
+        TreeNodeKind.DbObject => SchemaObjectActions(node),
         TreeNodeKind.Schema or TreeNodeKind.Category =>
         [
             new("Nuova query", NewQueryCommand, node, "file-code"),
@@ -65,7 +71,7 @@ public partial class MainWindowViewModel
             new("Aggiorna", RefreshNodeCommand, node, "refresh"),
         ],
         TreeNodeKind.Table => TableContextActions(node),
-        TreeNodeKind.Group => [new("Nuova connessione…", AddConnectionCommand, null, "plus")],
+        TreeNodeKind.Group => FolderActions(node),
         _ => []
     };
 
@@ -143,17 +149,79 @@ public partial class MainWindowViewModel
             $"Eliminare definitivamente il database «{database}» su «{profile.Name}»?\n\nTutte le tabelle e i dati verranno persi. L’operazione non può essere annullata.",
             "Elimina", danger: true);
         if (!confirmed) return;
+        var provider = _databaseAccess.Provider(profile);
+        // Prima si chiudono le connessioni di Navifox a quel database (schede, albero, pool).
+        if (ObjectsTab.Source is { } source && IsUnder(source, node)) ObjectsTab.Clear();
+        CloseTabsFor(profile.Id, database);
+        node.Reset();
+        provider.ClearPools();
         try
         {
-            var sql = _databaseAccess.Provider(profile).BuildDropDatabaseSql(database);
-            await _databaseAccess.ExecuteOnServerAsync(profile, [sql], CancellationToken.None);
-            if (ObjectsTab.Source is { } source && IsUnder(source, node)) ObjectsTab.Clear();
-            CloseTabsFor(profile.Id, database);
+            try
+            {
+                await _databaseAccess.ExecuteOnServerAsync(profile, [provider.BuildDropDatabaseSql(database)], CancellationToken.None);
+            }
+            catch (Exception busy) when (profile.Kind == DatabaseKind.PostgreSql && IsDatabaseInUse(busy))
+            {
+                // Altre sessioni (pgAdmin, l'applicazione, un'altra istanza…): si mostra chi sono e si chiede se chiuderle.
+                var sessions = await ListOtherSessionsAsync(profile, database);
+                var list = sessions.Count == 0 ? "  (le sessioni si sono chiuse nel frattempo)" : string.Join("\n", sessions.Take(12).Select(s => "  • " + s)) + (sessions.Count > 12 ? $"\n  … e altre {sessions.Count - 12}" : string.Empty);
+                if (!await _dialogs.ConfirmAsync("Database in uso",
+                        $"«{database}» è ancora usato da {(sessions.Count == 1 ? "1 sessione" : $"{sessions.Count} sessioni")}:\n\n{list}\n\nChiudere queste sessioni ed eliminare comunque il database?\nChi è collegato perderà la connessione.",
+                        "Chiudi sessioni ed elimina", danger: true))
+                {
+                    StatusMessage = $"Eliminazione di «{database}» annullata.";
+                    return;
+                }
+                await ForceDropAsync(profile, database);
+            }
             node.Parent?.Children.Remove(node);
             if (SelectedNode == node) SelectedNode = node.Parent;
             StatusMessage = $"Database «{database}» eliminato.";
         }
         catch (Exception exception) { await ReportErrorAsync($"Impossibile eliminare «{database}»", exception); }
+    }
+
+    /// <summary>PostgreSQL 55006 (object_in_use): il database ha altre connessioni aperte.</summary>
+    private static bool IsDatabaseInUse(Exception exception)
+    {
+        for (var e = exception; e is not null; e = e.InnerException)
+            if (e is Npgsql.PostgresException { SqlState: "55006" }) return true;
+        return false;
+    }
+
+    /// <summary>Sessioni aperte su un database PostgreSQL (utente · applicazione · client · stato).</summary>
+    private async Task<IReadOnlyList<string>> ListOtherSessionsAsync(ConnectionProfile profile, string database)
+    {
+        var provider = _databaseAccess.Provider(profile);
+        var sql = $"SELECT pid, COALESCE(usename, ''), COALESCE(application_name, ''), COALESCE(client_addr::text, 'locale'), COALESCE(state, '') " +
+                  $"FROM pg_stat_activity WHERE datname = {provider.FormatLiteral(database)} AND pid <> pg_backend_pid() ORDER BY pid";
+        var results = await _databaseAccess.ExecuteBatchAsync(profile, provider.MaintenanceDatabase, sql, 200, CancellationToken.None);
+        if (results.FirstOrDefault()?.Result is not { } result) return [];
+        return result.Rows.Select(r =>
+        {
+            var app = Convert.ToString(r[2]) is { Length: > 0 } a ? a : "applicazione sconosciuta";
+            return $"pid {r[0]} · {r[1]} · {app} · {r[3]}{(Convert.ToString(r[4]) is { Length: > 0 } state ? $" · {state}" : string.Empty)}";
+        }).ToArray();
+    }
+
+    /// <summary>PostgreSQL 13+: DROP DATABASE … WITH (FORCE); versioni precedenti: pg_terminate_backend e poi DROP.</summary>
+    private async Task ForceDropAsync(ConnectionProfile profile, string database)
+    {
+        var provider = _databaseAccess.Provider(profile);
+        var drop = provider.BuildDropDatabaseSql(database);
+        try
+        {
+            await _databaseAccess.ExecuteOnServerAsync(profile, [$"{drop} WITH (FORCE)"], CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is Npgsql.PostgresException { SqlState: "42601" } || exception.InnerException is Npgsql.PostgresException { SqlState: "42601" })
+        {
+            await _databaseAccess.ExecuteOnServerAsync(profile,
+            [
+                $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = {provider.FormatLiteral(database)} AND pid <> pg_backend_pid()",
+                drop,
+            ], CancellationToken.None);
+        }
     }
 
     // ───────────── Query / console ─────────────

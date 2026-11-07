@@ -149,6 +149,108 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
         return ddl.PostData.Count == 0 ? ddl.Create : ddl.Create + Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine, ddl.PostData);
     }
 
+    public async Task<TableDesign> GetTableDesignAsync(ConnectionProfile profile, string database, string schema, string table, CancellationToken cancellationToken)
+    {
+        await using var connection = await ConnectAsync(profile, database, cancellationToken);
+        return await Provider(profile).GetTableDesignAsync(connection, database, schema, table, cancellationToken);
+    }
+
+    public async Task ExecuteStatementsAsync(ConnectionProfile profile, string? database, IReadOnlyList<string> statements, CancellationToken cancellationToken, bool atomic = false)
+    {
+        var provider = Provider(profile);
+        await using var connection = await ConnectAsync(profile, database, cancellationToken);
+        if (!atomic)
+        {
+            await RunStatementsAsync(provider, connection, profile, database, statements, cancellationToken);
+            return;
+        }
+        // DDL transazionale (PostgreSQL): o tutto o niente.
+        await provider.ExecuteAsync(connection, "BEGIN", 0, cancellationToken);
+        try
+        {
+            await RunStatementsAsync(provider, connection, profile, database, statements, cancellationToken);
+            await provider.ExecuteAsync(connection, "COMMIT", 0, cancellationToken);
+        }
+        catch
+        {
+            try { await provider.ExecuteAsync(connection, "ROLLBACK", 0, CancellationToken.None); } catch { /* connessione non più utilizzabile */ }
+            throw;
+        }
+    }
+
+    public async Task ExecuteSavePlanAsync(ConnectionProfile profile, string? database, SchemaObjectSavePlan plan, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ExecuteStatementsAsync(profile, database, plan.Statements, cancellationToken, plan.Atomic);
+        }
+        catch (Exception first) when (first is not OperationCanceledException)
+        {
+            if (plan.Fallback is { } fallback)
+            {
+                await ExecuteSavePlanAsync(profile, database, fallback, cancellationToken);
+                return;
+            }
+            if (plan.Restore is { Count: > 0 } restore)
+            {
+                string outcome;
+                try
+                {
+                    await ExecuteStatementsAsync(profile, database, restore, CancellationToken.None);
+                    outcome = "La versione precedente è stata ripristinata.";
+                }
+                catch (Exception restoreError)
+                {
+                    outcome = $"ATTENZIONE: non è stato possibile ripristinare la versione precedente ({restoreError.Message}). Ricrea l'oggetto dalla definizione originale.";
+                }
+                throw new SchemaObjectSaveException(first, outcome);
+            }
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlyList<DatabaseObjectInfo>> ListSchemaObjectsAsync(ConnectionProfile profile, string database, string schema, SchemaObjectKind kind, CancellationToken cancellationToken)
+    {
+        await using var connection = await ConnectAsync(profile, database, cancellationToken);
+        return await Provider(profile).ListSchemaObjectsAsync(connection, database, schema, kind, cancellationToken);
+    }
+
+    public async Task<string> GetSchemaObjectDefinitionAsync(ConnectionProfile profile, string database, string schema, SchemaObjectKind kind, DatabaseObjectInfo item, CancellationToken cancellationToken)
+    {
+        await using var connection = await ConnectAsync(profile, database, cancellationToken);
+        return await Provider(profile).GetSchemaObjectDefinitionAsync(connection, database, schema, kind, item, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<string>> GetRoutineParametersAsync(ConnectionProfile profile, string database, string schema, DatabaseObjectInfo routine, CancellationToken cancellationToken)
+    {
+        await using var connection = await ConnectAsync(profile, database, cancellationToken);
+        return await Provider(profile).GetRoutineParametersAsync(connection, schema, routine, cancellationToken);
+    }
+
+    public async Task<SequenceInfo> GetSequenceAsync(ConnectionProfile profile, string database, string schema, string name, CancellationToken cancellationToken)
+    {
+        await using var connection = await ConnectAsync(profile, database, cancellationToken);
+        return await Provider(profile).GetSequenceAsync(connection, schema, name, cancellationToken);
+    }
+
+    private static async Task RunStatementsAsync(IDialectProvider provider, System.Data.Common.DbConnection connection, ConnectionProfile profile, string? database, IReadOnlyList<string> statements, CancellationToken cancellationToken)
+    {
+        foreach (var statement in statements)
+        {
+            var timer = Stopwatch.StartNew();
+            try
+            {
+                await provider.ExecuteAsync(connection, statement, 0, cancellationToken);
+                if (AppSettings.Current.RecordHistory) SqlHistory.Record(profile.Name, database, statement, timer.Elapsed, null);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                if (AppSettings.Current.RecordHistory) SqlHistory.Record(profile.Name, database, statement, timer.Elapsed, exception.Message);
+                throw new ScriptExecutionException(statements.ToList().IndexOf(statement) + 1, statement, exception);
+            }
+        }
+    }
+
     public async Task<SchemaModel> GetSchemaModelAsync(ConnectionProfile profile, string database, string schema, CancellationToken cancellationToken)
     {
         await using var connection = await ConnectAsync(profile, database, cancellationToken);

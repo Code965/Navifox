@@ -64,6 +64,7 @@ public partial class QueryPageView : UserControl
         _viewModel.Columns.CollectionChanged += OnColumnsChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns);
+        FitSoon();
         SqlEditor.CompletionSource = _viewModel;
         _viewModel.InsertRequested += OnInsert;
         if (SqlEditor.Text != _viewModel.SqlText) SqlEditor.Text = _viewModel.SqlText;
@@ -71,7 +72,11 @@ public partial class QueryPageView : UserControl
 
     private void OnColumnsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (_viewModel is not null) ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns);
+        if (_viewModel is not null)
+        {
+            ResultGridBuilder.Rebuild(ResultGrid, _viewModel.Columns);
+            FitSoon();
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -152,4 +157,10 @@ public partial class QueryPageView : UserControl
                 break;
         }
     }
+
+    /// <summary>Adatta le colonne al contenuto quando le righe del risultato sono arrivate.</summary>
+    private void FitSoon() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    {
+        if (_viewModel is not null) ResultGridBuilder.FitToContent(ResultGrid, _viewModel.Rows);
+    }, Avalonia.Threading.DispatcherPriority.Background);
 }

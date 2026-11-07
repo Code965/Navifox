@@ -28,8 +28,8 @@ public partial class MainWindowViewModel
         return
         [
             new($"Apri {what}", OpenNodeCommand, node, view ? "eye" : "table"),
-            new($"Progetta {what}", Glyph: "pencil", IsEnabled: false, ToolTip: Soon),
-            new("Nuova tabella", TableOperationCommand, new TableOperation(node, "new"), "plus"),
+            new($"Progetta {what}", view ? OpenSchemaObjectCommand : DesignTableCommand, node, "pencil"),
+            new("Nuova tabella", NewTableCommand, node.Parent, "plus"),
             new($"Elimina {what}", TableOperationCommand, new TableOperation(node, "drop"), "trash"),
             new("Svuota tabella", TableOperationCommand, new TableOperation(node, "empty"), "x", !view),
             new("Tronca tabella", TableOperationCommand, new TableOperation(node, "truncate"), "x", !view),
@@ -90,15 +90,8 @@ public partial class MainWindowViewModel
             switch (operation.Kind)
             {
                 case "new":
-                {
-                    var tab = new QueryTabViewModel(_databaseAccess, profile, database, false, Profiles.ToArray(), _dialogs)
-                    {
-                        SqlText = SqlSnippets.All.First(s => s.Name == "CREATE TABLE").Build(mysql)
-                    };
-                    OpenTabs.Add(tab);
-                    SelectedTab = tab;
-                    break;
-                }
+                    OpenDesigner(profile, database, schema, null);
+                    return;
                 case "drop":
                     if (!await _dialogs.ConfirmAsync(view ? "Elimina vista" : "Elimina tabella",
                             $"Eliminare definitivamente {(view ? "la vista" : "la tabella")} «{node.Name}» da «{database}»?\n\nL’operazione non può essere annullata.", "Elimina", danger: true)) return;

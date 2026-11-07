@@ -13,7 +13,49 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
     public event Action<ConnectionProfile?>? CloseRequested;
 
     [ObservableProperty] private string _name = "Nuova connessione";
-    [ObservableProperty] private string _folder = "Generale";
+    [ObservableProperty] private string _folder = string.Empty;
+
+    /// <summary>Cartelle già presenti (per la casella «Cartella»).</summary>
+    public ObservableCollection<string> Folders { get; } = [];
+
+    /// <summary>Connessione in modifica (null = nuova).</summary>
+    public ConnectionProfile? Editing { get; private set; }
+    public bool IsEditing => Editing is not null;
+    public string FinishLabel => IsEditing ? "Salva" : "Fine";
+
+    /// <summary>Apre il dialogo sulle impostazioni di una connessione esistente.</summary>
+    public void LoadFrom(ConnectionProfile profile)
+    {
+        var driver = DriverCatalog.Drivers.FirstOrDefault(d => d.Name == profile.Driver && d.IsSupported)
+                     ?? DriverCatalog.Drivers.First(d => d.Kind == profile.Kind);
+        SelectedDriver = driver;
+        Next();
+        Editing = profile;
+        Name = profile.Name;
+        Folder = profile.Folder;
+        IsFavorite = profile.IsFavorite;
+        SelectedKind = profile.Kind;
+        Host = profile.Host;
+        PortText = profile.Port.ToString();
+        UserName = profile.UserName;
+        Password = profile.Password;
+        Database = profile.DefaultDatabase;
+        SelectedSslMode = profile.SslMode;
+        AdvancedParameters = profile.AdvancedParameters;
+        ConnectionStringOverride = profile.ConnectionStringOverride;
+        UseSshTunnel = profile.UseSshTunnel;
+        SshHost = profile.SshHost;
+        SshPortText = profile.SshPort.ToString();
+        SshUserName = profile.SshUserName;
+        SshPassword = profile.SshPassword;
+        SshUsePrivateKey = profile.SshUsePrivateKey;
+        SshPrivateKeyPath = profile.SshPrivateKeyPath;
+        SshPrivateKeyPassphrase = profile.SshPrivateKeyPassphrase;
+        SshHostKeyFingerprint = profile.SshHostKeyFingerprint;
+        OnPropertyChanged(nameof(IsEditing));
+        OnPropertyChanged(nameof(FinishLabel));
+        OnPropertyChanged(nameof(StepTitle));
+    }
     [ObservableProperty] private bool _isFavorite;
     [ObservableProperty] private DatabaseKind _selectedKind = DatabaseKind.MySql;
     [ObservableProperty] private string _host = "localhost";
@@ -55,7 +97,7 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
 
     public bool IsDriverStep => Step == 0;
     public bool IsDetailsStep => Step == 1;
-    public string StepTitle => IsDriverStep ? "Seleziona il tuo database" : $"Impostazioni di connessione · {SelectedDriver?.Name}";
+    public string StepTitle => IsDriverStep ? "Seleziona il tuo database" : $"{(Editing is null ? "Impostazioni di connessione" : "Modifica connessione")} · {SelectedDriver?.Name}";
     public string StepSubtitle => IsDriverStep
         ? "Crea una nuova connessione: trova il driver del database nell’elenco qui sotto."
         : SelectedDriver?.Description ?? string.Empty;
@@ -127,6 +169,13 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
 
     [RelayCommand]
     private void ClearDriverSearch() => DriverSearch = string.Empty;
+
+    public void StartWithDriver(string driverName)
+    {
+        if (DriverCatalog.Drivers.FirstOrDefault(d => d.Name == driverName && d.IsSupported) is not { } driver) return;
+        SelectedDriver = driver;
+        Next();
+    }
 
     [RelayCommand(CanExecute = nameof(CanGoNext))]
     private void Next()
@@ -239,7 +288,8 @@ public partial class ConnectionDialogViewModel(IDatabaseAccessService databaseAc
 
     private ConnectionProfile BuildProfile(int port, int sshPort) => new()
     {
-        Name = Name.Trim(), Folder = string.IsNullOrWhiteSpace(Folder) ? "Generale" : Folder.Trim(), IsFavorite = IsFavorite,
+        Id = Editing?.Id ?? Guid.NewGuid(),
+        Name = Name.Trim(), Folder = MainWindowViewModel.NormalizeFolder(Folder), IsFavorite = IsFavorite,
         Kind = SelectedKind, Driver = SelectedDriver?.Name, Host = Host.Trim(), Port = port, UserName = UserName.Trim(), Password = Password,
         DefaultDatabase = Database.Trim(), SslMode = SelectedSslMode, AdvancedParameters = AdvancedParameters,
         ConnectionStringOverride = ConnectionStringOverride.Trim(), UseSshTunnel = UseSshTunnel,

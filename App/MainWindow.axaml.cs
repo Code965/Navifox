@@ -35,16 +35,161 @@ public partial class MainWindow : Window
         };
         ConnectionTree.AddHandler(KeyDownEvent, (_, args) =>
         {
+            // Canc sulla connessione: elimina (con conferma) · F2: modifica connessione / rinomina cartella.
+            // Alt+Su / Alt+Giù: riordina connessioni e cartelle.
+            if (args.KeyModifiers == Avalonia.Input.KeyModifiers.Alt && args.Key is Avalonia.Input.Key.Up or Avalonia.Input.Key.Down
+                && viewModel.SelectedNode is { Kind: TreeNodeKind.Connection or TreeNodeKind.Group } moving)
+            {
+                var key = moving.Kind == TreeNodeKind.Group ? MainWindowViewModel.FolderKey(moving.FolderPath!) : MainWindowViewModel.ConnectionKey(moving.Profile!.Id);
+                viewModel.ReorderCommand.Execute(new ReorderRequest(key, args.Key == Avalonia.Input.Key.Up ? -1 : 1));
+                args.Handled = true;
+                return;
+            }
+            if (args.KeyModifiers == Avalonia.Input.KeyModifiers.None && viewModel.SelectedNode is { } selected)
+            {
+                if (args.Key == Avalonia.Input.Key.F5)
+                {
+                    // F5 aggiorna il nodo selezionato (connessione aperta, database, categoria); sulle tabelle la loro categoria.
+                    var target = selected.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject ? selected.Parent : selected;
+                    if (target is { Kind: not TreeNodeKind.Group } && (target.Kind != TreeNodeKind.Connection || target.IsLoaded)) viewModel.RefreshNodeCommand.Execute(target);
+                    args.Handled = true;
+                }
+                else if (args.Key == Avalonia.Input.Key.Delete && selected.Kind == TreeNodeKind.Connection) { viewModel.DeleteSelectedConnectionCommand.Execute(null); args.Handled = true; }
+                else if (args.Key == Avalonia.Input.Key.F2 && selected.Kind == TreeNodeKind.Connection) { viewModel.RenameConnectionCommand.Execute(selected); args.Handled = true; }
+                else if (args.Key == Avalonia.Input.Key.F2 && selected.Kind == TreeNodeKind.Group) { viewModel.RenameFolderCommand.Execute(selected.FolderPath); args.Handled = true; }
+                if (args.Handled) return;
+            }
             if (!args.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)) return;
             if (args.Key == Avalonia.Input.Key.C) { viewModel.CopyTablesCommand.Execute(viewModel.SelectedNode); args.Handled = true; }
             else if (args.Key == Avalonia.Input.Key.V) { viewModel.PasteTablesCommand.Execute(viewModel.SelectedNode); args.Handled = true; }
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        SetupConnectionDragDrop(viewModel);
+        // File › Apri recenti: l'elenco si ricostruisce a ogni apertura del sottomenu.
+        RecentMenu.ItemsSource = new object[] { new MenuItem { Header = "(nessun file recente)", IsEnabled = false } };
+        RecentMenu.SubmenuOpened += (_, _) =>
+        {
+            var items = new List<object>();
+            foreach (var path in viewModel.RecentFiles)
+                items.Add(new MenuItem { Header = System.IO.Path.GetFileName(path), Command = viewModel.OpenRecentCommand, CommandParameter = path, [ToolTip.TipProperty] = path });
+            if (items.Count == 0) items.Add(new MenuItem { Header = "(nessun file recente)", IsEnabled = false });
+            else
+            {
+                items.Add(new Separator());
+                items.Add(new MenuItem { Header = "Svuota elenco", Command = viewModel.ClearRecentCommand });
+            }
+            RecentMenu.ItemsSource = items;
+        };
+        ConnectionTree.Tapped += (_, args) =>
+        {
+            if (args.Source is Avalonia.Visual source && source.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel node)
+                viewModel.ReactivateNode(node);
+        };
         ConnectionTree.DoubleTapped += (_, args) =>
         {
             if (args.Source is Avalonia.Visual source && source.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel node)
                 viewModel.OpenNodeCommand.Execute(node);
         };
         StartScreenshotIfRequested();
+    }
+
+    private const string ConnectionFormat = "application/x-navifox-connection";
+    private Avalonia.Point? _dragStart;
+    private TreeNodeViewModel? _dragNode;
+
+    /// <summary>
+    /// Trascinamento nell'albero: connessioni e cartelle si spostano prima/dopo un altro elemento (bordo superiore/inferiore della riga)
+    /// oppure dentro una cartella (centro della riga). Nello spazio vuoto vanno in fondo alla radice.
+    /// </summary>
+    private void SetupConnectionDragDrop(MainWindowViewModel viewModel)
+    {
+        Avalonia.Input.DragDrop.SetAllowDrop(ConnectionTree, true);
+        ConnectionTree.AddHandler(PointerPressedEvent, (_, args) =>
+        {
+            _dragNode = null;
+            if (!args.GetCurrentPoint(ConnectionTree).Properties.IsLeftButtonPressed) return;
+            if ((args.Source as Visual)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel { Kind: TreeNodeKind.Connection or TreeNodeKind.Group } node)
+            {
+                _dragNode = node;
+                _dragStart = args.GetPosition(ConnectionTree);
+            }
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        ConnectionTree.AddHandler(PointerMovedEvent, async (_, args) =>
+        {
+            if (_dragNode is not { } node || _dragStart is not { } start || !args.GetCurrentPoint(ConnectionTree).Properties.IsLeftButtonPressed) return;
+            var position = args.GetPosition(ConnectionTree);
+            if (Math.Abs(position.X - start.X) + Math.Abs(position.Y - start.Y) < 8) return;
+            _dragNode = null;
+            _dragStart = null;
+            var key = node.Kind == TreeNodeKind.Group ? MainWindowViewModel.FolderKey(node.FolderPath!) : MainWindowViewModel.ConnectionKey(node.Profile!.Id);
+#pragma warning disable CS0618 // DataObject: API classica, ancora supportata in Avalonia 11
+            var data = new Avalonia.Input.DataObject();
+            data.Set(ConnectionFormat, key);
+            await Avalonia.Input.DragDrop.DoDragDrop(args, data, Avalonia.Input.DragDropEffects.Move);
+#pragma warning restore CS0618
+            ClearDropHint();
+        });
+        ConnectionTree.AddHandler(PointerReleasedEvent, (_, _) => { _dragNode = null; _dragStart = null; }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        ConnectionTree.AddHandler(Avalonia.Input.DragDrop.DragOverEvent, (_, args) =>
+        {
+#pragma warning disable CS0618
+            if (!args.Data.Contains(ConnectionFormat)) { args.DragEffects = Avalonia.Input.DragDropEffects.None; return; }
+#pragma warning restore CS0618
+            args.DragEffects = Avalonia.Input.DragDropEffects.Move;
+            var (item, node, where) = DropTarget(args);
+            ShowDropHint(item, node, where);
+        });
+        ConnectionTree.AddHandler(Avalonia.Input.DragDrop.DragLeaveEvent, (_, _) => ClearDropHint());
+        ConnectionTree.AddHandler(Avalonia.Input.DragDrop.DropEvent, async (_, args) =>
+        {
+            ClearDropHint();
+#pragma warning disable CS0618
+            if (args.Data.Get(ConnectionFormat) is not string key) return;
+#pragma warning restore CS0618
+            var (_, node, where) = DropTarget(args);
+            await viewModel.DropAsync(key, node, where);
+        });
+    }
+
+    /// <summary>Elemento sotto il puntatore e posizione (sopra, dentro, sotto) in base all'altezza nella riga.</summary>
+    private (TreeViewItem? Item, TreeNodeViewModel? Node, DropPosition Where) DropTarget(Avalonia.Input.DragEventArgs args)
+    {
+        var item = (args.Source as Visual)?.FindAncestorOfType<TreeViewItem>(includeSelf: true);
+        if (item?.DataContext is not TreeNodeViewModel node) return (null, null, DropPosition.Inside);
+        // Database, tabelle…: valgono come la loro connessione.
+        while (node.Kind is not (TreeNodeKind.Connection or TreeNodeKind.Group) && node.Parent is { } parent)
+        {
+            node = parent;
+            item = item?.FindAncestorOfType<TreeViewItem>();
+        }
+        if (item is null) return (null, null, DropPosition.Inside);
+        var header = item.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "PART_Header")?.Bounds.Height is > 0 and var h ? h : 28;
+        var y = args.GetPosition(item).Y;
+        var where = node.Kind == TreeNodeKind.Group
+            ? y < header * 0.28 ? DropPosition.Before : y > header * 0.72 ? DropPosition.After : DropPosition.Inside
+            : y < header / 2 ? DropPosition.Before : DropPosition.After;
+        return (item, node, where);
+    }
+
+    private TreeViewItem? _hintItem;
+
+    /// <summary>Segno visivo durante il trascinamento: linea sopra/sotto la riga oppure cartella evidenziata.</summary>
+    private void ShowDropHint(TreeViewItem? item, TreeNodeViewModel? node, DropPosition where)
+    {
+        if (_hintItem != item) ClearDropHint();
+        _hintItem = item;
+        if (item is null) return;
+        item.Classes.Set("drop-before", where == DropPosition.Before);
+        item.Classes.Set("drop-after", where == DropPosition.After);
+        item.Classes.Set("drop-inside", where == DropPosition.Inside);
+    }
+
+    private void ClearDropHint()
+    {
+        if (_hintItem is null) return;
+        _hintItem.Classes.Remove("drop-before");
+        _hintItem.Classes.Remove("drop-after");
+        _hintItem.Classes.Remove("drop-inside");
+        _hintItem = null;
     }
 
     private GridLength _treeWidth = new(280);
@@ -67,7 +212,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private static List<Control> BuildMenuItems(IEnumerable<ContextAction> actions) => actions.Select(action => action.IsSeparator
+    internal static List<Control> BuildMenuItems(IEnumerable<ContextAction> actions) => actions.Select(action => action.IsSeparator
         ? (Control)new Separator()
         : new MenuItem
         {

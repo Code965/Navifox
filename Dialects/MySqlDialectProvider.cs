@@ -4,7 +4,7 @@ using MySqlConnector;
 
 namespace MosaicDB.Dialects;
 
-public sealed class MySqlDialectProvider : AdoDialectProvider
+public sealed partial class MySqlDialectProvider : AdoDialectProvider
 {
     public override DatabaseKind Kind => DatabaseKind.MySql;
 

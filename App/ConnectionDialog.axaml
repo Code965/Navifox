@@ -163,7 +163,8 @@
             </StackPanel>
             <StackPanel Grid.Column="1" Spacing="5">
               <TextBlock Text="Cartella" Classes="field-label" />
-              <TextBox Text="{Binding Folder}" Watermark="Generale (radice)" />
+              <ComboBox IsEditable="True" Text="{Binding Folder, Mode=TwoWay}" ItemsSource="{Binding Folders}" HorizontalAlignment="Stretch"
+                        PlaceholderText="Nessuna (radice) · scegli o scrivi un nome nuovo" ToolTip.Tip="Scegli una cartella esistente o scrivi il nome di una nuova. Usa / per le sottocartelle, es. Clienti/Roma" />
             </StackPanel>
           </Grid>
           <Grid ColumnDefinitions="*,140" ColumnSpacing="14">
@@ -234,7 +235,7 @@
         </Grid>
         <Button Grid.Column="2" Content="‹ Indietro" Classes="wizard" Command="{Binding BackCommand}" />
         <Button Grid.Column="3" Content="Avanti ›" Classes="wizard primary" Command="{Binding NextCommand}" IsVisible="{Binding IsDriverStep}" IsDefault="{Binding IsDriverStep}" />
-        <Button Grid.Column="4" Content="Fine" Classes="wizard primary" Command="{Binding SaveCommand}" IsVisible="{Binding IsDetailsStep}" />
+        <Button Grid.Column="4" Content="{Binding FinishLabel}" Classes="wizard primary" Command="{Binding SaveCommand}" IsVisible="{Binding IsDetailsStep}" />
         <Button Grid.Column="5" Content="Annulla" Classes="wizard" Command="{Binding CancelCommand}" IsCancel="True" />
       </Grid>
     </Border>

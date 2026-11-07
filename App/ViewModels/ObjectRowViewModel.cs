@@ -6,7 +6,18 @@ public sealed class ObjectRowViewModel(DatabaseObjectInfo info)
 {
     public string Name => info.Name;
     public string Kind => info.Kind;
-    public string Glyph => info.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase) ? "eye" : "table";
+    public string Glyph => GlyphFor(info.Kind);
+    public string Detail => info.Detail ?? string.Empty;
+
+    public static string GlyphFor(string kind) => kind.ToUpperInvariant() switch
+    {
+        var k when k.Contains("VIEW") => "eye",
+        "FUNCTION" or "PROCEDURE" => "function",
+        "TRIGGER" => "zap",
+        "EVENT" => "clock",
+        "SEQUENCE" => "hash",
+        _ => "table"
+    };
     public string Rows => info.EstimatedRows is long value ? value.ToString("N0") : "";
     public long RowsValue => info.EstimatedRows ?? -1;
     public string DataSize => info.DataBytes is long value ? FormatBytes(value) : "";
@@ -22,7 +33,8 @@ public sealed class ObjectRowViewModel(DatabaseObjectInfo info)
     public bool Matches(string query) =>
         query.Length == 0
         || Name.Contains(query, StringComparison.OrdinalIgnoreCase)
-        || Comment.Contains(query, StringComparison.OrdinalIgnoreCase);
+        || Comment.Contains(query, StringComparison.OrdinalIgnoreCase)
+        || Detail.Contains(query, StringComparison.OrdinalIgnoreCase);
 
     private static string FormatBytes(long bytes) => bytes switch
     {

@@ -190,9 +190,43 @@
         <Border Classes="card" Padding="14,12" MaxHeight="260">
           <ScrollViewer><SelectableTextBlock Text="{Binding Summary}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" /></ScrollViewer>
         </Border>
-        <ProgressBar Grid.Row="1" Value="{Binding Progress}" Height="6" MinWidth="0" Maximum="100" />
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="5">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <ProgressBar Value="{Binding Progress}" Height="8" MinWidth="0" Maximum="100" Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource InsetBrush}" CornerRadius="4" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding Progress, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" MinWidth="42" TextAlignment="Right" />
+          </Grid>
+          <TextBlock Grid.Row="1" Text="{Binding ProgressText}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+        </Grid>
         <Border Grid.Row="2" Classes="card">
-          <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" />
+          <Grid RowDefinitions="*,Auto">
+            <ListBox x:Name="LogList" ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5">
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem"><Setter Property="Padding" Value="8,1" /><Setter Property="MinHeight" Value="0" /></Style>
+                <Style Selector="SelectableTextBlock.sql"><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" /></Style>
+                <Style Selector="SelectableTextBlock.ok"><Setter Property="Foreground" Value="#2E7D4F" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+                <Style Selector="SelectableTextBlock.error"><Setter Property="Foreground" Value="#C0392B" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+                <Style Selector="SelectableTextBlock.info"><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+              </ListBox.Styles>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:TransferLogEntry">
+                  <Grid ColumnDefinitions="70,44,*">
+                    <TextBlock Text="{Binding TimeText}" Foreground="{DynamicResource MutedTextBrush}" />
+                    <TextBlock Grid.Column="1" Text="SQL" IsVisible="{Binding IsSql}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                    <SelectableTextBlock Grid.Column="2" Text="{Binding Text}" TextWrapping="Wrap"
+                               Classes.sql="{Binding IsSql}" Classes.ok="{Binding IsOk}" Classes.error="{Binding IsError}" Classes.info="{Binding IsInfo}" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,3">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button Classes="objbar" Click="OnCopyLog" ToolTip.Tip="Copia tutto il registro negli appunti">
+                  <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="copy" Classes="objbar-icon" /><TextBlock Text="Copia registro" /></StackPanel>
+                </Button>
+                <CheckBox x:Name="FollowLog" Classes="crit-check" Content="Segui gli ultimi comandi" IsChecked="True" VerticalAlignment="Center" Margin="8,0,0,0" />
+              </StackPanel>
+            </Border>
+          </Grid>
         </Border>
       </Grid>
     </Grid>

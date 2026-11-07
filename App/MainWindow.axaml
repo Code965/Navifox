@@ -11,6 +11,9 @@
     <DataTemplate DataType="vm:TableTabViewModel">
       <views:TablePageView />
     </DataTemplate>
+    <DataTemplate DataType="vm:TableDesignerViewModel"><views:TableDesignerView /></DataTemplate>
+    <DataTemplate DataType="vm:SchemaObjectEditorViewModel"><views:SchemaObjectEditorView /></DataTemplate>
+    <DataTemplate DataType="vm:SequenceEditorViewModel"><views:SequenceEditorView /></DataTemplate>
     <DataTemplate DataType="vm:QueryTabViewModel">
       <views:QueryPageView />
     </DataTemplate>
@@ -38,18 +41,81 @@
         <Image Source="{DynamicResource NfLogo}" Height="20" VerticalAlignment="Center" ToolTip.Tip="NaviFox" />
         <Menu Grid.Column="1" Background="Transparent" VerticalAlignment="Center" Classes="top-menu">
           <MenuItem Header="File">
-            <MenuItem Header="Nuova connessione…" Command="{Binding AddConnectionCommand}"><MenuItem.Icon><c:NfIcon Kind="plus" /></MenuItem.Icon></MenuItem>
-            <MenuItem Header="Nuova query" Command="{Binding NewQueryCommand}"><MenuItem.Icon><c:NfIcon Kind="file-code" /></MenuItem.Icon></MenuItem>
-            <MenuItem Header="Console…" Command="{Binding OpenConsoleCommand}"><MenuItem.Icon><c:NfIcon Kind="terminal" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Nuovo progetto" IsEnabled="False" ToolTip.Tip="Disponibile in una fase successiva" />
+            <MenuItem Header="Nuova connessione">
+              <MenuItem.Icon><c:NfIcon Kind="plus" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="MySQL…" Command="{Binding AddConnectionWithDriverCommand}" CommandParameter="MySQL" />
+              <MenuItem Header="MariaDB…" Command="{Binding AddConnectionWithDriverCommand}" CommandParameter="MariaDB" />
+              <MenuItem Header="PostgreSQL…" Command="{Binding AddConnectionWithDriverCommand}" CommandParameter="PostgreSQL" />
+              <MenuItem Header="Supabase…" Command="{Binding AddConnectionWithDriverCommand}" CommandParameter="Supabase" />
+              <Separator />
+              <MenuItem Header="Tutti i database…" Command="{Binding AddConnectionCommand}" />
+            </MenuItem>
+            <MenuItem Header="Nuovo">
+              <MenuItem.Icon><c:NfIcon Kind="file-code" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="Query" Command="{Binding NewQueryCommand}" CommandParameter="{x:Null}" />
+              <MenuItem Header="Tabella" Command="{Binding NewTableCommand}" CommandParameter="{x:Null}" />
+              <MenuItem Header="Database…" Command="{Binding NewDatabaseCommand}" CommandParameter="{Binding SelectedNode}" />
+            </MenuItem>
+            <MenuItem Header="Apri file esterno">
+              <MenuItem.Icon><c:NfIcon Kind="folder" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="File SQL…" Command="{Binding OpenExternalSqlCommand}" />
+              <MenuItem Header="Esegui file SQL…" Command="{Binding ExecuteSqlFileCommand}" CommandParameter="{Binding SelectedNode}" />
+            </MenuItem>
+            <MenuItem x:Name="RecentMenu" Header="Apri recenti">
+              <MenuItem.Icon><c:NfIcon Kind="history" Classes="menu-icon" /></MenuItem.Icon>
+            </MenuItem>
             <Separator />
-            <MenuItem Header="Esci" Command="{Binding ExitCommand}" />
+            <MenuItem Header="Chiudi connessione" Command="{Binding DisconnectSelectedCommand}"><MenuItem.Icon><c:NfIcon Kind="unplug" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Modifica connessione…" Command="{Binding EditConnectionCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="F2"><MenuItem.Icon><c:NfIcon Kind="pencil" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Elimina connessione…" Command="{Binding DeleteSelectedConnectionCommand}" InputGesture="Delete"><MenuItem.Icon><c:NfIcon Kind="trash" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Nuova cartella…" Command="{Binding NewFolderCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="folder" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Importa connessioni…" Command="{Binding ImportConnectionsCommand}"><MenuItem.Icon><c:NfIcon Kind="import" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Esporta connessioni…" Command="{Binding ExportConnectionsCommand}"><MenuItem.Icon><c:NfIcon Kind="export" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Chiudi finestra" Command="{Binding ExitCommand}" />
+            <MenuItem Header="Chiudi scheda" Command="{Binding CloseCurrentTabCommand}" InputGesture="Ctrl+W" />
+            <MenuItem Header="Esci da Navifox" Command="{Binding ExitCommand}" />
           </MenuItem>
           <MenuItem Header="Modifica"><MenuItem Header="Annulla operazione" Command="{Binding CancelOperationCommand}"><MenuItem.Icon><c:NfIcon Kind="stop" /></MenuItem.Icon></MenuItem></MenuItem>
           <MenuItem Header="Visualizza">
-            <MenuItem Header="Pannello connessioni" Command="{Binding ToggleTreeCommand}" InputGesture="Ctrl+Shift+L"><MenuItem.Icon><c:NfIcon Kind="panel-left" /></MenuItem.Icon></MenuItem>
-            <MenuItem Header="Pannello informazioni" Command="{Binding ToggleInfoCommand}" InputGesture="Ctrl+Shift+I"><MenuItem.Icon><c:NfIcon Kind="panel-right" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Pannello di navigazione">
+              <MenuItem.Icon><c:NfIcon Kind="panel-left" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="Mostra pannello di navigazione" ToggleType="CheckBox" IsChecked="{Binding IsTreeVisible, Mode=TwoWay}" InputGesture="Ctrl+Shift+L" />
+            </MenuItem>
+            <MenuItem Header="Pannello informazioni">
+              <MenuItem.Icon><c:NfIcon Kind="panel-right" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="Mostra pannello informazioni" ToggleType="CheckBox" IsChecked="{Binding IsInfoVisible, Mode=TwoWay}" InputGesture="Ctrl+Shift+I" />
+              <Separator />
+              <MenuItem Header="Informazioni" Command="{Binding ShowInfoSectionCommand}" CommandParameter="info" />
+              <MenuItem Header="DDL" Command="{Binding ShowInfoSectionCommand}" CommandParameter="ddl" />
+            </MenuItem>
             <Separator />
-            <MenuItem Header="Tema chiaro / scuro" Command="{Binding ToggleThemeCommand}"><MenuItem.Icon><c:NfIcon Kind="sun-moon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Elenco" ToggleType="Radio" GroupName="objview" IsChecked="{Binding ObjectsTab.IsListMode, Mode=OneWay}" Command="{Binding SetObjectsViewCommand}" CommandParameter="list" />
+            <MenuItem Header="Dettaglio" ToggleType="Radio" GroupName="objview" IsChecked="{Binding ObjectsTab.IsDetailMode, Mode=OneWay}" Command="{Binding SetObjectsViewCommand}" CommandParameter="detail" />
+            <MenuItem Header="Diagramma ER" Command="{Binding SetObjectsViewCommand}" CommandParameter="er"><MenuItem.Icon><c:NfIcon Kind="network" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Appiattisci elenco oggetti" ToggleType="CheckBox" IsChecked="{Binding IsFlatObjectList, Mode=TwoWay}" ToolTip.Tip="Mostra tabelle e viste insieme nell'elenco degli oggetti" />
+            <MenuItem Header="Ordina">
+              <MenuItem.Icon><c:NfIcon Kind="sort" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="Per nome" Command="{Binding SortObjectsCommand}" CommandParameter="Nome" />
+              <MenuItem Header="Per numero di righe" Command="{Binding SortObjectsCommand}" CommandParameter="Righe" />
+              <MenuItem Header="Per dimensione dati" Command="{Binding SortObjectsCommand}" CommandParameter="Dimensione dati" />
+              <MenuItem Header="Per data di modifica" Command="{Binding SortObjectsCommand}" CommandParameter="Data modifica" />
+              <MenuItem Header="Per Auto Increment" Command="{Binding SortObjectsCommand}" CommandParameter="Auto Increment" />
+              <MenuItem Header="Per tipo" Command="{Binding SortObjectsCommand}" CommandParameter="Tipo" />
+            </MenuItem>
+            <MenuItem Header="Scegli colonne">
+              <MenuItem.Icon><c:NfIcon Kind="column" Classes="menu-icon" /></MenuItem.Icon>
+              <MenuItem Header="Auto Increment" ToggleType="CheckBox" IsChecked="True" Command="{Binding ToggleObjectColumnCommand}" CommandParameter="Auto Increment" />
+              <MenuItem Header="Data modifica" ToggleType="CheckBox" IsChecked="True" Command="{Binding ToggleObjectColumnCommand}" CommandParameter="Data modifica" />
+              <MenuItem Header="Dimensione dati" ToggleType="CheckBox" IsChecked="True" Command="{Binding ToggleObjectColumnCommand}" CommandParameter="Dimensione dati" />
+              <MenuItem Header="Engine" ToggleType="CheckBox" IsChecked="True" Command="{Binding ToggleObjectColumnCommand}" CommandParameter="Engine" />
+              <MenuItem Header="Righe" ToggleType="CheckBox" IsChecked="True" Command="{Binding ToggleObjectColumnCommand}" CommandParameter="Righe" />
+              <MenuItem Header="Commento" ToggleType="CheckBox" IsChecked="True" Command="{Binding ToggleObjectColumnCommand}" CommandParameter="Commento" />
+            </MenuItem>
+            <Separator />
+            <MenuItem Header="Tema chiaro / scuro" Command="{Binding ToggleThemeCommand}"><MenuItem.Icon><c:NfIcon Kind="sun-moon" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
           </MenuItem>
           <MenuItem Header="Preferiti" IsEnabled="False" />
           <MenuItem Header="Strumenti">
@@ -74,8 +140,13 @@
             <MenuItem Header="Chiudi tutte le schede" Command="{Binding CloseAllTabsCommand}" />
           </MenuItem>
           <MenuItem Header="Aiuto">
-            <MenuItem Header="Verifica aggiornamenti…" Command="{Binding CheckUpdatesCommand}"><MenuItem.Icon><c:NfIcon Kind="download" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Guida in linea" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding HelpUrl}"><MenuItem.Icon><c:NfIcon Kind="book" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Scorciatoie da tastiera…" Command="{Binding ShowShortcutsCommand}"><MenuItem.Icon><c:NfIcon Kind="keyboard" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <Separator />
+            <MenuItem Header="Novità delle versioni" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding ReleasesUrl}" />
+            <MenuItem Header="Segnala un problema…" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding IssuesUrl}"><MenuItem.Icon><c:NfIcon Kind="bug" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <Separator />
+            <MenuItem Header="Verifica aggiornamenti…" Command="{Binding CheckUpdatesCommand}"><MenuItem.Icon><c:NfIcon Kind="download" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Informazioni su Navifox" Command="{Binding ShowAboutCommand}"><MenuItem.Icon><c:NfIcon Kind="info" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
           </MenuItem>
         </Menu>
@@ -165,13 +236,19 @@
             </TreeView.Styles>
             <TreeView.ItemTemplate>
               <TreeDataTemplate DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
-                  <c:NfIcon Kind="{Binding Glyph}" Classes="tree-icon" Classes.open="{Binding IsLoaded}" Classes.connection="{Binding IsConnection}" Width="15" Height="15" />
-                  <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center" />
-                  <c:DialectBadge Profile="{Binding Profile}" ShowName="True" IsVisible="{Binding IsConnection}" />
-                  <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EndpointConverter}}" IsVisible="{Binding IsConnection}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
-                  <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="28" Height="2" MinWidth="0" VerticalAlignment="Center" />
-                </StackPanel>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,2">
+                  <c:NfIcon Kind="{Binding Glyph}" Classes="tree-icon" Classes.open="{Binding IsLoaded}" Classes.connection="{Binding IsConnection}" Width="15" Height="15" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center" />
+                      <c:DialectBadge Profile="{Binding Profile}" ShowName="True" IsVisible="{Binding IsConnection}" />
+                      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="28" Height="2" MinWidth="0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <!-- Connessione: host e porta su una seconda riga, piccola -->
+                    <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EndpointConverter}}" IsVisible="{Binding IsConnection}"
+                               FontSize="10.5" Foreground="{DynamicResource MutedTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,-1,0,0" />
+                  </StackPanel>
+                </Grid>
               </TreeDataTemplate>
             </TreeView.ItemTemplate>
           </TreeView>

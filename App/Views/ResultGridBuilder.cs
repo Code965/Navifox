@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.VisualTree;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
@@ -19,9 +21,79 @@ public static class ResultGridBuilder
         return NumericTypes.Any(type.Contains) && !type.Contains("interval") && !type.Contains("point");
     }
 
-    public static void Rebuild(DataGrid grid, IReadOnlyList<ColumnInfo> columns, bool editable = false, Func<int, string?>? headerGlyph = null)
+    /// <summary>
+    /// Allarga le colonne in base al contenuto delle prime righe (come il doppio clic sul bordo dell'intestazione):
+    /// i testi brevi restano stretti, quelli lunghi arrivano al massimo a 420 px.
+    /// </summary>
+    public static void FitToContent(DataGrid grid, IEnumerable<TableRowViewModel> rows)
+    {
+        var sample = rows.Take(200).ToArray();
+        if (sample.Length == 0) return;
+        foreach (var column in grid.Columns)
+        {
+            if (column.Tag is not int index) continue;
+            var longest = 0;
+            foreach (var row in sample)
+            {
+                if (index >= row.CellCount) continue;
+                var text = row.IsNull(index) ? "(NULL)" : row.TextAt(index);
+                var length = text.IndexOfAny(['\r', '\n']) is var newline and >= 0 ? newline : text.Length;
+                if (length > longest) longest = Math.Min(length, 70);
+            }
+            var header = HeaderText(column).Length + (column.Header is ColumnHeaderContent ? 2 : 0);
+            var width = Math.Clamp(Math.Max(longest * 7.4 + 24, header * 8.5 + 44), 60, 420);
+            if (width > column.ActualWidth + 4 || column.ActualWidth <= 0) column.Width = new DataGridLength(width);
+        }
+    }
+
+    /// <summary>Indice della colonna selezionata (clic sull'intestazione): le sue celle si evidenziano. -1 = nessuna.</summary>
+    public static readonly Avalonia.AttachedProperty<int> HighlightColumnProperty =
+        Avalonia.AvaloniaProperty.RegisterAttached<DataGrid, int>("HighlightColumn", typeof(ResultGridBuilder), -1);
+
+    /// <summary>Altra estremità dell'intervallo di colonne selezionate (Maiusc+frecce o Maiusc+clic); -1 = solo HighlightColumn.</summary>
+    public static readonly Avalonia.AttachedProperty<int> HighlightEndProperty =
+        Avalonia.AvaloniaProperty.RegisterAttached<DataGrid, int>("HighlightEnd", typeof(ResultGridBuilder), -1);
+
+    public static int GetHighlightColumn(DataGrid grid) => grid.GetValue(HighlightColumnProperty);
+    public static void SetHighlightColumn(DataGrid grid, int value)
+    {
+        grid.SetValue(HighlightEndProperty, value);
+        grid.SetValue(HighlightColumnProperty, value);
+    }
+
+    public static int GetHighlightEnd(DataGrid grid) => grid.GetValue(HighlightEndProperty);
+    public static void SetHighlightEnd(DataGrid grid, int value) => grid.SetValue(HighlightEndProperty, value);
+
+    /// <summary>Colonne selezionate in ordine (vuoto se nessuna).</summary>
+    public static IReadOnlyList<int> HighlightedColumns(DataGrid grid)
+    {
+        var start = GetHighlightColumn(grid);
+        if (start < 0) return [];
+        var end = GetHighlightEnd(grid) < 0 ? start : GetHighlightEnd(grid);
+        return Enumerable.Range(Math.Min(start, end), Math.Abs(end - start) + 1).ToArray();
+    }
+
+    /// <summary>Testo dell'intestazione (con eventuali simboli PK, filtro, ordinamento).</summary>
+    public static string HeaderText(DataGridColumn column) => column.Header switch
+    {
+        ColumnHeaderContent content => content.Text,
+        string text => text,
+        _ => string.Empty
+    };
+
+    public static void SetHeaderText(DataGridColumn column, string text)
+    {
+        if (column.Header is ColumnHeaderContent content) content.Text = text;
+        else column.Header = text;
+    }
+
+    /// <param name="onHeaderClick">Clic sull'intestazione (seleziona la colonna); null = comportamento standard.</param>
+    /// <param name="onSort">Freccina dell'intestazione: true = crescente, false = decrescente, null = rimuovi ordinamento.</param>
+    public static void Rebuild(DataGrid grid, IReadOnlyList<ColumnInfo> columns, bool editable = false, Func<int, string?>? headerGlyph = null,
+        Action<int, bool>? onHeaderClick = null, Action<int, bool?>? onSort = null)
     {
         grid.Columns.Clear();
+        SetHighlightColumn(grid, -1);
         for (var index = 0; index < columns.Count; index++)
         {
             var cellIndex = index;
@@ -30,11 +102,13 @@ public static class ResultGridBuilder
             var glyph = headerGlyph?.Invoke(index);
             var gridColumn = new DataGridTemplateColumn
             {
-                Header = glyph is null ? column.Name : $"{column.Name}  {glyph}",
+                Header = onHeaderClick is null && onSort is null
+                    ? glyph is null ? column.Name : $"{column.Name}  {glyph}"
+                    : new ColumnHeaderContent(glyph is null ? column.Name : $"{column.Name}  {glyph}", cellIndex, onHeaderClick, onSort),
                 Tag = index,
                 SortMemberPath = column.Name,
-                CanUserSort = true,
-                CellTemplate = new FuncDataTemplate<TableRowViewModel>((row, _) => CreateDisplay(row?.CellAt(cellIndex), numeric), supportsRecycling: false),
+                CanUserSort = onSort is null,
+                CellTemplate = new FuncDataTemplate<TableRowViewModel>((row, _) => CreateDisplay(row?.CellAt(cellIndex), numeric, cellIndex), supportsRecycling: false),
                 IsReadOnly = !editable,
                 Width = new DataGridLength(Math.Clamp((column.Name.Length + (glyph?.Length + 2 ?? 0)) * 8.5 + 44, 70, 240))
             };
@@ -44,7 +118,7 @@ public static class ResultGridBuilder
         }
     }
 
-    private static Control CreateDisplay(CellViewModel? cell, bool numeric)
+    private static Control CreateDisplay(CellViewModel? cell, bool numeric, int columnIndex)
     {
         var text = new TextBlock
         {
@@ -64,8 +138,34 @@ public static class ResultGridBuilder
         }
         Sync();
         void OnChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => Sync();
-        border.AttachedToVisualTree += (_, _) => { cell.PropertyChanged -= OnChanged; cell.PropertyChanged += OnChanged; Sync(); };
-        border.DetachedFromVisualTree += (_, _) => cell.PropertyChanged -= OnChanged;
+        IDisposable? highlight = null;
+        border.AttachedToVisualTree += (_, _) =>
+        {
+            cell.PropertyChanged -= OnChanged;
+            cell.PropertyChanged += OnChanged;
+            Sync();
+            // Colonna selezionata dall'intestazione: la cella segue l'indice salvato sulla griglia.
+            highlight?.Dispose();
+            if (border.FindAncestorOfType<DataGrid>() is { } grid)
+            {
+                void Refresh(int _)
+                {
+                    var start = GetHighlightColumn(grid);
+                    var end = GetHighlightEnd(grid) < 0 ? start : GetHighlightEnd(grid);
+                    var selected = start >= 0 && columnIndex >= Math.Min(start, end) && columnIndex <= Math.Max(start, end);
+                    (border.FindAncestorOfType<DataGridCell>() as Avalonia.StyledElement ?? border).Classes.Set("col-selected", selected);
+                }
+                var first = grid.GetObservable(HighlightColumnProperty).Subscribe(new Avalonia.Reactive.AnonymousObserver<int>(Refresh));
+                var second = grid.GetObservable(HighlightEndProperty).Subscribe(new Avalonia.Reactive.AnonymousObserver<int>(Refresh));
+                highlight = new CompositeDisposable(first, second);
+            }
+        };
+        border.DetachedFromVisualTree += (_, _) =>
+        {
+            cell.PropertyChanged -= OnChanged;
+            highlight?.Dispose();
+            highlight = null;
+        };
         return border;
     }
 
@@ -82,5 +182,84 @@ public static class ResultGridBuilder
         };
         if (cell is not null) box.Bind(TextBox.TextProperty, new Binding(nameof(CellViewModel.EditText)) { Source = cell, Mode = BindingMode.TwoWay });
         return box;
+    }
+}
+
+
+/// <summary>
+/// Intestazione di colonna: clic sul nome = seleziona la colonna; freccina = menu Ordina crescente / decrescente / Rimuovi ordinamento.
+/// </summary>
+public sealed class ColumnHeaderContent : Grid
+{
+    private readonly TextBlock _label;
+
+    public ColumnHeaderContent(string text, int index, Action<int>? onClick, Action<int, bool?>? onSort) : this(text, index, onClick is null ? null : (i, _) => onClick(i), onSort) { }
+
+    public ColumnHeaderContent(string text, int index, Action<int, bool>? onClick, Action<int, bool?>? onSort)
+    {
+        ColumnDefinitions = new ColumnDefinitions("*,Auto");
+        Background = Avalonia.Media.Brushes.Transparent;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Stretch;
+        _label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        Children.Add(_label);
+        if (onClick is not null)
+            PointerReleased += (_, args) =>
+            {
+                if (args.InitialPressMouseButton != Avalonia.Input.MouseButton.Left || args.Source is Visual source && source.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
+                onClick(index, args.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift));
+                args.Handled = true;
+            };
+        if (onSort is null) return;
+        var arrow = new Button
+        {
+            Content = new Controls.NfIcon { Kind = "chevron-down", Width = 11, Height = 11 },
+            Padding = new Avalonia.Thickness(0),
+            Width = 18,
+            Height = 18,
+            MinHeight = 0,
+            MinWidth = 0,
+            CornerRadius = new Avalonia.CornerRadius(4),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Margin = new Avalonia.Thickness(6, 0, 0, 0),
+            Background = Avalonia.Media.Brushes.Transparent,
+            BorderThickness = new Avalonia.Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Opacity = 0.55,
+            [ToolTip.TipProperty] = "Ordina",
+        };
+        arrow.Classes.Add("header-sort");
+        var flyout = new MenuFlyout { Placement = Avalonia.Controls.PlacementMode.BottomEdgeAlignedLeft };
+        MenuItem Item(string header, string icon, bool? descending)
+        {
+            var item = new MenuItem { Header = header, Icon = new Controls.NfIcon { Kind = icon, Width = 14, Height = 14 } };
+            item.Click += (_, _) => onSort(index, descending);
+            return item;
+        }
+        flyout.Items.Add(Item("Ordina crescente", "arrow-up", false));
+        flyout.Items.Add(Item("Ordina decrescente", "arrow-down", true));
+        flyout.Items.Add(new Separator());
+        flyout.Items.Add(Item("Rimuovi ordinamento", "x", null));
+        arrow.Flyout = flyout;
+        PointerEntered += (_, _) => arrow.Opacity = 1;
+        PointerExited += (_, _) => arrow.Opacity = 0.55;
+        Grid.SetColumn(arrow, 1);
+        Children.Add(arrow);
+    }
+
+    public string Text
+    {
+        get => _label.Text ?? string.Empty;
+        set => _label.Text = value;
+    }
+}
+
+
+internal sealed class CompositeDisposable(params IDisposable[] items) : IDisposable
+{
+    public void Dispose()
+    {
+        foreach (var item in items) item.Dispose();
     }
 }

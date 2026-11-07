@@ -4,7 +4,7 @@ using Npgsql;
 
 namespace MosaicDB.Dialects;
 
-public sealed class PostgreSqlDialectProvider : AdoDialectProvider
+public sealed partial class PostgreSqlDialectProvider : AdoDialectProvider
 {
     public override DatabaseKind Kind => DatabaseKind.PostgreSql;
 
@@ -19,7 +19,8 @@ public sealed class PostgreSqlDialectProvider : AdoDialectProvider
             Username = endpoint.UserName,
             Password = endpoint.Password,
             Database = endpoint.DefaultDatabase,
-            SslMode = ParseSsl(endpoint.SslMode)
+            SslMode = ParseSsl(endpoint.SslMode),
+            IncludeErrorDetail = true
         };
         if (!string.IsNullOrWhiteSpace(endpoint.ConnectionStringOverride)) builder.ConnectionString = endpoint.ConnectionStringOverride;
         ApplyAdvancedParameters(builder, endpoint.AdvancedParameters);

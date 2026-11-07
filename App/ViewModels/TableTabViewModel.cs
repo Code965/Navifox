@@ -390,6 +390,22 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         await ApplySortAsync();
     }
 
+    /// <summary>Menu della freccina: ordina crescente/decrescente per la colonna, oppure (null) rimuove il suo ordinamento.</summary>
+    public async Task SortColumnAsync(string column, bool? descending)
+    {
+        if (descending is null)
+        {
+            foreach (var sort in Sorts.Where(s => s.Column == column).ToArray()) Sorts.Remove(sort);
+        }
+        else
+        {
+            Sorts.Clear();
+            Sorts.Add(new SortConditionViewModel(ColumnNames, column, descending.Value));
+        }
+        OnPropertyChanged(nameof(HasSorts));
+        await ApplySortAsync();
+    }
+
     public string? SortGlyphFor(string column)
     {
         var sort = Sorts.FirstOrDefault(item => item.IsEnabled && item.Column == column);

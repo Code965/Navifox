@@ -34,8 +34,18 @@
               <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="code" Classes="objbar-icon" /><TextBlock Text="Snippet" /><c:NfIcon Kind="chevron-down" Width="11" Height="11" /></StackPanel>
             </Button>
           </WrapPanel>
-          <Grid ColumnDefinitions="260,200,Auto" ColumnSpacing="6">
-            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}" HorizontalAlignment="Stretch" MinHeight="28" FontSize="12.5">
+          <Grid ColumnDefinitions="300,200,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="30" MinHeight="30" Padding="10,0" VerticalContentAlignment="Center" FontSize="12.5">
+              <!-- Nella casella chiusa una sola riga (badge · nome · dialetto/host), alta come la casella del database. -->
+              <ComboBox.SelectionBoxItemTemplate>
+                <DataTemplate x:DataType="m:ConnectionProfile">
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <c:DialectBadge Profile="{Binding .}" Size="18" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ., Converter={x:Static c:DialectVisuals.SummaryConverter}}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.SelectionBoxItemTemplate>
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="m:ConnectionProfile">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
@@ -48,7 +58,7 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <ComboBox Grid.Column="1" ItemsSource="{Binding Databases}" SelectedItem="{Binding SelectedDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch" MinHeight="28" FontSize="12.5" PlaceholderText="(nessun database)">
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Databases}" SelectedItem="{Binding SelectedDatabase, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="30" MinHeight="30" Padding="10,0" VerticalContentAlignment="Center" FontSize="12.5" PlaceholderText="(nessun database)">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
                   <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="database" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" /></StackPanel>

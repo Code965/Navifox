@@ -4,7 +4,8 @@ using MosaicDB.Core.Models;
 
 namespace MosaicDB.App.ViewModels;
 
-public enum TreeNodeKind { Group, Connection, Database, Schema, Category, Table, Placeholder }
+/// <summary>DbObject = funzione, procedura, trigger, evento o sequenza (categoria nel campo Category).</summary>
+public enum TreeNodeKind { Group, Connection, Database, Schema, Category, Table, DbObject, Placeholder }
 
 public partial class TreeNodeViewModel : ObservableObject
 {
@@ -21,7 +22,17 @@ public partial class TreeNodeViewModel : ObservableObject
         else if (kind != TreeNodeKind.Group) IsLoaded = true;
     }
 
-    public string Name { get; }
+    private string _nodeName = string.Empty;
+
+    /// <summary>Nome mostrato (modificabile: rinomina di connessioni e cartelle senza ricreare il nodo).</summary>
+    public string Name
+    {
+        get => _nodeName;
+        set => SetProperty(ref _nodeName, value);
+    }
+
+    /// <summary>Cartelle: percorso completo («Clienti/Roma»); null per gli altri nodi.</summary>
+    public string? FolderPath { get; init; }
     public string Glyph { get; }
     public TreeNodeKind Kind { get; }
     public ConnectionProfile? Profile { get; }
@@ -31,8 +42,23 @@ public partial class TreeNodeViewModel : ObservableObject
     public TreeNodeViewModel? Parent { get; private set; }
     public ObservableCollection<TreeNodeViewModel> Children { get; } = [];
 
-    /// <summary>Metadati degli oggetti caricati per una categoria Tabelle/Viste.</summary>
+    /// <summary>Metadati degli oggetti caricati per una categoria (Tabelle, Viste, Funzioni, Trigger…).</summary>
     public IReadOnlyList<DatabaseObjectInfo>? Objects { get; set; }
+
+    /// <summary>Metadati dell'oggetto rappresentato dal nodo (tabelle, viste e oggetti di schema).</summary>
+    public DatabaseObjectInfo? Info { get; init; }
+
+    /// <summary>Tipo di oggetto di schema della categoria (Funzioni → Routine…); null per Tabelle/Viste e categorie non elencabili.</summary>
+    public SchemaObjectKind? SchemaKind => SchemaKindOf(Category);
+
+    public static SchemaObjectKind? SchemaKindOf(string? category) => category switch
+    {
+        "Funzioni" => SchemaObjectKind.Routine,
+        "Trigger" => SchemaObjectKind.Trigger,
+        "Eventi" => SchemaObjectKind.Event,
+        "Sequenze" => SchemaObjectKind.Sequence,
+        _ => null
+    };
 
     /// <summary>Invocato quando un nodo lazy viene espanso e non ha ancora i figli.</summary>
     public Action<TreeNodeViewModel>? ExpandHandler { get; set; }
@@ -44,7 +70,8 @@ public partial class TreeNodeViewModel : ObservableObject
 
     public bool IsPlaceholder => Kind == TreeNodeKind.Placeholder;
     public bool IsConnection => Kind == TreeNodeKind.Connection;
-    public bool IsObjectCategory => Kind == TreeNodeKind.Category && Category is "Tabelle" or "Viste";
+    public bool IsObjectCategory => Kind == TreeNodeKind.Category && (Category is "Tabelle" or "Viste" || SchemaKind is not null);
+    public bool IsTableCategory => Kind == TreeNodeKind.Category && Category is "Tabelle" or "Viste";
     private bool IsLazy => Kind is TreeNodeKind.Connection or TreeNodeKind.Database or TreeNodeKind.Schema || IsObjectCategory;
 
     partial void OnIsExpandedChanged(bool value)
