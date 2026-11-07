@@ -47,12 +47,14 @@ public partial class TablePageView : UserControl
         {
             _viewModel.Columns.CollectionChanged -= OnColumnsChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _viewModel.SearchHit -= OnSearchHit;
         }
         base.OnDataContextChanged(e);
         _viewModel = DataContext as TableTabViewModel;
         if (_viewModel is null) return;
         _viewModel.Columns.CollectionChanged += OnColumnsChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.SearchHit += OnSearchHit;
         RebuildColumns();
     }
 
@@ -62,11 +64,25 @@ public partial class TablePageView : UserControl
     {
         if (e.PropertyName is nameof(TableTabViewModel.IsSortActive) or nameof(TableTabViewModel.IsFilterActive) or nameof(TableTabViewModel.SqlPreview)) RefreshHeaders();
         if (e.PropertyName == nameof(TableTabViewModel.CanEdit)) RebuildColumns();
+        if (e.PropertyName == nameof(TableTabViewModel.IsSearchOpen) && _viewModel?.IsSearchOpen == true)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => SearchBox.Focus(), Avalonia.Threading.DispatcherPriority.Input);
+        if (e.PropertyName == nameof(TableTabViewModel.CurrentRow) && _viewModel?.IsFormView == true && !ReferenceEquals(ResultGrid.SelectedItem, _viewModel.CurrentRow))
+            ResultGrid.SelectedItem = _viewModel.CurrentRow;
         // Nuova pagina di righe: le colonne si adattano al contenuto.
         if (e.PropertyName == nameof(TableTabViewModel.Rows))
         {
             _fitted = false;
             ScheduleFit();
+        }
+    }
+
+    private void OnSearchHit(TableRowViewModel row, int column)
+    {
+        ResultGrid.SelectedItem = row;
+        if (ResultGrid.Columns.FirstOrDefault(c => c.Tag is int i && i == column) is { } gridColumn)
+        {
+            ResultGrid.CurrentColumn = gridColumn;
+            ResultGrid.ScrollIntoView(row, gridColumn);
         }
     }
 
@@ -223,6 +239,39 @@ public partial class TablePageView : UserControl
     }
 
     private void OnCopyCell(object? sender, RoutedEventArgs e) => _ = CopyCurrentAsync();
+
+    /// <summary>Copia come INSERT / UPDATE / testo con intestazioni delle righe selezionate.</summary>
+    private async void OnCopyAs(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null || sender is not MenuItem { Tag: string kind } || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard) return;
+        var text = kind switch
+        {
+            "insert" => _viewModel.BuildInsertForSelection(),
+            "update" => _viewModel.BuildUpdateForSelection(),
+            _ => _viewModel.BuildTsvForSelection(),
+        };
+        if (text.Length == 0) return;
+        await clipboard.SetTextAsync(text);
+        _viewModel.StatusMessage = $"Copiato come {(kind == "tsv" ? "testo" : kind.ToUpperInvariant())}.";
+    }
+
+    /// <summary>Chiave esterna: sceglie il valore da un elenco dei record della tabella collegata.</summary>
+    private async void OnPickReference(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel?.CurrentReference is not { } reference || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var picker = new ReferencePickerWindow(_viewModel, reference);
+        var value = await picker.ShowDialog<object?>(owner);
+        if (picker.Picked) _viewModel.SetCurrentValue(value);
+    }
+
+    private async void OnSaveCellToFile(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel?.CurrentCell?.Value is not byte[] bytes || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
+        var file = await storage.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions { Title = "Salva il contenuto del campo", SuggestedFileName = _viewModel.CurrentColumnName });
+        if (file is null) return;
+        await using var stream = await file.OpenWriteAsync();
+        await stream.WriteAsync(bytes);
+    }
 
     private async Task CopyCurrentAsync()
     {

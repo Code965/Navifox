@@ -9,6 +9,10 @@
     <KeyBinding Gesture="Ctrl+S" Command="{Binding ApplyChangesCommand}" />
     <KeyBinding Gesture="Ctrl+F" Command="{Binding ToggleFilterCommand}" />
     <KeyBinding Gesture="Ctrl+Insert" Command="{Binding AddRowCommand}" />
+    <KeyBinding Gesture="Ctrl+G" Command="{Binding ToggleSearchCommand}" />
+    <KeyBinding Gesture="F3" Command="{Binding FindNextCommand}" CommandParameter="next" />
+    <KeyBinding Gesture="Shift+F3" Command="{Binding FindNextCommand}" CommandParameter="prev" />
+    <KeyBinding Gesture="Ctrl+Shift+M" Command="{Binding ToggleFormViewCommand}" />
   </UserControl.KeyBindings>
   <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
     <!-- ───── Toolbar ───── -->
@@ -34,6 +38,8 @@
               <MenuFlyout Placement="BottomEdgeAlignedLeft">
                 <MenuItem Header="Testo" Command="{Binding SetFieldModeCommand}" CommandParameter="text" />
                 <MenuItem Header="Esadecimale" Command="{Binding SetFieldModeCommand}" CommandParameter="hex" />
+                <MenuItem Header="JSON" Command="{Binding SetFieldModeCommand}" CommandParameter="json" />
+                <MenuItem Header="Immagine" Command="{Binding SetFieldModeCommand}" CommandParameter="image" />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
@@ -42,6 +48,13 @@
           </ToggleButton>
           <ToggleButton Classes="objbar" IsChecked="{Binding IsSortOpen, Mode=TwoWay}" Classes.active="{Binding IsSortActive}" ToolTip.Tip="Ordinamento">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="sort" Classes="objbar-icon" /><TextBlock Text="Ordina" /></StackPanel>
+          </ToggleButton>
+          <Border Classes="toolbar-sep" />
+          <ToggleButton Classes="objbar" IsChecked="{Binding IsFormView, Mode=TwoWay}" ToolTip.Tip="Vista modulo: un record alla volta (Ctrl+Maiusc+M)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="file-text" Classes="objbar-icon" /><TextBlock Text="Modulo" /></StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="objbar" IsChecked="{Binding IsSearchOpen, Mode=TwoWay}" ToolTip.Tip="Cerca un valore nei dati caricati (Ctrl+G, F3 per il successivo)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="search" Classes="objbar-icon" /><TextBlock Text="Cerca" /></StackPanel>
           </ToggleButton>
           <Border Classes="toolbar-sep" />
           <Button Classes="objbar" Command="{Binding ImportCommand}" ToolTip.Tip="Import Wizard">
@@ -146,12 +159,65 @@
     </Border>
 
     <!-- ───── Griglia + editor di campo ───── -->
-    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto">
-      <DataGrid x:Name="ResultGrid" Classes="nf-grid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False"
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,*">
+      <!-- Cerca nei dati -->
+      <Border Grid.ColumnSpan="3" IsVisible="{Binding IsSearchOpen}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
+        <Grid ColumnDefinitions="Auto,280,Auto,Auto,*,Auto" ColumnSpacing="6">
+          <c:NfIcon Kind="search" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+          <TextBox x:Name="SearchBox" Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Watermark="Cerca nei dati… (Invio = successivo)" MinHeight="26" FontSize="12.5">
+            <TextBox.KeyBindings>
+              <KeyBinding Gesture="Enter" Command="{Binding FindNextCommand}" CommandParameter="next" />
+              <KeyBinding Gesture="Shift+Enter" Command="{Binding FindNextCommand}" CommandParameter="prev" />
+              <KeyBinding Gesture="Escape" Command="{Binding ToggleSearchCommand}" />
+            </TextBox.KeyBindings>
+          </TextBox>
+          <Button Grid.Column="2" Classes="objbar" Command="{Binding FindNextCommand}" CommandParameter="prev" ToolTip.Tip="Precedente (Maiusc+F3)"><c:NfIcon Kind="arrow-up" Classes="objbar-icon" /></Button>
+          <Button Grid.Column="3" Classes="objbar" Command="{Binding FindNextCommand}" CommandParameter="next" ToolTip.Tip="Successivo (F3)"><c:NfIcon Kind="arrow-down" Classes="objbar-icon" /></Button>
+          <TextBlock Grid.Column="4" Text="{Binding SearchStatus}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <Button Grid.Column="5" Classes="objbar" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="Chiudi (Esc)"><c:NfIcon Kind="x" Classes="objbar-icon" /></Button>
+        </Grid>
+      </Border>
+      <!-- Vista modulo -->
+      <ScrollViewer Grid.Row="1" IsVisible="{Binding IsFormView}">
+        <StackPanel Margin="16,12" Spacing="10" MaxWidth="760" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Button Classes="objbar" Command="{Binding MoveRecordCommand}" CommandParameter="first" ToolTip.Tip="Primo"><TextBlock Text="⏮" /></Button>
+            <Button Classes="objbar" Command="{Binding MoveRecordCommand}" CommandParameter="prev" ToolTip.Tip="Precedente"><c:NfIcon Kind="arrow-up" Classes="objbar-icon" /></Button>
+            <TextBlock Text="{Binding FormPosition}" VerticalAlignment="Center" Margin="8,0" FontWeight="SemiBold" />
+            <Button Classes="objbar" Command="{Binding MoveRecordCommand}" CommandParameter="next" ToolTip.Tip="Successivo"><c:NfIcon Kind="arrow-down" Classes="objbar-icon" /></Button>
+            <Button Classes="objbar" Command="{Binding MoveRecordCommand}" CommandParameter="last" ToolTip.Tip="Ultimo"><TextBlock Text="⏭" /></Button>
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding FormFields}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FormField">
+                <Grid ColumnDefinitions="200,*" ColumnSpacing="12" Margin="0,3">
+                  <StackPanel VerticalAlignment="Top" Margin="0,5,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="PK" FontSize="10" FontWeight="Bold" Foreground="#E0A100" IsVisible="{Binding IsKey}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Type}" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
+                    <TextBlock Text="{Binding Reference}" FontSize="11" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding HasReference}" />
+                  </StackPanel>
+                  <TextBox Grid.Column="1" Text="{Binding Cell.EditText, Mode=TwoWay}" IsReadOnly="{Binding IsReadOnly}" AcceptsReturn="True" TextWrapping="Wrap"
+                           Watermark="(NULL)" MaxHeight="160" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+      <DataGrid x:Name="ResultGrid" Grid.Row="1" Classes="nf-grid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsVisible="{Binding IsGridView}"
                 IsReadOnly="{Binding !CanEdit}" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True">
         <DataGrid.ContextMenu>
           <ContextMenu>
             <MenuItem Header="Copia" Click="OnCopyCell" InputGesture="Ctrl+C" />
+            <MenuItem Header="Copia come">
+              <MenuItem Header="INSERT" Click="OnCopyAs" Tag="insert" />
+              <MenuItem Header="UPDATE" Click="OnCopyAs" Tag="update" />
+              <MenuItem Header="Testo con intestazioni (Excel)" Click="OnCopyAs" Tag="tsv" />
+            </MenuItem>
+            <MenuItem Header="Scegli dal riferimento…" Click="OnPickReference" IsVisible="{Binding HasCurrentReference}" />
             <MenuItem Header="Imposta a NULL" Command="{Binding SetNullCommand}" />
             <MenuItem Header="Filtra per questo valore" Command="{Binding FilterByCurrentValueCommand}" />
             <Separator />
@@ -162,8 +228,8 @@
           </ContextMenu>
         </DataGrid.ContextMenu>
       </DataGrid>
-      <GridSplitter Grid.Column="1" Width="4" IsVisible="{Binding IsFieldPanelOpen}" Background="{DynamicResource BorderBrush}" ResizeDirection="Columns" />
-      <Border Grid.Column="2" Width="320" IsVisible="{Binding IsFieldPanelOpen}" Background="{DynamicResource SurfaceBrush}">
+      <GridSplitter Grid.Column="1" Grid.Row="1" Width="4" IsVisible="{Binding IsFieldPanelOpen}" Background="{DynamicResource BorderBrush}" ResizeDirection="Columns" />
+      <Border Grid.Column="2" Grid.Row="1" Width="340" IsVisible="{Binding IsFieldPanelOpen}" Background="{DynamicResource SurfaceBrush}">
         <Grid RowDefinitions="Auto,*,Auto">
           <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="10,6">
             <Grid ColumnDefinitions="*,Auto">
@@ -171,13 +237,27 @@
               <TextBlock Grid.Column="1" Text="{Binding FieldModeLabel}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
             </Grid>
           </Border>
-          <TextBox Grid.Row="1" IsVisible="{Binding IsTextMode}" Text="{Binding CurrentCellText, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}"
+          <!-- JSON formattato -->
+          <Grid Grid.Row="1" RowDefinitions="*,Auto" IsVisible="{Binding IsJsonMode}">
+            <TextBox Text="{Binding CurrentCellJson, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                     BorderThickness="0" CornerRadius="0" Padding="10" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
+            <TextBlock Grid.Row="1" Text="{Binding JsonError}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,4" TextWrapping="Wrap" />
+          </Grid>
+          <!-- Immagine -->
+          <Grid Grid.Row="1" RowDefinitions="*,Auto" IsVisible="{Binding IsImageMode}">
+            <Image Source="{Binding CurrentCellImage}" Stretch="Uniform" Margin="10" />
+            <TextBlock Grid.Row="1" Text="{Binding ImageInfo}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,4" TextWrapping="Wrap" />
+          </Grid>
+          <TextBox Grid.Row="1" IsVisible="{Binding IsPlainTextMode}" Text="{Binding CurrentCellText, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}"
                    AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" CornerRadius="0" Padding="10" FontSize="13" />
           <TextBox Grid.Row="1" IsVisible="{Binding IsHexMode}" Text="{Binding CurrentCellHex}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
                    BorderThickness="0" CornerRadius="0" Padding="10" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
           <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,3">
             <StackPanel Orientation="Horizontal">
               <Button Classes="objbar" Content="Imposta NULL" Command="{Binding SetNullCommand}" IsEnabled="{Binding CanEdit}" />
+              <Button Classes="objbar" Content="Compatta JSON" Command="{Binding CompactJsonCommand}" IsVisible="{Binding IsJsonMode}" IsEnabled="{Binding CanEdit}" />
+              <Button Classes="objbar" Content="Scegli dal riferimento…" Click="OnPickReference" IsVisible="{Binding HasCurrentReference}" />
+              <Button Classes="objbar" Content="Salva su file…" Click="OnSaveCellToFile" IsVisible="{Binding IsImageMode}" />
             </StackPanel>
           </Border>
         </Grid>

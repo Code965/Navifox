@@ -126,7 +126,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     }
     public string CurrentCellHex => HexDump(CurrentCell?.Value);
     public bool IsTextMode => !IsHexMode;
-    public string FieldModeLabel => IsHexMode ? "Esadecimale" : "Testo";
+    public string FieldModeLabel => FieldModeTitle;
     public bool HasFilters => Filters.Count > 0;
     public bool HasSorts => Sorts.Count > 0;
     public string TransactionLabel => IsTransaction ? "Transazione attiva" : "Inizia transazione";
@@ -154,6 +154,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
             {
                 _metadata = await _provider.GetColumnsAsync(connection, Database, Schema, TableName, token);
                 UpdateEditability();
+                await LoadReferencesAsync(connection, token);
             }
             var page = await _provider.QueryPagedAsync(connection, Schema, TableName, _pageIndex, PageSize, token, _appliedWhere, _appliedOrderBy);
             TotalRows = await _provider.CountRowsAsync(connection, Schema, TableName, _appliedWhere, token);
@@ -423,7 +424,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     [RelayCommand]
     private void SetFieldMode(string? mode)
     {
-        IsHexMode = mode == "hex";
+        FieldMode = mode is "hex" or "json" or "image" ? mode : "text";
         IsFieldPanelOpen = true;
     }
 
