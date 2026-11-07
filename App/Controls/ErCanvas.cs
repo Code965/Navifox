@@ -23,6 +23,11 @@ public sealed class ErCanvas : Control
     private Point _dragOrigin;
     private bool _panning;
     private Vector _panOrigin;
+    private bool _moved;
+    // Nuova relazione in corso: colonna di partenza e posizione attuale del puntatore (coordinate del modello).
+    private (DiagramTable Table, string Column)? _link;
+    private Point _linkPoint;
+    private (DiagramTable Table, string? Column)? _linkTarget;
     private readonly Typeface _typeface = new("Inter, Segoe UI, sans-serif");
     private readonly Typeface _bold = new("Inter, Segoe UI, sans-serif", FontStyle.Normal, FontWeight.SemiBold);
     private readonly Typeface _mono = new("Cascadia Mono, Consolas, monospace");
@@ -51,7 +56,7 @@ public sealed class ErCanvas : Control
         if (_model is null) return;
         if (relayout)
         {
-            _model.AutoLayout(Measure);
+            if (!_model.ApplySavedLayout(Measure)) _model.AutoLayout(Measure);
             Avalonia.Threading.Dispatcher.UIThread.Post(Fit, Avalonia.Threading.DispatcherPriority.Background);
         }
         else
@@ -69,6 +74,7 @@ public sealed class ErCanvas : Control
 
     public void Relayout()
     {
+        _model?.ForgetLayout();
         if (_model is null) return;
         _model.AutoLayout(Measure);
         Fit();
@@ -189,6 +195,20 @@ public sealed class ErCanvas : Control
             var activePen = new Pen(accent, 2.2);
             foreach (var relation in _model.Relations.OrderBy(r => r.From == selected || r.To == selected))
                 DrawRelation(context, relation, relation.From == selected || relation.To == selected ? activePen : linePen);
+            if (_link is { } link)
+            {
+                var (w, _) = Measure(link.Table);
+                var from = new Point(_linkPoint.X >= link.Table.X + w / 2 ? link.Table.X + w : link.Table.X, RowCenter(link.Table, link.Column));
+                var to = _linkTarget is { } target ? new Point(target.Table.X + (from.X > target.Table.X ? Measure(target.Table).Width : 0),
+                        target.Column is null ? target.Table.Y + HeaderHeight / 2 : RowCenter(target.Table, target.Column)) : _linkPoint;
+                context.DrawLine(new Pen(accent, 2, new DashStyle([4, 3], 0)), from, to);
+                context.DrawEllipse(accent, null, to, 4, 4);
+                if (_linkTarget is { } t)
+                {
+                    var (tw, th) = Measure(t.Table);
+                    context.DrawRectangle(null, new Pen(accent, 2.5), new Rect(t.Table.X - 3, t.Table.Y - 3, tw + 6, th + 6), Radius + 2, Radius + 2);
+                }
+            }
 
             foreach (var table in _model.Tables)
             {
@@ -263,7 +283,8 @@ public sealed class ErCanvas : Control
         return index < 0 ? table.Y + HeaderHeight / 2 : table.Y + HeaderHeight + 3 + index * RowHeight + RowHeight / 2;
     }
 
-    private void DrawRelation(DrawingContext context, DiagramRelation relation, IPen pen)
+    /// <summary>Punti della relazione: attacco, inizio curva, due punti di controllo, fine curva, attacco di arrivo.</summary>
+    private (Point Start, Point CurveStart, Point Control1, Point Control2, Point CurveEnd, Point End) RelationPath(DiagramRelation relation)
     {
         var (fromWidth, _) = Measure(relation.From);
         var (toWidth, _) = Measure(relation.To);
@@ -278,27 +299,33 @@ public sealed class ErCanvas : Control
         else if (relation.To.X >= relation.From.X + fromWidth + 20) { x1 = relation.From.X + fromWidth; x2 = relation.To.X; d1 = 1; d2 = -1; }
         else if (relation.To.X + toWidth + 20 <= relation.From.X) { x1 = relation.From.X; x2 = relation.To.X + toWidth; d1 = -1; d2 = 1; }
         else { x1 = relation.From.X + fromWidth; x2 = relation.To.X + toWidth; d1 = 1; d2 = 1; }
-
         var start = new Point(x1 + d1 * 12, y1);
         var end = new Point(x2 + d2 * 12, y2);
-        var bend = Math.Max(40, Math.Abs(end.X - start.X) / 2);
-        if (relation.From == relation.To) bend = 50;
+        var bend = relation.From == relation.To ? 50 : Math.Max(40, Math.Abs(end.X - start.X) / 2);
+        return (new Point(x1, y1), start, new Point(start.X + d1 * bend, start.Y), new Point(end.X + d2 * bend, end.Y), end, new Point(x2, y2));
+    }
+
+    private void DrawRelation(DrawingContext context, DiagramRelation relation, IPen pen)
+    {
+        var (p0, p1, c1, c2, p2, p3) = RelationPath(relation);
         var path = new StreamGeometry();
         using (var g = path.Open())
         {
-            g.BeginFigure(new Point(x1, y1), false);
-            g.LineTo(start);
-            g.CubicBezierTo(new Point(start.X + d1 * bend, start.Y), new Point(end.X + d2 * bend, end.Y), end);
-            g.LineTo(new Point(x2, y2));
+            g.BeginFigure(p0, false);
+            g.LineTo(p1);
+            g.CubicBezierTo(c1, c2, p2);
+            g.LineTo(p3);
             g.EndFigure(false);
         }
         context.DrawGeometry(null, pen, path);
+        var d1 = Math.Sign(p1.X - p0.X);
+        var d2 = Math.Sign(p2.X - p3.X);
         // lato «molti» (FK): zampa di gallina
-        context.DrawLine(pen, new Point(x1 + d1 * 10, y1), new Point(x1, y1 - 5));
-        context.DrawLine(pen, new Point(x1 + d1 * 10, y1), new Point(x1, y1 + 5));
+        context.DrawLine(pen, new Point(p0.X + d1 * 10, p0.Y), new Point(p0.X, p0.Y - 5));
+        context.DrawLine(pen, new Point(p0.X + d1 * 10, p0.Y), new Point(p0.X, p0.Y + 5));
         // lato «uno» (PK): doppia barra
-        context.DrawLine(pen, new Point(x2 + d2 * 5, y2 - 5), new Point(x2 + d2 * 5, y2 + 5));
-        context.DrawLine(pen, new Point(x2 + d2 * 9, y2 - 5), new Point(x2 + d2 * 9, y2 + 5));
+        context.DrawLine(pen, new Point(p3.X + d2 * 5, p3.Y - 5), new Point(p3.X + d2 * 5, p3.Y + 5));
+        context.DrawLine(pen, new Point(p3.X + d2 * 9, p3.Y - 5), new Point(p3.X + d2 * 9, p3.Y + 5));
     }
 
     // ───────────── Interazione ─────────────
@@ -314,13 +341,110 @@ public sealed class ErCanvas : Control
         });
     }
 
+    /// <summary>Colonna sotto il puntatore (null sull'intestazione).</summary>
+    private (DiagramTable Table, string? Column)? HitColumn(Point screen)
+    {
+        if (HitTest(screen) is not { } table) return null;
+        var world = (screen - _offset) / _zoom;
+        var index = (int)Math.Floor((world.Y - table.Y - HeaderHeight - 3) / RowHeight);
+        var columns = _model!.VisibleColumns(table);
+        return (table, index >= 0 && index < columns.Count ? columns[index].Name : null);
+    }
+
+    /// <summary>Relazione vicina al puntatore (campionando la curva come in <see cref="DrawRelation"/>).</summary>
+    private DiagramRelation? HitRelation(Point screen)
+    {
+        if (_model is null) return null;
+        var world = (screen - _offset) / _zoom;
+        foreach (var relation in _model.Relations)
+        {
+            var (p0, p1, c1, c2, p2, p3) = RelationPath(relation);
+            if (Near(p0, p1) || Near(p2, p3)) return relation;
+            for (var i = 0; i <= 40; i++)
+            {
+                var t = i / 40d;
+                var u = 1 - t;
+                var point = new Point(u * u * u * p1.X + 3 * u * u * t * c1.X + 3 * u * t * t * c2.X + t * t * t * p2.X,
+                                      u * u * u * p1.Y + 3 * u * u * t * c1.Y + 3 * u * t * t * c2.Y + t * t * t * p2.Y);
+                if (Distance(point, world) < 6 / _zoom) return relation;
+            }
+            bool Near(Point a, Point b) => Distance(new Point((a.X + b.X) / 2, (a.Y + b.Y) / 2), world) < 6 / _zoom;
+        }
+        return null;
+        static double Distance(Point a, Point b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
+    }
+
+    private void ShowMenu(Point screen)
+    {
+        if (_model is not { } model) return;
+        var items = new List<MenuItem>();
+        MenuItem Item(string header, string icon, Action action, bool enabled = true)
+        {
+            var item = new MenuItem { Header = header, IsEnabled = enabled, Icon = new NfIcon { Kind = icon, Width = 14, Height = 14, Classes = { "menu-icon" } } };
+            item.Click += (_, _) => action();
+            return item;
+        }
+        if (HitRelation(screen) is { } relation && HitTest(screen) is null)
+        {
+            items.Add(Item($"Elimina relazione «{relation.Name}»", "trash", () => _ = model.DeleteRelationAsync(relation)));
+            items.Add(Item($"Vai a {relation.From.Name}", "table", () => { model.SelectedTable = relation.From; CenterOn(relation.From); }));
+            items.Add(Item($"Vai a {relation.To.Name}", "table", () => { model.SelectedTable = relation.To; CenterOn(relation.To); }));
+        }
+        else if (HitColumn(screen) is { } hit)
+        {
+            model.SelectedTable = hit.Table;
+            items.Add(Item("Apri dati", "table-grid", () => _ = model.OpenTableAsync(hit.Table)));
+            items.Add(Item("Progetta tabella", "pencil", () => model.Design(hit.Table), !hit.Table.IsView));
+            if (hit.Column is { } column && !hit.Table.IsView)
+                items.Add(Item($"Nuova relazione da «{column}»…", "link", () => { _link = (hit.Table, column); _linkPoint = (screen - _offset) / _zoom; _linkTarget = null; model.StatusMessage = "Clicca la tabella (o la colonna) di destinazione · Esc per annullare"; InvalidateVisual(); }));
+            foreach (var r in model.Relations.Where(r => r.From == hit.Table).GroupBy(r => r.Name).Select(g => g.First()))
+                items.Add(Item($"Elimina relazione «{r.Name}» → {r.To.Name}", "trash", () => _ = model.DeleteRelationAsync(r)));
+        }
+        else
+        {
+            items.Add(Item("Nuova tabella…", "plus", () => model.NewTableCommand.Execute(null)));
+            items.Add(Item("Genera script SQL del modello", "file-code", () => model.GenerateSqlCommand.Execute(null)));
+            items.Add(Item("Riorganizza", "network", Relayout));
+            items.Add(Item("Adatta alla finestra", "maximize", Fit));
+        }
+        var menu = new ContextMenu { ItemsSource = items };
+        menu.Open(this);
+        InvalidateVisual();
+    }
+
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
         Focus();
         var point = e.GetPosition(this);
+        if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+        {
+            ShowMenu(point);
+            e.Handled = true;
+            return;
+        }
+        // Relazione avviata dal menu: il clic sceglie la destinazione.
+        if (_link is { } pending)
+        {
+            var target = HitColumn(point);
+            _link = null;
+            _linkTarget = null;
+            InvalidateVisual();
+            if (target is { } t && _model is not null) _ = _model.CreateRelationAsync(pending.Table, pending.Column, t.Table, t.Column);
+            return;
+        }
         var hit = HitTest(point);
         if (_model is not null) _model.SelectedTable = hit;
+        // Strumento «Nuova relazione» o Ctrl+trascina da una colonna.
+        if (hit is not null && !hit.IsView && (_model!.IsLinkMode || e.KeyModifiers.HasFlag(KeyModifiers.Control)) && HitColumn(point) is { Column: { } column })
+        {
+            _link = (hit, column);
+            _linkPoint = (point - _offset) / _zoom;
+            _linkTarget = null;
+            e.Pointer.Capture(this);
+            InvalidateVisual();
+            return;
+        }
         if (hit is not null && e.ClickCount == 2)
         {
             _ = _model!.OpenTableAsync(hit);
@@ -347,8 +471,17 @@ public sealed class ErCanvas : Control
     {
         base.OnPointerMoved(e);
         var point = e.GetPosition(this);
-        if (_dragTable is not null)
+        if (_link is not null)
         {
+            _linkPoint = (point - _offset) / _zoom;
+            var target = HitColumn(point);
+            _linkTarget = target is { } t && t.Table != _link.Value.Table && !t.Table.IsView ? t : null;
+            Cursor = new Cursor(_linkTarget is null ? StandardCursorType.Cross : StandardCursorType.Hand);
+            InvalidateVisual();
+        }
+        else if (_dragTable is not null)
+        {
+            _moved = true;
             var delta = (point - _dragStart) / _zoom;
             _dragTable.X = _dragOrigin.X + delta.X;
             _dragTable.Y = _dragOrigin.Y + delta.Y;
@@ -359,12 +492,34 @@ public sealed class ErCanvas : Control
             _offset = _panOrigin + (point - _dragStart);
             InvalidateVisual();
         }
-        else Cursor = HitTest(point) is not null ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
+        else Cursor = HitTest(point) is not null
+            ? new Cursor(_model?.IsLinkMode == true || e.KeyModifiers.HasFlag(KeyModifiers.Control) ? StandardCursorType.Cross : StandardCursorType.Hand)
+            : HitRelation(point) is not null ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (_link is { } link && e.InitialPressMouseButton == MouseButton.Left && _linkTarget is { } target)
+        {
+            _link = null;
+            _linkTarget = null;
+            InvalidateVisual();
+            _ = _model?.CreateRelationAsync(link.Table, link.Column, target.Table, target.Column);
+        }
+        else if (_link is not null && _linkTarget is null && HitColumn(e.GetPosition(this))?.Table == _link.Value.Table)
+        {
+            // Rilasciato sulla stessa tabella: si resta in attesa del clic sulla destinazione.
+            if (_model is not null) _model.StatusMessage = "Clicca la tabella (o la colonna) di destinazione · Esc per annullare";
+        }
+        else if (_link is not null)
+        {
+            _link = null;
+            _linkTarget = null;
+            InvalidateVisual();
+        }
+        if (_dragTable is not null && _moved) _model?.SaveLayout();
+        _moved = false;
         _dragTable = null;
         _panning = false;
         Cursor = Cursor.Default;
@@ -391,6 +546,13 @@ public sealed class ErCanvas : Control
             case Key.Add or Key.OemPlus: ZoomIn(); e.Handled = true; break;
             case Key.Subtract or Key.OemMinus: ZoomOut(); e.Handled = true; break;
             case Key.D0 or Key.NumPad0: Fit(); e.Handled = true; break;
+            case Key.Escape when _link is not null:
+                _link = null;
+                _linkTarget = null;
+                if (_model is not null) _model.StatusMessage = "Nuova relazione annullata.";
+                InvalidateVisual();
+                e.Handled = true;
+                break;
         }
     }
 }

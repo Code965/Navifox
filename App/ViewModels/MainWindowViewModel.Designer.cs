@@ -147,5 +147,10 @@ public partial class MainWindowViewModel
         foreach (var tab in OpenTabs.OfType<TableTabViewModel>().Where(t => t.ProfileId == designer.Profile.Id && t.Database == designer.Database && t.TableName == designer.TableName).ToArray())
             await tab.LoadAsync(CancellationToken.None);
         if (Info is not null) UpdateInfoTarget();
+        foreach (var model in OpenTabs.OfType<ModelTabViewModel>().Where(m => m.TabConnection?.Id == designer.Profile.Id && m.Database == designer.Database && m.Schema == designer.Schema).ToArray())
+        {
+            model.SaveLayout();
+            await model.LoadAsync();
+        }
     }
 }

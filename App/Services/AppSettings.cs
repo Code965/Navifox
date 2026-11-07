@@ -45,6 +45,8 @@ public sealed class AppSettings
     public List<string> TreeOrder { get; set; } = [];
     /// <summary>Cartelle chiuse dall'utente (percorsi).</summary>
     public List<string> CollapsedFolders { get; set; } = [];
+    /// <summary>Posizioni delle tabelle nei diagrammi ER, per «profilo|database|schema».</summary>
+    public Dictionary<string, string> ModelLayouts { get; set; } = [];
 
     public static void Load()
     {

@@ -25,6 +25,19 @@
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="keyword" Classes="objbar-icon" /><TextBlock Text="Tipi" /></StackPanel>
           </ToggleButton>
           <Border Classes="toolbar-sep" />
+          <Button Classes="objbar" Command="{Binding NewTableCommand}" ToolTip.Tip="Crea una nuova tabella in questo schema">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova tabella" /></StackPanel>
+          </Button>
+          <Button Classes="objbar" Command="{Binding DesignSelectedCommand}" ToolTip.Tip="Progetta la tabella selezionata">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="pencil" Classes="objbar-icon" /><TextBlock Text="Progetta" /></StackPanel>
+          </Button>
+          <ToggleButton Classes="objbar" IsChecked="{Binding IsLinkMode, Mode=TwoWay}" ToolTip.Tip="Nuova relazione: trascina da una colonna alla tabella (o colonna) di destinazione. Anche Ctrl+trascina">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="link" Classes="objbar-icon" /><TextBlock Text="Nuova relazione" /></StackPanel>
+          </ToggleButton>
+          <Button Classes="objbar" Command="{Binding GenerateSqlCommand}" ToolTip.Tip="Script SQL completo del modello (tabelle, chiavi, viste) in una nuova query">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="file-code" Classes="objbar-icon" /><TextBlock Text="Genera SQL" /></StackPanel>
+          </Button>
+          <Border Classes="toolbar-sep" />
           <Button Classes="objbar" Command="{Binding LoadCommand}" ToolTip.Tip="Ricarica dal database">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="refresh" Classes="objbar-icon" /><TextBlock Text="Aggiorna" /></StackPanel>
           </Button>

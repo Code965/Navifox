@@ -44,7 +44,12 @@ public partial class MainWindowViewModel
             {
                 created = true;
                 return new ModelTabViewModel(_databaseAccess, context.Profile, context.Database, context.Schema,
-                    table => OpenTableAsync(context.Profile, context.Database, context.Schema, table));
+                    table => OpenTableAsync(context.Profile, context.Database, context.Schema, table))
+                {
+                    Dialogs = _dialogs,
+                    DesignTable = table => OpenDesigner(context.Profile, context.Database, context.Schema, table),
+                    OpenScript = sql => OpenQueryFor(context.Profile, context.Database)(sql, false),
+                };
             });
         if (created && SelectedTab is ModelTabViewModel model) await model.LoadAsync();
     }
