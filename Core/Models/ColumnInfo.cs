@@ -5,4 +5,6 @@ public sealed record ColumnInfo(
     string DataType,
     bool IsNullable,
     string? DefaultValue = null,
-    bool IsPrimaryKey = false);
+    bool IsPrimaryKey = false,
+    bool IsAutoIncrement = false,
+    bool IsGenerated = false);

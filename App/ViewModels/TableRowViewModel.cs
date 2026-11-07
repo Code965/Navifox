@@ -23,6 +23,8 @@ public partial class CellViewModel : ObservableObject
     [ObservableProperty] private string _text;
     [ObservableProperty] private bool _isNull;
     [ObservableProperty] private bool _isModified;
+    /// <summary>Per una riga nuova distingue NULL esplicito da un campo lasciato al valore predefinito.</summary>
+    [ObservableProperty] private bool _isAssigned;
 
     /// <summary>Testo da mostrare in modifica: vuoto per i NULL.</summary>
     public string EditText
@@ -38,19 +40,23 @@ public partial class CellViewModel : ObservableObject
     partial void OnTextChanged(string value)
     {
         if (_suppress) return;
+        IsAssigned = true;
         Value = value;
         IsNull = false;
         IsModified = !Equals(TableRowViewModel.Format(_original), value) || _original is null;
         OnPropertyChanged(nameof(EditText));
     }
 
-    public void SetNull()
+    public void SetNull() => SetValue(null);
+
+    public void SetValue(object? value)
     {
         _suppress = true;
-        Value = null;
-        Text = TableRowViewModel.Format(null);
-        IsNull = true;
-        IsModified = _original is not null;
+        Value = value is byte[] bytes ? bytes.ToArray() : value;
+        Text = TableRowViewModel.Format(Value);
+        IsNull = Value is null;
+        IsAssigned = true;
+        IsModified = !(_original is byte[] original && Value is byte[] current ? original.SequenceEqual(current) : Equals(_original, Value));
         _suppress = false;
         OnPropertyChanged(nameof(EditText));
     }
@@ -62,6 +68,7 @@ public partial class CellViewModel : ObservableObject
         Text = TableRowViewModel.Format(_original);
         IsNull = _original is null;
         IsModified = false;
+        IsAssigned = false;
         _suppress = false;
         OnPropertyChanged(nameof(EditText));
     }
@@ -70,6 +77,7 @@ public partial class CellViewModel : ObservableObject
     {
         _original = Value;
         IsModified = false;
+        IsAssigned = false;
     }
 }
 

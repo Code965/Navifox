@@ -79,7 +79,7 @@ public partial class TableTabViewModel
         }
         set
         {
-            if (CurrentCell is null || !CanEdit) return;
+            if (CurrentCell is null || !CanEditCurrentCell) return;
             CurrentCell.EditText = value;
             OnPropertyChanged(nameof(JsonError));
         }
@@ -102,7 +102,7 @@ public partial class TableTabViewModel
     [RelayCommand]
     private void CompactJson()
     {
-        if (CurrentCell is null || !CanEdit) return;
+        if (CurrentCell is null || !CanEditCurrentCell) return;
         try { CurrentCell.EditText = JsonSerializer.Serialize(JsonDocument.Parse(CurrentCell.EditText).RootElement, JsonCompact); }
         catch (JsonException) { return; }
         RefreshFieldViews();
@@ -147,7 +147,7 @@ public partial class TableTabViewModel
             var column = Columns[i];
             var reference = _references.FirstOrDefault(r => r.Column == column.Name);
             FormFields.Add(new FormField(column.Name, column.DataType, column.IsPrimaryKey, reference is null ? null : $"→ {reference.Table}.{reference.ReferencedColumn}",
-                row.CellAt(i), CanEdit));
+                row.CellAt(i), CanEdit && !column.IsGenerated));
         }
         OnPropertyChanged(nameof(FormPosition));
     }
@@ -306,8 +306,8 @@ public partial class TableTabViewModel
 
     public void SetCurrentValue(object? value)
     {
-        if (CurrentCell is null || !CanEdit) return;
-        CurrentCell.EditText = value is null ? string.Empty : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        if (CurrentCell is null || !CanEditCurrentCell) return;
+        CurrentCell.SetValue(value);
         RefreshFieldViews();
     }
 }

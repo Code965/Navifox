@@ -99,27 +99,32 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     [ObservableProperty] private bool _isHexMode;
     [ObservableProperty] private bool _isTransaction;
     [ObservableProperty] private bool _hasPendingChanges;
-    [ObservableProperty] private bool _canEdit;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditCurrentCell))]
+    private bool _canEdit;
     [ObservableProperty] private string _editHint = string.Empty;
     [ObservableProperty] private bool _isFilterActive;
     [ObservableProperty] private bool _isSortActive;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentCellText), nameof(CurrentCellHex), nameof(CurrentCellTitle), nameof(HasCurrentCell))]
     private CellViewModel? _currentCell;
-    [ObservableProperty] private string _currentColumnName = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditCurrentCell))]
+    private string _currentColumnName = string.Empty;
     [ObservableProperty] private TableRowViewModel? _currentRow;
 
     /// <summary>Righe selezionate nella griglia (impostate dalla vista).</summary>
     public IReadOnlyList<TableRowViewModel> SelectedRows { get; set; } = [];
 
     public bool HasCurrentCell => CurrentCell is not null;
+    public bool CanEditCurrentCell => CanEdit && !Columns.Any(c => c.Name == CurrentColumnName && c.IsGenerated);
     public string CurrentCellTitle => CurrentCell is null ? "Nessun campo selezionato" : $"{CurrentColumnName}{(CurrentCell.IsNull ? " · NULL" : string.Empty)}";
     public string CurrentCellText
     {
         get => CurrentCell?.EditText ?? string.Empty;
         set
         {
-            if (CurrentCell is null || !CanEdit || CurrentCell.EditText == value) return;
+            if (CurrentCell is null || !CanEditCurrentCell || CurrentCell.EditText == value) return;
             CurrentCell.EditText = value;
             OnPropertyChanged(nameof(CurrentCellHex));
         }
@@ -466,6 +471,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         CurrentRow = row;
         HasPendingChanges = true;
         StatusMessage = "Nuova riga: compila i campi e premi ✓ per salvarla.";
+        NewRowsCreated?.Invoke(row, FirstWritableColumn());
     }
 
     [RelayCommand]
@@ -485,7 +491,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     [RelayCommand]
     private void SetNull()
     {
-        if (!EnsureEditable() || CurrentCell is null) return;
+        if (!EnsureEditable() || CurrentCell is null || !CanEditCurrentCell) return;
         CurrentCell.SetNull();
         OnPropertyChanged(nameof(CurrentCellText));
         OnPropertyChanged(nameof(CurrentCellTitle));
@@ -552,14 +558,15 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
             }
             if (row.IsNew)
             {
-                var assigned = row.Cells.Select((cell, index) => (cell, index)).Where(pair => pair.cell.IsModified).ToArray();
+                var assigned = row.Cells.Select((cell, index) => (cell, index)).Where(pair => pair.cell.IsAssigned && !Columns[pair.index].IsGenerated).ToArray();
                 statements.Add(assigned.Length == 0
                     ? _provider.UsesMySqlScriptSyntax ? $"INSERT INTO {target} () VALUES ()" : $"INSERT INTO {target} DEFAULT VALUES"
                     : $"INSERT INTO {target} ({string.Join(", ", assigned.Select(pair => _provider.QuoteIdentifier(Columns[pair.index].Name)))}) VALUES ({string.Join(", ", assigned.Select(pair => _provider.FormatLiteral(pair.cell.Value)))})");
                 continue;
             }
-            var changes = row.Cells.Select((cell, index) => (cell, index)).Where(pair => pair.cell.IsModified)
-                .Select(pair => $"{_provider.QuoteIdentifier(Columns[pair.index].Name)} = {_provider.FormatLiteral(pair.cell.Value)}");
+            var changes = row.Cells.Select((cell, index) => (cell, index)).Where(pair => pair.cell.IsModified && !Columns[pair.index].IsGenerated)
+                .Select(pair => $"{_provider.QuoteIdentifier(Columns[pair.index].Name)} = {_provider.FormatLiteral(pair.cell.Value)}").ToArray();
+            if (changes.Length == 0) continue;
             statements.Add($"UPDATE {target} SET {string.Join(", ", changes)} WHERE {KeyPredicate(row, keyIndexes)}");
         }
         return statements;
@@ -576,6 +583,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
 
     private bool EnsureEditable()
     {
+        if (IsBusy) { StatusMessage = "Attendi il completamento dell’operazione in corso."; return false; }
         if (CanEdit) return true;
         StatusMessage = EditHint;
         return false;

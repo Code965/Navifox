@@ -33,7 +33,7 @@ public sealed class WorkflowFixture : IDisposable
     }
 }
 
-public sealed class WorkflowTests(WorkflowFixture fixture) : IClassFixture<WorkflowFixture>
+public sealed partial class WorkflowTests(WorkflowFixture fixture) : IClassFixture<WorkflowFixture>
 {
     [Fact]
     public async Task SalvaDallEditorAggiornaELaQueryRestaRiapribileDalDatabase()
@@ -139,10 +139,12 @@ public sealed class WorkflowTests(WorkflowFixture fixture) : IClassFixture<Workf
     {
         public string NextName { get; set; } = "Query";
         public bool Confirm { get; set; } = true;
+        public int ConfirmCount { get; private set; }
+        public string LastConfirmation { get; private set; } = "";
         public int PromptCount { get; private set; }
         public List<string> Errors { get; } = [];
         public Task<string?> PromptAsync(string title, string message, string value, string confirmText = "OK", bool isPassword = false) { PromptCount++; return Task.FromResult<string?>(NextName); }
-        public Task<bool> ConfirmAsync(string title, string message, string confirmText = "OK", bool danger = false) => Task.FromResult(Confirm);
+        public Task<bool> ConfirmAsync(string title, string message, string confirmText = "OK", bool danger = false) { ConfirmCount++; LastConfirmation = message; return Task.FromResult(Confirm); }
         public Task ShowMessageAsync(string title, string message, bool isError = false) { if (isError) Errors.Add(message); return Task.CompletedTask; }
         public Task<bool> ShowDatabaseDialogAsync(DatabaseDialogViewModel viewModel) => throw new NotSupportedException();
         public Task<string?> PickOpenFileAsync(string title, params FileFilter[] filters) => throw new NotSupportedException();

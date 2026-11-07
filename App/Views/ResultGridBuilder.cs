@@ -109,10 +109,10 @@ public static class ResultGridBuilder
                 SortMemberPath = column.Name,
                 CanUserSort = onSort is null,
                 CellTemplate = new FuncDataTemplate<TableRowViewModel>((row, _) => CreateDisplay(row?.CellAt(cellIndex), numeric, cellIndex), supportsRecycling: false),
-                IsReadOnly = !editable,
+                IsReadOnly = !editable || column.IsGenerated,
                 Width = new DataGridLength(Math.Clamp((column.Name.Length + (glyph?.Length + 2 ?? 0)) * 8.5 + 44, 70, 240))
             };
-            if (editable)
+            if (editable && !column.IsGenerated)
                 gridColumn.CellEditingTemplate = new FuncDataTemplate<TableRowViewModel>((row, _) => CreateEditor(row?.CellAt(cellIndex), numeric), supportsRecycling: false);
             grid.Columns.Add(gridColumn);
         }

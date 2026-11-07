@@ -7,12 +7,16 @@ using Avalonia.Input;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Navifox.App.ViewModels;
+using Navifox.Core;
+using Navifox.App.Services;
 
 namespace Navifox.App.Views;
 
 public partial class TablePageView : UserControl
 {
     private TableTabViewModel? _viewModel;
+    private bool _editingCell;
+    private bool CommitGridEdit() => !_editingCell || ResultGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
     public TablePageView()
     {
@@ -29,8 +33,9 @@ public partial class TablePageView : UserControl
         ResultGrid.BeginningEdit += (_, args) =>
         {
             if (_viewModel?.CanEdit != true) args.Cancel = true;
+            else _editingCell = true;
         };
-        ResultGrid.CellEditEnded += (_, _) => _viewModel?.SetCurrent(ResultGrid.SelectedItem as TableRowViewModel, CurrentIndex());
+        ResultGrid.CellEditEnded += (_, _) => { _editingCell = false; _viewModel?.SetCurrent(ResultGrid.SelectedItem as TableRowViewModel, CurrentIndex()); };
         ResultGrid.AddHandler(KeyDownEvent, OnGridKeyDown, RoutingStrategies.Tunnel);
         // Clic sull'indicatore a sinistra = riga intera; clic su una cella = torna alla selezione di cella.
         ResultGrid.AddHandler(PointerPressedEvent, (_, args) =>
@@ -48,13 +53,16 @@ public partial class TablePageView : UserControl
             _viewModel.Columns.CollectionChanged -= OnColumnsChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.SearchHit -= OnSearchHit;
+            _viewModel.NewRowsCreated -= OnNewRowsCreated;
         }
         base.OnDataContextChanged(e);
+        _editingCell = false;
         _viewModel = DataContext as TableTabViewModel;
         if (_viewModel is null) return;
         _viewModel.Columns.CollectionChanged += OnColumnsChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.SearchHit += OnSearchHit;
+        _viewModel.NewRowsCreated += OnNewRowsCreated;
         RebuildColumns();
         LayoutFieldPanel();
     }
@@ -115,6 +123,25 @@ public partial class TablePageView : UserControl
             ResultGrid.CurrentColumn = gridColumn;
             ResultGrid.ScrollIntoView(row, gridColumn);
         }
+    }
+
+    private void OnNewRowsCreated(TableRowViewModel row, int column)
+    {
+        var model = _viewModel;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (model is null || !ReferenceEquals(model, _viewModel) || !model.Rows.Contains(row)) return;
+            SetSelectionKind(SelectionKind.Cell);
+            ResultGrid.SelectedItems.Clear();
+            ResultGrid.SelectedItem = row;
+            var target = ResultGrid.Columns.FirstOrDefault(c => c.Tag is int i && i == column && !c.IsReadOnly)
+                ?? ResultGrid.Columns.FirstOrDefault(c => !c.IsReadOnly);
+            if (target is null) return;
+            ResultGrid.CurrentColumn = target;
+            ResultGrid.ScrollIntoView(row, target);
+            ResultGrid.Focus();
+            ResultGrid.BeginEdit();
+        }, Avalonia.Threading.DispatcherPriority.Input);
     }
 
     private bool _fitted;
@@ -257,7 +284,27 @@ public partial class TablePageView : UserControl
     private void OnGridKeyDown(object? sender, KeyEventArgs e)
     {
         if (_viewModel is null || HandleColumnKeys(e)) return;
-        if (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        var editor = (e.Source as Avalonia.Visual)?.FindAncestorOfType<TextBox>(includeSelf: true);
+        var combo = (e.Source as Avalonia.Visual)?.FindAncestorOfType<ComboBox>(includeSelf: true);
+        if (e.Key == Key.Down && e.KeyModifiers == KeyModifiers.None && editor?.AcceptsReturn != true && combo is null && ResultGrid.SelectedItems.Count <= 1)
+        {
+            var row = ResultGrid.SelectedItem as TableRowViewModel;
+            if (_viewModel.CanEdit && !_viewModel.IsBusy && !_viewModel.HasMore &&
+                (_viewModel.Rows.Count == 0 || ReferenceEquals(_viewModel.Rows.LastOrDefault(), row)) &&
+                CommitGridEdit() && _viewModel.AddRowAtEnd(row)) e.Handled = true;
+        }
+        else if (e.Key == Key.C && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
+        {
+            if (CommitGridEdit()) _ = CopyRowsAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.V && e.KeyModifiers == KeyModifiers.Control && combo is null)
+        {
+            _ = PasteRowsAsync(editor);
+            e.Handled = true;
+        }
+        else if (editor is not null || combo is not null) return;
+        else if (e.Key == Key.C && e.KeyModifiers == KeyModifiers.Control)
         {
             _ = CopyCurrentAsync();
             e.Handled = true;
@@ -270,6 +317,55 @@ public partial class TablePageView : UserControl
     }
 
     private void OnCopyCell(object? sender, RoutedEventArgs e) => _ = CopyCurrentAsync();
+    private void OnCopyRows(object? sender, RoutedEventArgs e) => _ = CopyRowsAsync();
+    private void OnPasteRows(object? sender, RoutedEventArgs e) => _ = PasteRowsAsync();
+
+    private async Task CopyRowsAsync(IReadOnlyList<int>? columns = null, bool allRows = false)
+    {
+        var model = _viewModel;
+        if (model is null || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard || !CommitGridEdit()) return;
+        try
+        {
+            if (model.CopyRows(columns, allRows) is not { } rows) return;
+            var data = RowsClipboard.Create(rows);
+            try { await clipboard.SetDataAsync(data); }
+            catch { ((IAsyncDataTransfer)data).Dispose(); throw; }
+            await clipboard.FlushAsync();
+            model.StatusMessage = $"Copiate {rows.Rows.Length:N0} righe · {rows.Columns.Length} colonne · Ctrl+V nella tabella di destinazione per incollare.";
+        }
+        catch (Exception error) { model.StatusMessage = "Impossibile copiare le righe: " + error.Message; }
+    }
+
+    private bool _pastingRows;
+    private async Task PasteRowsAsync(TextBox? textEditor = null)
+    {
+        var model = _viewModel;
+        if (_pastingRows || model is null || !model.CanEdit || model.IsBusy || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard) return;
+        _pastingRows = true;
+        var startColumn = Math.Max(0, CurrentIndex());
+        try
+        {
+            using var contents = await clipboard.TryGetDataAsync();
+            if (contents?.Contains(RowsClipboard.Format) == true)
+            {
+                if (!CommitGridEdit()) return;
+                var rows = await RowsClipboard.ReadAsync(contents);
+                if (!ReferenceEquals(model, _viewModel)) return;
+                await model.PasteRowsAsync(rows);
+            }
+            else if (textEditor is not null)
+            {
+                if (textEditor.IsKeyboardFocusWithin) textEditor.Paste();
+            }
+            else if (contents is not null && await contents.TryGetTextAsync() is { Length: > 0 } text && ReferenceEquals(model, _viewModel))
+            {
+                if (CommitGridEdit()) await model.PasteTextRowsAsync(text, startColumn);
+            }
+            else model.StatusMessage = "Gli appunti non contengono righe da incollare.";
+        }
+        catch (Exception error) { model.StatusMessage = "Impossibile incollare le righe: " + error.Message; }
+        finally { _pastingRows = false; }
+    }
 
     /// <summary>Copia come INSERT / UPDATE / testo con intestazioni delle righe selezionate.</summary>
     private async void OnCopyAs(object? sender, RoutedEventArgs e)
@@ -311,17 +407,13 @@ public partial class TablePageView : UserControl
         // Colonne selezionate: intestazioni + tutti i valori caricati, separati da tabulazione (incollabile in Excel).
         if (_selectionMode == SelectionKind.Column && ResultGridBuilder.HighlightedColumns(ResultGrid).Where(i => i < _viewModel.Columns.Count).ToArray() is { Length: > 0 } selected)
         {
-            var lines = new[] { string.Join('\t', selected.Select(i => _viewModel.Columns[i].Name)) }
-                .Concat(_viewModel.Rows.Select(row => string.Join('\t', selected.Select(i => row.IsNull(i) ? string.Empty : row.TextAt(i)))));
-            await clipboard.SetTextAsync(string.Join(Environment.NewLine, lines));
-            _viewModel.StatusMessage = $"Copiate {selected.Length} colonne × {_viewModel.Rows.Count:N0} righe.";
+            await CopyRowsAsync(selected, allRows: true);
             return;
         }
         // Righe intere (indicatore a sinistra) o più righe: testo separato da tabulazioni (incollabile in Excel).
         if (_viewModel.SelectedRows.Count > 1 || _selectionMode == SelectionKind.Row && _viewModel.SelectedRows.Count > 0)
         {
-            var lines = _viewModel.SelectedRows.Select(row => string.Join('\t', Enumerable.Range(0, row.CellCount).Select(index => row.IsNull(index) ? string.Empty : row.TextAt(index))));
-            await clipboard.SetTextAsync(string.Join(Environment.NewLine, lines));
+            await CopyRowsAsync();
             return;
         }
         if (_viewModel.CurrentCell is { } current) await clipboard.SetTextAsync(current.IsNull ? string.Empty : current.Text);

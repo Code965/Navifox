@@ -87,7 +87,7 @@ public abstract class AdoDialectProvider : IDialectProvider
     public virtual async Task<IReadOnlyList<ColumnInfo>> GetColumnsAsync(DbConnection connection, string database, string schema, string table, CancellationToken cancellationToken)
     {
         var sql = Kind == DatabaseKind.MySql
-            ? "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table ORDER BY ORDINAL_POSITION"
+            ? "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, EXTRA LIKE '%auto_increment%', COALESCE(GENERATION_EXPRESSION, '') <> '' FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table ORDER BY ORDINAL_POSITION"
             : """
               SELECT c.column_name, c.data_type, c.is_nullable, c.column_default,
                      CASE WHEN EXISTS (
@@ -95,7 +95,8 @@ public abstract class AdoDialectProvider : IDialectProvider
                          JOIN information_schema.key_column_usage k
                            ON k.constraint_name = tc.constraint_name AND k.table_schema = tc.table_schema AND k.table_name = tc.table_name
                          WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = c.table_schema
-                           AND tc.table_name = c.table_name AND k.column_name = c.column_name) THEN 'PRI' ELSE '' END
+                           AND tc.table_name = c.table_name AND k.column_name = c.column_name) THEN 'PRI' ELSE '' END,
+                     (c.is_identity = 'YES' OR COALESCE(c.column_default LIKE 'nextval(%', FALSE)), c.is_generated <> 'NEVER'
               FROM information_schema.columns c
               WHERE c.table_catalog = @database AND c.table_schema = @schema AND c.table_name = @table
               ORDER BY c.ordinal_position
@@ -113,7 +114,9 @@ public abstract class AdoDialectProvider : IDialectProvider
                 reader.GetString(1),
                 string.Equals(reader.GetString(2), "YES", StringComparison.OrdinalIgnoreCase),
                 ReadString(reader, 3),
-                string.Equals(ReadString(reader, 4), "PRI", StringComparison.OrdinalIgnoreCase)));
+                string.Equals(ReadString(reader, 4), "PRI", StringComparison.OrdinalIgnoreCase),
+                Convert.ToBoolean(reader.GetValue(5), System.Globalization.CultureInfo.InvariantCulture),
+                Convert.ToBoolean(reader.GetValue(6), System.Globalization.CultureInfo.InvariantCulture)));
         }
         return result;
     }

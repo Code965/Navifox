@@ -53,6 +53,12 @@ Le connessioni possono passare da un **tunnel SSH** (password o chiave privata, 
 - Griglia modificabile con paginazione, filtri, ordinamento dal menu dell'intestazione e **transazioni** esplicite.
 - Selezione di righe e colonne (anche con Maiusc + frecce), copia come TSV, **INSERT** o **UPDATE**.
 - **Vista modulo**, editor di campo testo / esadecimale / JSON / immagine.
+- **Freccia giù sull'ultima riga dell'ultima pagina** crea una nuova riga e porta il cursore al primo campo modificabile;
+  una bozza ancora vuota viene riutilizzata.
+- **Copia righe / Ctrl+Maiusc+C** (oppure Ctrl+C con righe intere selezionate) e **Incolla righe / Ctrl+V** tra tabelle:
+  abbinamento per nome anche con colonne riordinate, conservazione di NULL, testo vuoto e binari, rigenerazione degli ID automatici
+  ed esclusione dei campi calcolati. Colonne non corrispondenti, campi obbligatori e chiavi già presenti nella pagina vengono segnalati.
+  Le righe sono aggiunte alla griglia e si salvano con **✓ / Ctrl+S**; è supportato anche il testo separato da tabulazioni da Excel.
 - Chiavi esterne: scelta del valore dalla tabella collegata e apertura dei record riferiti.
 - Editor del valore del campo **a destra o in basso**, a scelta.
 - Ricerca nei dati della tabella e **ricerca in tutto il database**.

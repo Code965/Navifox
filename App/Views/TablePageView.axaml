@@ -219,6 +219,8 @@
         <DataGrid.ContextMenu>
           <ContextMenu>
             <MenuItem Header="Copia" Click="OnCopyCell" InputGesture="Ctrl+C" />
+            <MenuItem Header="Copia righe" Click="OnCopyRows" InputGesture="Ctrl+Shift+C" />
+            <MenuItem Header="Incolla righe" Click="OnPasteRows" InputGesture="Ctrl+V" IsEnabled="{Binding CanEdit}" />
             <MenuItem Header="Copia come">
               <MenuItem Header="INSERT" Click="OnCopyAs" Tag="insert" />
               <MenuItem Header="UPDATE" Click="OnCopyAs" Tag="update" />
@@ -254,7 +256,7 @@
           </Border>
           <!-- JSON formattato -->
           <Grid Grid.Row="1" RowDefinitions="*,Auto" IsVisible="{Binding IsJsonMode}">
-            <TextBox Text="{Binding CurrentCellJson, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+            <TextBox Text="{Binding CurrentCellJson, Mode=TwoWay}" IsReadOnly="{Binding !CanEditCurrentCell}" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
                      BorderThickness="0" CornerRadius="0" Padding="10" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
             <TextBlock Grid.Row="1" Text="{Binding JsonError}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,4" TextWrapping="Wrap" />
           </Grid>
@@ -263,7 +265,7 @@
             <Image Source="{Binding CurrentCellImage}" Stretch="Uniform" Margin="10" />
             <TextBlock Grid.Row="1" Text="{Binding ImageInfo}" FontSize="11.5" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,4" TextWrapping="Wrap" />
           </Grid>
-          <TextBox Grid.Row="1" IsVisible="{Binding IsPlainTextMode}" Text="{Binding CurrentCellText, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}"
+          <TextBox Grid.Row="1" IsVisible="{Binding IsPlainTextMode}" Text="{Binding CurrentCellText, Mode=TwoWay}" IsReadOnly="{Binding !CanEditCurrentCell}"
                    AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" CornerRadius="0" Padding="10" FontSize="13" />
           <TextBox Grid.Row="1" IsVisible="{Binding IsHexMode}" Text="{Binding CurrentCellHex}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
                    BorderThickness="0" CornerRadius="0" Padding="10" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
@@ -283,7 +285,7 @@
     <Border Grid.Row="4" Classes="grid-statusbar" Padding="4,2">
       <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
         <StackPanel Orientation="Horizontal">
-          <Button Classes="bar-icon" Command="{Binding AddRowCommand}" ToolTip.Tip="Aggiungi riga (Ctrl+Ins)"><c:NfIcon Kind="plus" Width="14" Height="14" /></Button>
+          <Button Classes="bar-icon" Command="{Binding AddRowCommand}" ToolTip.Tip="Aggiungi riga (Ctrl+Ins o Freccia giù alla fine dei dati)"><c:NfIcon Kind="plus" Width="14" Height="14" /></Button>
           <Button Classes="bar-icon" Command="{Binding DeleteRowsCommand}" ToolTip.Tip="Elimina righe selezionate"><c:NfIcon Kind="minus" Width="14" Height="14" /></Button>
           <Button Classes="bar-icon" Command="{Binding ApplyChangesCommand}" IsEnabled="{Binding HasPendingChanges}" ToolTip.Tip="Applica modifiche (Ctrl+S)"><c:NfIcon Kind="check" Width="14" Height="14" /></Button>
           <Button Classes="bar-icon" Command="{Binding DiscardChangesCommand}" IsEnabled="{Binding HasPendingChanges}" ToolTip.Tip="Annulla modifiche"><c:NfIcon Kind="x" Width="14" Height="14" /></Button>

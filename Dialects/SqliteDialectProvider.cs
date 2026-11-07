@@ -101,8 +101,15 @@ public sealed class SqliteDialectProvider : AdoDialectProvider
     }
 
     public override async Task<IReadOnlyList<ColumnInfo>> GetColumnsAsync(DbConnection connection, string database, string schema, string table, CancellationToken cancellationToken) =>
-        (await ReadStringsAsync(connection, $"SELECT name, type, \"notnull\", dflt_value, pk FROM pragma_table_xinfo({FormatLiteral(table)}, {FormatLiteral(schema)}) ORDER BY cid", None, cancellationToken))
-        .Select(r => new ColumnInfo(r[0], r[1].Length == 0 ? "BLOB" : r[1], r[2] == "0", r[3].Length == 0 ? null : r[3], r[4] != "0")).ToArray();
+        (await ReadStringsAsync(connection, $"""
+            SELECT name, type, "notnull", dflt_value, pk,
+                   CASE WHEN pk = 1 AND upper(trim(type)) = 'INTEGER'
+                        AND (SELECT count(*) FROM pragma_table_xinfo({FormatLiteral(table)}, {FormatLiteral(schema)}) WHERE pk > 0) = 1
+                        AND NOT EXISTS (SELECT 1 FROM pragma_index_list({FormatLiteral(table)}, {FormatLiteral(schema)}) WHERE origin = 'pk')
+                        THEN 1 ELSE 0 END, hidden
+            FROM pragma_table_xinfo({FormatLiteral(table)}, {FormatLiteral(schema)}) ORDER BY cid
+            """, None, cancellationToken))
+        .Select(r => new ColumnInfo(r[0], r[1].Length == 0 ? "BLOB" : r[1], r[2] == "0", r[3].Length == 0 ? null : r[3], r[4] != "0", r[5] == "1", r[6] != "0")).ToArray();
 
     public override async Task<long> CountRowsAsync(DbConnection connection, string schema, string table, string? where, CancellationToken cancellationToken)
     {

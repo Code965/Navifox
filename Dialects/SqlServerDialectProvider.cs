@@ -150,12 +150,13 @@ public sealed partial class SqlServerDialectProvider : AdoDialectProvider
                           ELSE '' END,
                    CASE WHEN c.is_nullable = 1 THEN 'YES' ELSE 'NO' END, OBJECT_DEFINITION(c.default_object_id),
                    CASE WHEN EXISTS (SELECT 1 FROM sys.indexes i JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-                                     WHERE i.object_id = c.object_id AND i.is_primary_key = 1 AND ic.column_id = c.column_id) THEN 'PRI' ELSE '' END
+                                     WHERE i.object_id = c.object_id AND i.is_primary_key = 1 AND ic.column_id = c.column_id) THEN 'PRI' ELSE '' END,
+                   c.is_identity, CASE WHEN c.is_computed = 1 OR TYPE_NAME(c.user_type_id) IN ('timestamp','rowversion') OR c.generated_always_type <> 0 THEN 1 ELSE 0 END
             FROM sys.columns c
             WHERE c.object_id = OBJECT_ID(@object)
             ORDER BY c.column_id
             """, new Dictionary<string, object> { ["@object"] = $"{QuoteIdentifier(schema)}.{QuoteIdentifier(table)}" }, cancellationToken);
-        return rows.Select(r => new ColumnInfo(r[0], r[1], r[2] == "YES", r[3].Length == 0 ? null : r[3], r[4] == "PRI")).ToArray();
+        return rows.Select(r => new ColumnInfo(r[0], r[1], r[2] == "YES", r[3].Length == 0 ? null : r[3], r[4] == "PRI", r[5] == "1", r[6] == "1")).ToArray();
     }
 
     // ───────────── Proprietà ─────────────
