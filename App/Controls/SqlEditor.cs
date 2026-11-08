@@ -9,6 +9,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Editing;
+using AvaloniaEdit.Folding;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Highlighting.Xshd;
 using Navifox.Core.Models;
@@ -65,6 +66,72 @@ public sealed class SqlEditor : TextEditor
         TextArea.TextEntering += OnTextEntering;
         ActualThemeVariantChanged += (_, _) => ApplyTheme();
         ApplyTheme();
+        // Piegatura del codice: istruzioni su più righe, BEGIN…END, commenti /* */ e «-- region».
+        _folding = FoldingManager.Install(TextArea);
+        _foldTimer.Tick += (_, _) => { _foldTimer.Stop(); UpdateFoldings(); };
+        TextChanged += (_, _) => { _foldTimer.Stop(); _foldTimer.Start(); };
+    }
+
+    private readonly FoldingManager _folding;
+    private readonly Avalonia.Threading.DispatcherTimer _foldTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+
+    public void UpdateFoldings()
+    {
+        if (Document is null) return;
+        var folds = Navifox.Core.SqlFolding.Find(Document.Text)
+            .Where(f => f.End <= Document.TextLength)
+            .Select(f => new NewFolding(f.Start, f.End) { Name = f.Title })
+            .ToList();
+        _folding.UpdateFoldings(folds, -1);
+    }
+
+    /// <summary>Piega o espande tutte le regioni (Ctrl+Maiusc+- / Ctrl+Maiusc++).</summary>
+    public void SetAllFolded(bool folded)
+    {
+        UpdateFoldings();
+        foreach (var fold in _folding.AllFoldings) fold.IsFolded = folded;
+    }
+
+    /// <summary>Scorciatoie degli snippet personali: la parola prima del cursore + Tab viene sostituita dal testo dello snippet.</summary>
+    public Func<string, string?>? SnippetLookup { get; set; }
+
+    private bool TryExpandSnippet()
+    {
+        if (SnippetLookup is null || TextArea.Selection.Length > 0) return false;
+        var offset = CaretOffset;
+        var start = offset;
+        while (start > 0 && IsIdentifier(Document.GetCharAt(start - 1))) start--;
+        if (start == offset) return false;
+        var body = SnippetLookup(Document.GetText(start, offset - start));
+        if (body is null) return false;
+        var caret = body.IndexOf("$0", StringComparison.Ordinal);
+        body = body.Replace("$0", string.Empty);
+        Document.Replace(start, offset - start, body);
+        CaretOffset = start + (caret >= 0 ? caret : body.Length);
+        return true;
+    }
+
+    /// <summary>Cursori multipli in colonna: aggiunge un cursore sulla riga sopra o sotto (Ctrl+Alt+↑/↓).
+    /// Quello che digiti viene scritto su tutte le righe; Alt+trascina crea la stessa selezione col mouse.</summary>
+    public void AddCaretVertically(int delta)
+    {
+        var area = TextArea;
+        TextViewPosition anchor, active;
+        if (area.Selection is RectangleSelection rectangle)
+        {
+            anchor = rectangle.StartPosition;
+            active = rectangle.EndPosition;
+        }
+        else
+        {
+            anchor = active = area.Caret.Position;
+        }
+        var line = Math.Clamp(active.Line + delta, 1, Document.LineCount);
+        if (line == active.Line) return;
+        var column = active.VisualColumn >= 0 ? active.VisualColumn : active.Column - 1;
+        var target = new TextViewPosition(line, Math.Min(column + 1, Document.GetLineByNumber(line).Length + 1), column);
+        area.Selection = new RectangleSelection(area, anchor, target);
+        area.Caret.Position = target;
     }
 
     protected override Type StyleKeyOverride => typeof(TextEditor);
@@ -76,6 +143,23 @@ public sealed class SqlEditor : TextEditor
         if (e.Key == Key.Space && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             ShowCompletion(force: true);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key is Key.Up or Key.Down && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Alt))
+        {
+            AddCaretVertically(e.Key == Key.Up ? -1 : 1);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.Tab && e.KeyModifiers == KeyModifiers.None && _completion is null && TryExpandSnippet())
+        {
+            e.Handled = true;
+            return;
+        }
+        if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key is Key.OemMinus or Key.Subtract or Key.OemPlus or Key.Add)
+        {
+            SetAllFolded(e.Key is Key.OemMinus or Key.Subtract);
             e.Handled = true;
             return;
         }

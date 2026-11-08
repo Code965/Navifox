@@ -20,6 +20,8 @@ public partial class QueryPageView : UserControl
             if (_viewModel is not null && _viewModel.SqlText != SqlEditor.Text) _viewModel.SqlText = SqlEditor.Text;
         };
         ConsoleInputBox.AddHandler(KeyDownEvent, OnConsoleKeyDown, RoutingStrategies.Tunnel);
+        InitFindBar();
+        SqlEditor.SnippetLookup = name => Services.SnippetStore.Find(name)?.Body;
         ResultGrid.SelectionChanged += (_, _) => UpdateSelectionSummary();
         ResultGrid.CurrentCellChanged += (_, _) => UpdateSelectionSummary();
         RunButton.Click += (_, _) => Run(RunMode.Auto);
@@ -55,6 +57,27 @@ public partial class QueryPageView : UserControl
                     Command = _viewModel.InsertSnippetCommand,
                     CommandParameter = snippet.Name
                 });
+            // Snippet personali (con scorciatoia: parola + Tab nell'editor).
+            var personal = Services.SnippetStore.All;
+            if (personal.Count > 0) flyout.Items.Add(new Separator());
+            foreach (var snippet in personal)
+            {
+                var item = new MenuItem
+                {
+                    Header = snippet.Shortcut.Length > 0 ? $"{snippet.Name}   ({snippet.Shortcut} + Tab)" : snippet.Name,
+                    Icon = new Navifox.App.Controls.NfIcon { Kind = "star", Width = 14, Height = 14, Classes = { "menu-icon" } }
+                };
+                var body = snippet.Body;
+                item.Click += (_, _) => InsertSnippetText(body);
+                flyout.Items.Add(item);
+            }
+            flyout.Items.Add(new Separator());
+            var fromSelection = new MenuItem { Header = "Salva la selezione come snippet…", IsEnabled = !string.IsNullOrWhiteSpace(SqlEditor.SelectedText) };
+            fromSelection.Click += async (_, _) => await ManageSnippetsAsync(SqlEditor.SelectedText);
+            var manage = new MenuItem { Header = "Gestisci snippet personali…" };
+            manage.Click += async (_, _) => await ManageSnippetsAsync(null);
+            flyout.Items.Add(fromSelection);
+            flyout.Items.Add(manage);
             flyout.ShowAt(SnippetButton);
         };
         AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(() =>
@@ -127,6 +150,117 @@ public partial class QueryPageView : UserControl
 
     private enum RunMode { Auto, Selection, Current }
 
+    private void InsertSnippetText(string body)
+    {
+        var caret = body.IndexOf("$0", StringComparison.Ordinal);
+        body = body.Replace("$0", string.Empty);
+        var start = SqlEditor.SelectionLength > 0 ? SqlEditor.SelectionStart : SqlEditor.CaretOffset;
+        SqlEditor.Document.Replace(start, SqlEditor.SelectionLength, body);
+        SqlEditor.CaretOffset = start + (caret >= 0 ? caret : body.Length);
+        SqlEditor.Focus();
+    }
+
+    private async Task ManageSnippetsAsync(string? initialBody)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+        await new SnippetManagerWindow(initialBody).ShowDialog<bool>(owner);
+        SqlEditor.Focus();
+    }
+
+    // ───────────── Trova e sostituisci ─────────────
+
+    private void InitFindBar()
+    {
+        FindBox.TextChanged += (_, _) => UpdateFindCount(select: true);
+        foreach (var toggle in new[] { MatchCaseToggle, WholeWordToggle, RegexToggle })
+            toggle.IsCheckedChanged += (_, _) => UpdateFindCount(select: false);
+        FindNextButton.Click += (_, _) => FindNext(backwards: false);
+        FindPrevButton.Click += (_, _) => FindNext(backwards: true);
+        FindCloseButton.Click += (_, _) => CloseFind();
+        ReplaceOneButton.Click += (_, _) => ReplaceOne();
+        ReplaceAllButton.Click += (_, _) => ReplaceAll();
+        FindBox.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter) { FindNext(e.KeyModifiers.HasFlag(KeyModifiers.Shift)); e.Handled = true; }
+            else if (e.Key == Key.Escape) { CloseFind(); e.Handled = true; }
+        };
+        ReplaceBox.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter) { ReplaceOne(); e.Handled = true; }
+            else if (e.Key == Key.Escape) { CloseFind(); e.Handled = true; }
+        };
+    }
+
+    private System.Text.RegularExpressions.Regex? FindRegex() =>
+        Navifox.Core.TextSearch.Build(FindBox.Text ?? string.Empty, MatchCaseToggle.IsChecked == true, WholeWordToggle.IsChecked == true, RegexToggle.IsChecked == true);
+
+    private void OpenFind(bool replace)
+    {
+        FindBar.IsVisible = true;
+        ReplaceToggle.IsChecked = replace || ReplaceToggle.IsChecked == true;
+        var selected = SqlEditor.SelectedText;
+        if (!string.IsNullOrEmpty(selected) && !selected.Contains('\n')) FindBox.Text = selected;
+        FindBox.Focus();
+        FindBox.SelectAll();
+        UpdateFindCount(select: false);
+    }
+
+    private void CloseFind()
+    {
+        FindBar.IsVisible = false;
+        SqlEditor.Focus();
+    }
+
+    private void UpdateFindCount(bool select)
+    {
+        var regex = FindRegex();
+        var text = SqlEditor.Text ?? string.Empty;
+        var matches = Navifox.Core.TextSearch.FindAll(text, regex);
+        FindCount.Text = string.IsNullOrEmpty(FindBox.Text) ? string.Empty
+            : regex is null ? "espressione non valida"
+            : matches.Count == 0 ? "nessun risultato" : matches.Count == 1 ? "1 risultato" : $"{matches.Count:N0} risultati";
+        if (select && Navifox.Core.TextSearch.Next(matches, SqlEditor.SelectionStart, false) is { } first) Select(first);
+    }
+
+    private void FindNext(bool backwards)
+    {
+        if (!FindBar.IsVisible || string.IsNullOrEmpty(FindBox.Text)) { OpenFind(replace: false); return; }
+        var matches = Navifox.Core.TextSearch.FindAll(SqlEditor.Text ?? string.Empty, FindRegex());
+        var from = backwards ? SqlEditor.SelectionStart : SqlEditor.SelectionStart + Math.Max(1, SqlEditor.SelectionLength);
+        if (Navifox.Core.TextSearch.Next(matches, from, backwards) is { } match) Select(match);
+    }
+
+    private void Select(Navifox.Core.TextMatch match)
+    {
+        SqlEditor.Select(match.Index, match.Length);
+        SqlEditor.TextArea.Caret.BringCaretToView();
+        SqlEditor.ScrollTo(SqlEditor.Document.GetLineByOffset(match.Index).LineNumber, 0);
+    }
+
+    private void ReplaceOne()
+    {
+        var regex = FindRegex();
+        if (regex is null) return;
+        var text = SqlEditor.Text ?? string.Empty;
+        var matches = Navifox.Core.TextSearch.FindAll(text, regex);
+        var current = matches.FirstOrDefault(m => m.Index == SqlEditor.SelectionStart && m.Length == SqlEditor.SelectionLength);
+        if (current is null) { FindNext(backwards: false); return; }
+        var replacement = Navifox.Core.TextSearch.Replacement(regex, text, current, ReplaceBox.Text ?? string.Empty, RegexToggle.IsChecked == true);
+        SqlEditor.Document.Replace(current.Index, current.Length, replacement);
+        SqlEditor.Select(current.Index + replacement.Length, 0);
+        UpdateFindCount(select: false);
+        FindNext(backwards: false);
+    }
+
+    private void ReplaceAll()
+    {
+        var (text, count) = Navifox.Core.TextSearch.ReplaceAll(SqlEditor.Text ?? string.Empty, FindRegex(), ReplaceBox.Text ?? string.Empty, RegexToggle.IsChecked == true);
+        if (count == 0) { FindCount.Text = "nessun risultato"; return; }
+        // Una sola operazione annullabile con Ctrl+Z.
+        SqlEditor.Document.Replace(0, SqlEditor.Document.TextLength, text);
+        FindCount.Text = count == 1 ? "1 sostituzione" : $"{count:N0} sostituzioni";
+    }
+
     private void OnInsert(string text)
     {
         SqlEditor.Document.Insert(SqlEditor.CaretOffset, text);
@@ -170,6 +304,10 @@ public partial class QueryPageView : UserControl
         else if (e.Key == Key.R && ctrl) { _viewModel.ExecuteAllCommand.Execute(null); e.Handled = true; }
         else if (e.Key == Key.S && ctrl) { _viewModel.SaveCommand.Execute(null); e.Handled = true; }
         else if (e.Key == Key.F && ctrl && shift) { _viewModel.BeautifyCommand.Execute(null); e.Handled = true; }
+        else if (e.Key == Key.F && ctrl) { OpenFind(replace: false); e.Handled = true; }
+        else if (e.Key == Key.H && ctrl) { OpenFind(replace: true); e.Handled = true; }
+        else if (e.Key == Key.F3) { FindNext(backwards: shift); e.Handled = true; }
+        else if (e.Key == Key.Escape && FindBar.IsVisible) { CloseFind(); e.Handled = true; }
     }
 
     private void OnConsoleKeyDown(object? sender, KeyEventArgs e)

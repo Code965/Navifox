@@ -195,6 +195,42 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     public string Context => SelectedDatabase is null ? $"{_profile.Name} · server" : $"{_profile.Name} · {SelectedDatabase}";
     public ObservableCollection<ColumnInfo> Columns { get; } = [];
     public ObservableCollection<TableRowViewModel> Rows { get; } = [];
+
+    /// <summary>Un risultato per ogni istruzione che restituisce righe: si passa dall'uno all'altro con le linguette.</summary>
+    public ObservableCollection<ResultSetTab> ResultSets { get; } = [];
+    [ObservableProperty] private ResultSetTab? _selectedResultSet;
+    public bool HasManyResults => ResultSets.Count > 1;
+
+    partial void OnSelectedResultSetChanged(ResultSetTab? value)
+    {
+        if (value is null) return;
+        _quickFilters.Clear();
+        _quickFilterTexts.Clear();
+        _allRows.Clear();
+        _allRows.AddRange(value.Rows);
+        Columns.Clear();
+        Rows.Clear();
+        foreach (var column in value.Columns) Columns.Add(column);
+        foreach (var row in value.Rows) Rows.Add(row);
+        if (HasManyResults) StatusMessage = $"{value.Title}: {value.Rows.Count:N0} righe{(value.Truncated ? $" (prime {MaxRows:N0})" : string.Empty)}";
+        PrepareChart();
+    }
+
+    /// <summary>Ultimi valori dei parametri (:nome) usati in questa scheda.</summary>
+    private readonly Dictionary<string, Views.QueryParameterValue> _parameterValues = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Chiede i valori dei parametri :nome / ${nome} e li sostituisce; null se l'utente annulla.</summary>
+    private async Task<string?> ResolveParametersAsync(string sql)
+    {
+        var names = SqlParameters.Names(sql);
+        if (names.Count == 0 || _dialogs is null) return sql;
+        var window = new Views.QueryParametersWindow(names, _parameterValues);
+        if (!await _dialogs.ShowDialogAsync(window)) return null;
+        foreach (var (name, value) in window.Values) _parameterValues[name] = value;
+        var literals = names.ToDictionary(n => n, n => SqlParameters.Literal(_parameterValues[n].Value, _parameterValues[n].Raw, _profile.Kind), StringComparer.OrdinalIgnoreCase);
+        return SqlParameters.Substitute(sql, literals);
+    }
+
     /// <summary>Tutte le righe del risultato; <see cref="Rows"/> contiene solo quelle che passano il filtro rapido.</summary>
     private readonly List<TableRowViewModel> _allRows = [];
     private readonly Dictionary<int, QuickFilterCondition> _quickFilters = [];
@@ -393,6 +429,8 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
 
     private async Task RunAsync(string sql, bool console)
     {
+        if (await ResolveParametersAsync(sql) is not { } resolved) { StatusMessage = "Esecuzione annullata."; return; }
+        sql = resolved;
         if (!await Services.SqlGuard.ConfirmAsync(_dialogs, _profile, sql, countRows: Services.SqlGuard.Counter(_databaseAccess, _profile, SelectedDatabase)))
         { StatusMessage = "Esecuzione annullata."; return; }
         _running = new CancellationTokenSource();
@@ -445,16 +483,14 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         _allRows.Clear();
         Columns.Clear();
         Rows.Clear();
-        if (lastWithRows?.Result is { } shown)
-        {
-            foreach (var column in shown.Columns) Columns.Add(column);
-            foreach (var row in shown.Rows)
-            {
-                var item = new TableRowViewModel(row);
-                _allRows.Add(item);
-                Rows.Add(item);
-            }
-        }
+        ResultSets.Clear();
+        var number = 0;
+        foreach (var result in results)
+            if (result.Result is { HasResultSet: true } set)
+                ResultSets.Add(new ResultSetTab(++number, ResultSetTab.Describe(result.Sql), set.Columns, set.Rows.Select(row => new TableRowViewModel(row)).ToArray(), set.Truncated));
+        OnPropertyChanged(nameof(HasManyResults));
+        SelectedResultSet = null;
+        SelectedResultSet = ResultSets.FirstOrDefault();
         foreach (var result in results)
         {
             var head = OneLine(result.Sql);
@@ -466,6 +502,8 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         if (failed is not null) RememberError(failed.Sql, failed.Error!.Message);
         StatusMessage = failed is not null
             ? $"Errore: {failed.Error!.Message}"
+            : ResultSets.Count > 1
+                ? $"{ResultSets.Count} risultati · {results.Count} istruzioni · {elapsed.TotalSeconds:0.000} s"
             : lastWithRows?.Result is { } r
                 ? $"{r.Rows.Count:N0} righe{(r.Truncated ? $" (prime {MaxRows:N0})" : string.Empty)} · {results.Count} istruzioni · {elapsed.TotalSeconds:0.000} s"
                 : $"{results.Count} istruzioni eseguite · {elapsed.TotalSeconds:0.000} s";
@@ -524,5 +562,26 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         // Limita la trascrizione a ~400 KB per mantenere reattivo il controllo.
         if (_transcript.Length > 400_000) _transcript.Remove(0, _transcript.Length - 300_000);
         ConsoleText = _transcript.ToString();
+    }
+}
+
+/// <summary>Risultato di una delle istruzioni eseguite (linguetta sopra la griglia).</summary>
+public sealed class ResultSetTab(int number, string source, IReadOnlyList<ColumnInfo> columns, IReadOnlyList<TableRowViewModel> rows, bool truncated)
+{
+    public int Number { get; } = number;
+    public string Title { get; } = $"Risultato {number}";
+    public string Source { get; } = source;
+    public IReadOnlyList<ColumnInfo> Columns { get; } = columns;
+    public IReadOnlyList<TableRowViewModel> Rows { get; } = rows;
+    public bool Truncated { get; } = truncated;
+    public string Label => $"{Number} · {Source} ({Rows.Count:N0})";
+
+    /// <summary>Nome breve: la tabella dopo FROM, altrimenti l'inizio dell'istruzione.</summary>
+    public static string Describe(string sql)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(sql, @"\bFROM\s+([`""\[]?[\w.]+[`""\]]?)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (match.Success) return match.Groups[1].Value.Trim('`', '"', '[', ']');
+        var line = string.Join(' ', sql.Split((char[])['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim();
+        return line.Length > 24 ? line[..24] + "…" : line;
     }
 }

@@ -102,12 +102,50 @@
           </Grid>
         </StackPanel>
       </Border>
-      <c:SqlEditor x:Name="SqlEditor" Grid.Row="1" Padding="6,8" />
+      <DockPanel Grid.Row="1">
+        <!-- Trova e sostituisci (Ctrl+F / Ctrl+H) -->
+        <Border x:Name="FindBar" DockPanel.Dock="Top" IsVisible="False" Background="{DynamicResource InsetBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="5">
+            <ToggleButton x:Name="ReplaceToggle" Classes="objbar" Padding="4" VerticalAlignment="Center" ToolTip.Tip="Mostra o nascondi Sostituisci (Ctrl+H)">
+              <c:NfIcon Kind="chevron-right" Width="12" Height="12" />
+            </ToggleButton>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <TextBox x:Name="FindBox" Width="260" Watermark="Trova" FontSize="12.5" MinHeight="26" />
+              <ToggleButton x:Name="MatchCaseToggle" Classes="objbar" Content="Aa" Padding="6,3" ToolTip.Tip="Maiuscole/minuscole" />
+              <ToggleButton x:Name="WholeWordToggle" Classes="objbar" Content="ab" Padding="6,3" FontWeight="Bold" ToolTip.Tip="Parola intera" />
+              <ToggleButton x:Name="RegexToggle" Classes="objbar" Content=".*" Padding="6,3" ToolTip.Tip="Espressione regolare" />
+              <TextBlock x:Name="FindCount" VerticalAlignment="Center" MinWidth="90" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+              <Button x:Name="FindPrevButton" Classes="objbar" Padding="5,3" ToolTip.Tip="Precedente (Maiusc+F3)"><c:NfIcon Kind="arrow-up" Width="13" Height="13" /></Button>
+              <Button x:Name="FindNextButton" Classes="objbar" Padding="5,3" ToolTip.Tip="Successivo (F3 o Invio)"><c:NfIcon Kind="arrow-down" Width="13" Height="13" /></Button>
+              <Button x:Name="FindCloseButton" Classes="objbar" Padding="5,3" ToolTip.Tip="Chiudi (Esc)"><c:NfIcon Kind="x" Width="13" Height="13" /></Button>
+            </StackPanel>
+            <StackPanel x:Name="ReplaceRow" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding #ReplaceToggle.IsChecked}">
+              <TextBox x:Name="ReplaceBox" Width="260" Watermark="Sostituisci con" FontSize="12.5" MinHeight="26" />
+              <Button x:Name="ReplaceOneButton" Classes="objbar" Content="Sostituisci" ToolTip.Tip="Sostituisci la corrispondenza selezionata e passa alla successiva" />
+              <Button x:Name="ReplaceAllButton" Classes="objbar" Content="Sostituisci tutto" />
+            </StackPanel>
+          </Grid>
+        </Border>
+        <c:SqlEditor x:Name="SqlEditor" Padding="6,8" />
+      </DockPanel>
       <GridSplitter Grid.Row="2" Background="{DynamicResource BorderBrush}" ResizeDirection="Rows" />
       <TabControl Grid.Row="3" SelectedIndex="{Binding ResultTabIndex, Mode=TwoWay}" Classes="workspace" Padding="0">
         <TabItem Header="Risultato">
-          <DataGrid x:Name="ResultGrid" Classes="nf-grid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
-                    CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="False" />
+          <DockPanel>
+            <!-- Più istruzioni con risultati: una linguetta per ciascuna -->
+            <ListBox DockPanel.Dock="Top" Classes="result-sets" ItemsSource="{Binding ResultSets}" SelectedItem="{Binding SelectedResultSet, Mode=TwoWay}"
+                     IsVisible="{Binding HasManyResults}">
+              <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ResultSetTab">
+                  <TextBlock Text="{Binding Label}" FontSize="12" ToolTip.Tip="{Binding Title}" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <DataGrid x:Name="ResultGrid" Classes="nf-grid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
+                      CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="False" />
+          </DockPanel>
         </TabItem>
         <TabItem Header="Grafico">
           <Grid RowDefinitions="Auto,*,Auto">
