@@ -10,6 +10,7 @@ internal static class Program
     {
         // Deve essere la prima istruzione: gestisce installazione, disinstallazione e riavvio dopo un aggiornamento.
         VelopackApp.Build().Run();
+        Services.CrashReporter.Install();
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

@@ -12,6 +12,11 @@
   1. dotnet publish (Release, win-x64, self-contained: non serve installare .NET sui PC)
   2. vpk pack  -> Releases\Navifox-win-Setup.exe, pacchetto completo e delta rispetto alla versione precedente
   3. opzionale: copia dei file nella -Destination (cartella condivisa da cui i client si aggiornano)
+
+  Firma digitale (facoltativa): con -SignParams (certificato .pfx, tramite signtool) oppure -AzureTrustedSignFile
+  vpk firma Navifox.exe, le librerie e il Setup: Windows mostra l'editore invece di «editore sconosciuto».
+    .\release.ps1 1.1.0 -SignParams '/f firma.pfx /p password /fd sha256 /tr http://timestamp.digicert.com /td sha256'
+    .\release.ps1 1.1.0 -AzureTrustedSignFile azure-signing.json
 #>
 param(
     [Parameter(Mandatory = $true)][ValidatePattern('^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$')][string]$Version,
@@ -19,7 +24,11 @@ param(
     # Dove i client installati cercano gli aggiornamenti (incorporato nell'exe). Predefinita: la cartella releases.
     [string]$UpdateSource = "",
     # Cartella dove copiare la release pubblicata (es. \\server\navifox). Predefinita: nessuna copia.
-    [string]$Destination = ""
+    [string]$Destination = "",
+    # Argomenti per signtool (es. '/f cert.pfx /p pwd /fd sha256 /tr http://timestamp.digicert.com /td sha256').
+    [string]$SignParams = "",
+    # File JSON di Azure Trusted Signing (Endpoint, CodeSigningAccountName, CertificateProfileName).
+    [string]$AzureTrustedSignFile = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,6 +63,14 @@ if ($Notes) {
     $notesFile = Join-Path $publish 'release-notes.md'
     Set-Content -Path $notesFile -Value $Notes -Encoding utf8
     $packArgs += @('--releaseNotes', $notesFile)
+}
+if ($SignParams) {
+    $packArgs += @('--signParams', $SignParams)
+    Write-Host "    firma digitale: certificato" -ForegroundColor DarkGray
+}
+elseif ($AzureTrustedSignFile) {
+    $packArgs += @('--azureTrustedSignFile', $AzureTrustedSignFile)
+    Write-Host "    firma digitale: Azure Trusted Signing" -ForegroundColor DarkGray
 }
 & vpk @packArgs
 if ($LASTEXITCODE -ne 0) { throw "vpk pack non riuscito" }

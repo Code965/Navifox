@@ -716,6 +716,7 @@ public partial class OptionsViewModel : ObservableObject
         _checkUpdatesOnStartup = settings.CheckUpdatesOnStartup;
         _safeMode = settings.SafeMode;
         _conditionalFormatting = settings.ConditionalFormatting;
+        _offerCrashReports = settings.OfferCrashReports;
         _rowPreview = RowPreviewModes.FirstOrDefault(m => m.Value == settings.RowPreview) ?? RowPreviewModes[1];
         _restoreSession = settings.RestoreSession;
         _updateSource = settings.UpdateSource;
@@ -837,6 +838,7 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private bool _checkUpdatesOnStartup;
     [ObservableProperty] private bool _safeMode;
     [ObservableProperty] private bool _conditionalFormatting;
+    [ObservableProperty] private bool _offerCrashReports;
     [ObservableProperty] private RowPreviewMode? _rowPreview;
 
     public IReadOnlyList<RowPreviewMode> RowPreviewModes { get; } =
@@ -861,6 +863,7 @@ public partial class OptionsViewModel : ObservableObject
         settings.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
         settings.SafeMode = SafeMode;
         settings.ConditionalFormatting = ConditionalFormatting;
+        settings.OfferCrashReports = OfferCrashReports;
         settings.RowPreview = RowPreview?.Value ?? SqlGuard.PreviewWithConfirm;
         settings.RestoreSession = RestoreSession;
         settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;

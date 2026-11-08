@@ -31,6 +31,8 @@
           <CheckBox Classes="crit-check" Content="All'avvio riapri le schede dell'ultima sessione" IsChecked="{Binding RestoreSession, Mode=TwoWay}" />
           <CheckBox Classes="crit-check" Content="Modalità sicura: conferma UPDATE/DELETE senza WHERE, DROP e TRUNCATE" IsChecked="{Binding SafeMode, Mode=TwoWay}"
                     ToolTip.Tip="Sulle connessioni di produzione Navifox chiede sempre conferma prima di ogni modifica" />
+          <CheckBox Classes="crit-check" Content="Dopo un errore imprevisto proponi di inviare una segnalazione anonima" IsChecked="{Binding OfferCrashReports, Mode=TwoWay}"
+                    ToolTip.Tip="Navifox mostra il testo della segnalazione (senza nomi, password, indirizzi o valori) e, solo se scegli «Segnala su GitHub», apre la pagina con la segnalazione già compilata." />
           <CheckBox Classes="crit-check" Content="Formattazione condizionale: numeri negativi in rosso, scadenze passate evidenziate" IsChecked="{Binding ConditionalFormatting, Mode=TwoWay}"
                     ToolTip.Tip="Le date passate si evidenziano nelle colonne di scadenza (scadenza, due_date, expires_at, valid_until…). Vale per le schede aperte da ora in poi." />
           <Grid ColumnDefinitions="200,*">

@@ -84,11 +84,44 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Write-Host 'Nessuna versione precedente: si pubblica solo il pacchetto completo.' }
           exit 0
 
+      # Firma digitale facoltativa: si attiva da sola quando nei Secrets del repository c'è
+      #   SIGNING_CERT_PFX (certificato .pfx in Base64) + SIGNING_CERT_PASSWORD
+      # oppure, per Azure Trusted Signing:
+      #   AZURE_SIGNING_ENDPOINT + AZURE_SIGNING_ACCOUNT + AZURE_SIGNING_PROFILE + AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET
       - name: Installer e pacchetti
         shell: pwsh
+        env:
+          SIGNING_CERT_PFX: ${{ secrets.SIGNING_CERT_PFX }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ secrets.AZURE_SIGNING_PROFILE }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
           $notes = Get-Content release-notes.md -Raw
-          ./release.ps1 '${{ steps.meta.outputs.version }}' -UpdateSource $env:REPO_URL -Notes $notes
+          $sign = @{}
+          if ($env:SIGNING_CERT_PFX) {
+            $pfx = Join-Path $env:RUNNER_TEMP 'navifox-firma.pfx'
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_CERT_PFX))
+            $sign.SignParams = "/f `"$pfx`" /p `"$env:SIGNING_CERT_PASSWORD`" /fd sha256 /tr http://timestamp.digicert.com /td sha256"
+            Write-Host 'Firma digitale: certificato .pfx'
+          }
+          elseif ($env:AZURE_SIGNING_ENDPOINT) {
+            $meta = Join-Path $env:RUNNER_TEMP 'azure-signing.json'
+            @{ Endpoint = $env:AZURE_SIGNING_ENDPOINT; CodeSigningAccountName = $env:AZURE_SIGNING_ACCOUNT; CertificateProfileName = $env:AZURE_SIGNING_PROFILE } |
+              ConvertTo-Json | Set-Content $meta -Encoding utf8
+            $sign.AzureTrustedSignFile = $meta
+            Write-Host 'Firma digitale: Azure Trusted Signing'
+          }
+          else { Write-Host 'Nessun certificato nei Secrets: installer non firmato.' }
+          ./release.ps1 '${{ steps.meta.outputs.version }}' -UpdateSource $env:REPO_URL -Notes $notes @sign
+
+      - name: Rimozione del certificato
+        if: always()
+        shell: pwsh
+        run: Remove-Item (Join-Path $env:RUNNER_TEMP 'navifox-firma.pfx') -ErrorAction SilentlyContinue
 
       - name: Pubblicazione della Release su GitHub
         if: steps.meta.outputs.publish == 'true'
