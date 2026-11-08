@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="..\Assets\NaviFoxBrand\**\*.*" Link="Assets\NaviFoxBrand\%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Assets\i18n\*.json" LogicalName="Navifox.i18n.%(Filename).json" />
     <PackageReference Include="Anthropic" Version="13.6.0" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />

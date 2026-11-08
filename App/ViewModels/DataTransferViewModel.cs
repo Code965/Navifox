@@ -717,6 +717,7 @@ public partial class OptionsViewModel : ObservableObject
         _safeMode = settings.SafeMode;
         _conditionalFormatting = settings.ConditionalFormatting;
         _offerCrashReports = settings.OfferCrashReports;
+        _language = Languages.FirstOrDefault(l => l.Value == settings.Language) ?? Languages[0];
         _rowPreview = RowPreviewModes.FirstOrDefault(m => m.Value == settings.RowPreview) ?? RowPreviewModes[1];
         _restoreSession = settings.RestoreSession;
         _updateSource = settings.UpdateSource;
@@ -839,6 +840,15 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private bool _safeMode;
     [ObservableProperty] private bool _conditionalFormatting;
     [ObservableProperty] private bool _offerCrashReports;
+    [ObservableProperty] private RowPreviewMode? _language;
+
+    /// <summary>Lingua dell'interfaccia (vale dal prossimo avvio).</summary>
+    public IReadOnlyList<RowPreviewMode> Languages { get; } =
+    [
+        new(string.Empty, "Automatica (lingua di Windows) · Automatic"),
+        new(Services.Localization.Italian, "Italiano"),
+        new(Services.Localization.English, "English"),
+    ];
     [ObservableProperty] private RowPreviewMode? _rowPreview;
 
     public IReadOnlyList<RowPreviewMode> RowPreviewModes { get; } =
@@ -864,6 +874,7 @@ public partial class OptionsViewModel : ObservableObject
         settings.SafeMode = SafeMode;
         settings.ConditionalFormatting = ConditionalFormatting;
         settings.OfferCrashReports = OfferCrashReports;
+        settings.Language = Language?.Value ?? string.Empty;
         settings.RowPreview = RowPreview?.Value ?? SqlGuard.PreviewWithConfirm;
         settings.RestoreSession = RestoreSession;
         settings.UpdateSource = UpdateSource?.Trim() ?? string.Empty;

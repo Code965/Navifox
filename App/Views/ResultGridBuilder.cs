@@ -176,7 +176,8 @@ public static class ResultGridBuilder
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = numeric ? HorizontalAlignment.Right : HorizontalAlignment.Left,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Avalonia.Thickness(6, 0)
+            Margin = new Avalonia.Thickness(6, 0),
+            Classes = { "no-tr" } // dati dell'utente: mai tradotti
         };
         if (cell is null) return text;
         text.Bind(TextBlock.TextProperty, new Binding(nameof(CellViewModel.Text)) { Source = cell });

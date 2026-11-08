@@ -32,6 +32,8 @@ public sealed class AppSettings
     public bool ConditionalFormatting { get; set; } = true;
     /// <summary>Dopo un errore imprevisto propone di inviare una segnalazione anonima (si apre GitHub, nulla parte da solo).</summary>
     public bool OfferCrashReports { get; set; } = true;
+    /// <summary>Lingua dell'interfaccia: "" = automatica (quella di Windows), "it" o "en". Vale dal riavvio.</summary>
+    public string Language { get; set; } = string.Empty;
     /// <summary>Server Monitor: avviso se le connessioni superano questa percentuale del massimo (0 = disattivato).</summary>
     public int MonitorAlertConnectionsPercent { get; set; } = 80;
     /// <summary>Server Monitor: avviso per le query in esecuzione da più di questi secondi (0 = disattivato).</summary>
