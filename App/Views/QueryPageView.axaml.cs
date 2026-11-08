@@ -27,6 +27,7 @@ public partial class QueryPageView : UserControl
         RunButton.Click += (_, _) => Run(RunMode.Auto);
         RunSelectionItem.Click += (_, _) => Run(RunMode.Selection);
         RunCurrentItem.Click += (_, _) => Run(RunMode.Current);
+        MultiRunItem.Click += async (_, _) => await OpenMultiRunAsync();
         AssistExplainItem.Click += (_, _) =>
         {
             if (_viewModel is null) return;
@@ -149,6 +150,17 @@ public partial class QueryPageView : UserControl
     }
 
     private enum RunMode { Auto, Selection, Current }
+
+    /// <summary>Stessa query (selezione, altrimenti tutto l'editor) su più connessioni o database, risultati affiancati.</summary>
+    private async Task OpenMultiRunAsync()
+    {
+        if (_viewModel is null || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var sql = string.IsNullOrWhiteSpace(SqlEditor.SelectedText) ? SqlEditor.Text ?? string.Empty : SqlEditor.SelectedText;
+        if (string.IsNullOrWhiteSpace(sql)) return;
+        var access = App.Services.GetService(typeof(Services.IDatabaseAccessService)) as Services.IDatabaseAccessService;
+        if (access is null || _viewModel.SelectedProfile is not { } profile) return;
+        await new MultiRunWindow(access, _viewModel.Profiles, profile, _viewModel.SelectedDatabase, sql).ShowDialog(owner);
+    }
 
     private void InsertSnippetText(string body)
     {

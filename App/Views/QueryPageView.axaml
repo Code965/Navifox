@@ -89,6 +89,8 @@
                     <MenuItem Header="Esegui tutto" Command="{Binding ExecuteAllCommand}" InputGesture="Ctrl+R" />
                     <MenuItem x:Name="RunSelectionItem" Header="Esegui selezione" InputGesture="Ctrl+Enter" />
                     <MenuItem x:Name="RunCurrentItem" Header="Esegui istruzione corrente" InputGesture="Ctrl+Shift+Enter" />
+                    <Separator />
+                    <MenuItem x:Name="MultiRunItem" Header="Esegui su più database e confronta…" />
                   </MenuFlyout>
                 </Button.Flyout>
               </Button>
