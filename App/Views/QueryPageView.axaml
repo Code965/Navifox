@@ -114,7 +114,7 @@
               <c:NfIcon Kind="chevron-right" Width="12" Height="12" />
             </ToggleButton>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-              <TextBox x:Name="FindBox" Width="260" Watermark="Trova" FontSize="12.5" MinHeight="26" />
+              <TextBox x:Name="FindBox" Width="260" Watermark="Trova nel testo SQL" ToolTip.Tip="Cerca nel testo della query (non nei risultati: per i dati usa il Filtro rapido)" FontSize="12.5" MinHeight="26" />
               <ToggleButton x:Name="MatchCaseToggle" Classes="objbar" Content="Aa" Padding="6,3" ToolTip.Tip="Maiuscole/minuscole" />
               <ToggleButton x:Name="WholeWordToggle" Classes="objbar" Content="ab" Padding="6,3" FontWeight="Bold" ToolTip.Tip="Parola intera" />
               <ToggleButton x:Name="RegexToggle" Classes="objbar" Content=".*" Padding="6,3" ToolTip.Tip="Espressione regolare" />
@@ -124,7 +124,7 @@
               <Button x:Name="FindCloseButton" Classes="objbar" Padding="5,3" ToolTip.Tip="Chiudi (Esc)"><c:NfIcon Kind="x" Width="13" Height="13" /></Button>
             </StackPanel>
             <StackPanel x:Name="ReplaceRow" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding #ReplaceToggle.IsChecked}">
-              <TextBox x:Name="ReplaceBox" Width="260" Watermark="Sostituisci con" FontSize="12.5" MinHeight="26" />
+              <TextBox x:Name="ReplaceBox" Width="260" Watermark="Sostituisci nel testo SQL con" FontSize="12.5" MinHeight="26" />
               <Button x:Name="ReplaceOneButton" Classes="objbar" Content="Sostituisci" ToolTip.Tip="Sostituisci la corrispondenza selezionata e passa alla successiva" />
               <Button x:Name="ReplaceAllButton" Classes="objbar" Content="Sostituisci tutto" />
             </StackPanel>

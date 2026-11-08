@@ -161,6 +161,7 @@ public partial class TablePageView : UserControl
         ResultGridBuilder.Rebuild(ResultGrid, vm.Columns, vm.CanEdit, HeaderGlyph, SelectColumn, SortColumn,
             filterText: i => i < vm.Columns.Count ? vm.QuickFilterText(vm.Columns[i].Name) : string.Empty,
             onFilter: (i, text) => { if (i < vm.Columns.Count) _ = vm.SetQuickFilterAsync(vm.Columns[i].Name, text); });
+        FrozenColumns.Set(ResultGrid, 0);
         _selectionMode = SelectionKind.Cell;
         ResultGrid.Classes.Remove("row-mode");
         ResultGrid.Classes.Remove("col-mode");
@@ -369,14 +370,20 @@ public partial class TablePageView : UserControl
         if (_viewModel is null) return;
         var column = ResultGrid.CurrentColumn ?? ResultGrid.Columns.FirstOrDefault(c => c.Tag is int i && i == ResultGridBuilder.GetHighlightColumn(ResultGrid));
         if (column is null) { _viewModel.StatusMessage = "Clicca una cella della colonna fino a cui bloccare."; return; }
-        ResultGrid.FrozenColumnCount = column.DisplayIndex + 1;
-        _viewModel.StatusMessage = $"Colonne bloccate a sinistra: {ResultGrid.FrozenColumnCount} (restano visibili scorrendo).";
+        SetFrozenColumns(column.DisplayIndex + 1);
+        _viewModel.StatusMessage = $"Colonne bloccate a sinistra: {column.DisplayIndex + 1} (restano visibili scorrendo in orizzontale).";
     }
 
     private void OnUnfreezeColumns(object? sender, RoutedEventArgs e)
     {
-        ResultGrid.FrozenColumnCount = 0;
+        SetFrozenColumns(0);
         if (_viewModel is not null) _viewModel.StatusMessage = "Colonne sbloccate.";
+    }
+
+    /// <summary>Colonne bloccate a sinistra (vedi <see cref="FrozenColumns"/>).</summary>
+    private void SetFrozenColumns(int count)
+    {
+        FrozenColumns.Set(ResultGrid, count);
     }
 
     private void SyncCurrent() => _viewModel?.SetCurrent(ResultGrid.SelectedItem as TableRowViewModel, CurrentIndex());

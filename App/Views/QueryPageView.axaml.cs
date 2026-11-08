@@ -230,7 +230,7 @@ public partial class QueryPageView : UserControl
         var matches = Navifox.Core.TextSearch.FindAll(text, regex);
         FindCount.Text = string.IsNullOrEmpty(FindBox.Text) ? string.Empty
             : regex is null ? "espressione non valida"
-            : matches.Count == 0 ? "nessun risultato" : matches.Count == 1 ? "1 risultato" : $"{matches.Count:N0} risultati";
+            : matches.Count == 0 ? "non presente nel testo SQL" : matches.Count == 1 ? "1 risultato" : $"{matches.Count:N0} risultati";
         if (select && Navifox.Core.TextSearch.Next(matches, SqlEditor.SelectionStart, false) is { } first) Select(first);
     }
 

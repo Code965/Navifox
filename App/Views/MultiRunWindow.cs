@@ -30,6 +30,8 @@ public sealed class MultiRunWindow : Window
 
     private readonly IDatabaseAccessService _access;
     private readonly string _sql;
+    private readonly string? _sourceDatabase;
+    private readonly CheckBox _adapt = new() { IsChecked = true, IsVisible = false };
     private readonly List<Target> _targets = [];
     private readonly Grid _results = new();
     private readonly TextBlock _summary = new() { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
@@ -42,6 +44,14 @@ public sealed class MultiRunWindow : Window
     {
         _access = access;
         _sql = sql;
+        _sourceDatabase = currentDatabase;
+        // La query nomina il database (es. biblionet.authors): sugli altri server va sostituito con il database scelto.
+        if (!string.IsNullOrEmpty(currentDatabase) && QualifiedName(currentDatabase).IsMatch(sql))
+        {
+            _adapt.IsVisible = true;
+            // TextBlock: in un Content testuale «_» diventerebbe una scorciatoia da tastiera e sparirebbe.
+            _adapt.Content = new TextBlock { Text = $"Nella query sostituisci «{currentDatabase}.» con il database scelto per ciascuna connessione", TextWrapping = TextWrapping.Wrap };
+        }
         Title = "Esegui su più database e confronta";
         Width = 1240;
         Height = 760;
@@ -101,6 +111,7 @@ public sealed class MultiRunWindow : Window
         top.Children.Add(sqlPreview);
         top.Children.Add(hint);
         top.Children.Add(targetsBox);
+        top.Children.Add(_adapt);
         top.Children.Add(actions);
         var root = new DockPanel();
         DockPanel.SetDock(top, Dock.Top);
@@ -130,6 +141,10 @@ public sealed class MultiRunWindow : Window
         }
     }
 
+    /// <summary>«database.» come qualificatore (anche tra `…`, "…" o […]), non dentro un nome più lungo.</summary>
+    private static System.Text.RegularExpressions.Regex QualifiedName(string database) =>
+        new($@"(?<![\w$`""\]])(?<open>[`""\[]?){System.Text.RegularExpressions.Regex.Escape(database)}(?<close>[`""\]]?)\.", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
     private async Task RunAsync()
     {
         var chosen = _targets.Where(t => t.Check.IsChecked == true).ToArray();
@@ -151,7 +166,10 @@ public sealed class MultiRunWindow : Window
             var timer = Stopwatch.StartNew();
             try
             {
-                var results = await _access.ExecuteBatchAsync(target.Profile, database, _sql, maxRows, CancellationToken.None);
+                var sql = _adapt.IsVisible && _adapt.IsChecked == true && !string.IsNullOrEmpty(database) && _sourceDatabase is { } source
+                    ? QualifiedName(source).Replace(_sql, m => m.Groups["open"].Value + database + m.Groups["close"].Value + ".")
+                    : _sql;
+                var results = await _access.ExecuteBatchAsync(target.Profile, database, sql, maxRows, CancellationToken.None);
                 var error = results.FirstOrDefault(r => r.Error is not null)?.Error;
                 var last = results.LastOrDefault(r => r.Result?.HasResultSet == true)?.Result;
                 return (target, database, result: error is null ? last : null, error: error?.Message ?? (last is null ? "Nessun risultato" : null), timer.Elapsed);
