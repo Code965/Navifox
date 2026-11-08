@@ -70,6 +70,24 @@ public sealed class SqlEditor : TextEditor
         _folding = FoldingManager.Install(TextArea);
         _foldTimer.Tick += (_, _) => { _foldTimer.Stop(); UpdateFoldings(); };
         TextChanged += (_, _) => { _foldTimer.Stop(); _foldTimer.Start(); };
+        // In anteprima (tunnel): l'area di testo gestirebbe Tab (rientro) e le frecce prima di noi.
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Up or Key.Down && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Alt))
+        {
+            AddCaretVertically(e.Key == Key.Up ? -1 : 1);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Tab && e.KeyModifiers == KeyModifiers.None && _completion is null && TryExpandSnippet())
+            e.Handled = true;
+        else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key is Key.OemMinus or Key.Subtract or Key.OemPlus or Key.Add)
+        {
+            SetAllFolded(e.Key is Key.OemMinus or Key.Subtract);
+            e.Handled = true;
+        }
     }
 
     private readonly FoldingManager _folding;
@@ -146,23 +164,7 @@ public sealed class SqlEditor : TextEditor
             e.Handled = true;
             return;
         }
-        if (e.Key is Key.Up or Key.Down && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Alt))
-        {
-            AddCaretVertically(e.Key == Key.Up ? -1 : 1);
-            e.Handled = true;
-            return;
-        }
-        if (e.Key == Key.Tab && e.KeyModifiers == KeyModifiers.None && _completion is null && TryExpandSnippet())
-        {
-            e.Handled = true;
-            return;
-        }
-        if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key is Key.OemMinus or Key.Subtract or Key.OemPlus or Key.Add)
-        {
-            SetAllFolded(e.Key is Key.OemMinus or Key.Subtract);
-            e.Handled = true;
-            return;
-        }
+
         base.OnKeyDown(e);
     }
 

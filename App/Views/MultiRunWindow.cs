@@ -23,7 +23,9 @@ public sealed class MultiRunWindow : Window
         public CheckBox Check { get; } = new() { VerticalAlignment = VerticalAlignment.Center };
         public ComboBox Database { get; } = new() { MinWidth = 200, PlaceholderText = "(predefinito)", FontSize = 12.5 };
         public ObservableCollection<string> Databases { get; } = [];
-        public bool Loaded { get; set; }
+        /// <summary>Database da preselezionare (quello della scheda per la connessione corrente).</summary>
+        public string? Preferred { get; set; }
+        public Task? Loading { get; set; }
     }
 
     private readonly IDatabaseAccessService _access;
@@ -68,12 +70,12 @@ public sealed class MultiRunWindow : Window
             row.Children.Add(host);
             list.Children.Add(row);
             _targets.Add(target);
-            target.Check.IsCheckedChanged += async (_, _) => { if (target.Check.IsChecked == true) await LoadDatabasesAsync(target, null); };
-            target.Database.DropDownOpened += async (_, _) => await LoadDatabasesAsync(target, null);
+            target.Check.IsCheckedChanged += async (_, _) => { if (target.Check.IsChecked == true) await LoadDatabasesAsync(target); };
+            target.Database.DropDownOpened += async (_, _) => await LoadDatabasesAsync(target);
             if (profile.Id == current?.Id)
             {
+                target.Preferred = currentDatabase;
                 target.Check.IsChecked = true;
-                _ = LoadDatabasesAsync(target, currentDatabase);
             }
         }
         var targetsBox = new Border
@@ -107,10 +109,11 @@ public sealed class MultiRunWindow : Window
         Content = root;
     }
 
-    private async Task LoadDatabasesAsync(Target target, string? preferred)
+    private Task LoadDatabasesAsync(Target target) => target.Loading ??= LoadDatabasesCoreAsync(target);
+
+    private async Task LoadDatabasesCoreAsync(Target target)
     {
-        if (target.Loaded) { if (preferred is not null) target.Database.SelectedItem = preferred; return; }
-        target.Loaded = true;
+        var preferred = target.Preferred;
         try
         {
             var databases = await _access.ListDatabasesAsync(target.Profile, CancellationToken.None);
@@ -121,7 +124,7 @@ public sealed class MultiRunWindow : Window
         }
         catch (Exception error)
         {
-            target.Loaded = false;
+            target.Loading = null;
             ToolTip.SetTip(target.Database, error.Message);
             target.Database.PlaceholderText = "connessione non riuscita";
         }
