@@ -179,6 +179,9 @@
             <TextBlock Text="OPZIONI" Classes="field-label" />
             <CheckBox Classes="crit-check" Content="Crea le tabelle (elimina se esistono)" IsChecked="{Binding CreateTables, Mode=TwoWay}" />
             <CheckBox Classes="crit-check" Content="Copia i dati" IsChecked="{Binding CopyData, Mode=TwoWay}" />
+            <CheckBox Classes="crit-check" Content="Maschera i dati personali riconosciuti" IsChecked="{Binding AnonymizeData, Mode=TwoWay}" IsEnabled="{Binding CopyData}" />
+            <TextBlock Text="Nomi, email, telefoni e altri campi riconosciuti vengono sostituiti. Chiavi, relazioni e campi non riconosciuti restano invariati: controlla l’elenco prima di copiare o distribuire i dati. Non garantisce l’anonimizzazione completa."
+                       IsVisible="{Binding AnonymizeData}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
             <CheckBox Classes="crit-check" Content="Svuota le tabelle di destinazione" IsChecked="{Binding EmptyTarget, Mode=TwoWay}" IsEnabled="{Binding !CreateTables}" IsVisible="{Binding TargetIsConnection}" />
             <CheckBox Classes="crit-check" Content="Continua in caso di errore" IsChecked="{Binding ContinueOnError, Mode=TwoWay}" IsVisible="{Binding TargetIsConnection}" />
           </StackPanel>

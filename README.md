@@ -123,6 +123,13 @@ Le chiavi sono salvate cifrate sul computer, una per fornitore.
 
 ### Strumenti
 - **Trasferimento dati** tra database e connessioni dello stesso tipo, con registro di tutte le istruzioni e avanzamento in percentuale.
+- **Genera dati di prova** dal menu della tabella, dalla barra della griglia o da Strumenti: regole modificabili per colonna,
+  anteprima delle prime 10 righe e dello SQL, seme riproducibile, nomi e codici italiani, valori delle chiavi esterne già presenti.
+  Le colonne automatiche e calcolate sono escluse; gli inserimenti avvengono in transazione e gli errori annullano l'intero lotto.
+- Nel **Trasferimento dati**, l'opzione **Maschera i dati personali riconosciuti** sostituisce i campi individuati per nome e tipo
+  nella copia o nel file SQL, lasciando invariata l'origine. Prima dell'avvio mostra i campi interessati; chiavi primarie,
+  colonne delle relazioni e campi non riconosciuti restano invariati. Non garantisce l'anonimizzazione completa:
+  controlla il risultato prima di distribuirlo. I sostituti sono coerenti nella stessa copia e cambiano tra trasferimenti.
 - **Sincronizzazione** di struttura e dati con anteprima delle differenze.
 - **Backup** (dump SQL) e ripristino, **automazione** di query, dump ed esportazioni pianificate.
 - **Server Monitor**: processi, variabili, stato, storico delle query al secondo e **query più lente**.

@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Navifox.App.ViewModels" x:Class="Navifox.App.Views.DataGeneratorWindow"
+        x:DataType="vm:DataGeneratorViewModel" Title="Genera dati di prova" Width="1000" Height="740" MinWidth="760" MinHeight="580"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource SurfaceBrush}">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <StackPanel Margin="20,14" Spacing="5">
+      <TextBlock Text="Genera dati di prova" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding Context}" Foreground="{DynamicResource MutedTextBrush}" />
+      <TextBlock Text="Dati inventati, con regole per colonna. Le righe esistenti restano invariate; l’anteprima non scrive sul database." TextWrapping="Wrap" />
+    </StackPanel>
+    <WrapPanel Grid.Row="1" Margin="20,0,20,12" IsEnabled="{Binding !IsBusy}">
+      <TextBlock Text="Righe" VerticalAlignment="Center" Margin="0,0,8,0" />
+      <NumericUpDown Value="{Binding RowCount, Mode=TwoWay}" Minimum="1" Maximum="1000000" Increment="1" FormatString="0" Width="150" />
+      <TextBlock Text="Seme" VerticalAlignment="Center" Margin="16,0,8,0" />
+      <NumericUpDown Value="{Binding Seed, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Width="140" ToolTip.Tip="Con lo stesso seme e gli stessi valori di riferimento si ottengono gli stessi dati di prova." />
+      <CheckBox Content="Qualche NULL nei campi facoltativi" IsChecked="{Binding RandomNulls, Mode=TwoWay}" Margin="16,0,0,0" />
+    </WrapPanel>
+    <Grid Grid.Row="2" RowDefinitions="*,5,*" Margin="20,0,20,8">
+      <DataGrid ItemsSource="{Binding Columns}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="False" Classes="nf-grid" IsEnabled="{Binding !IsBusy}">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Colonna" Binding="{Binding Name}" Width="160" x:DataType="vm:GeneratorColumnChoice" />
+          <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="150" x:DataType="vm:GeneratorColumnChoice" />
+          <DataGridTextColumn Header="Vincolo" Binding="{Binding Hint}" Width="175" x:DataType="vm:GeneratorColumnChoice" />
+          <DataGridTemplateColumn Header="Generatore" Width="*">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:GeneratorColumnChoice">
+                <ComboBox ItemsSource="{x:Static vm:GeneratorColumnChoice.Options}" SelectedItem="{Binding SelectedKind, Mode=TwoWay}" IsEnabled="{Binding !IsAutomatic}" HorizontalAlignment="Stretch" Margin="3">
+                  <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:GeneratorOption"><TextBlock Text="{Binding Label}" /></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+      <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows" />
+      <TabControl Grid.Row="2">
+        <TabItem Header="Anteprima (prime 10 righe)"><DataGrid x:Name="PreviewGrid" ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False" IsReadOnly="True" Classes="nf-grid" /></TabItem>
+        <TabItem Header="SQL di anteprima"><TextBox Text="{Binding SqlPreview}" IsReadOnly="True" AcceptsReturn="True" FontFamily="Cascadia Mono,Consolas,monospace" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" /></TabItem>
+      </TabControl>
+    </Grid>
+    <StackPanel Grid.Row="3" Margin="20,8,20,16" Spacing="8">
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+      <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" Height="4" IsVisible="{Binding IsBusy}" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Content="Aggiorna anteprima" Command="{Binding PreviewCommand}" />
+        <Button Content="Genera" Command="{Binding GenerateCommand}" />
+        <Button Content="Interrompi" Command="{Binding StopCommand}" IsVisible="{Binding IsBusy}" />
+        <Button Content="Chiudi" Command="{Binding CloseCommand}" />
+      </StackPanel>
+    </StackPanel>
+  </Grid>
+</Window>

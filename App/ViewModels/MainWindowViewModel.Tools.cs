@@ -103,6 +103,18 @@ public partial class MainWindowViewModel
     }
 
     [RelayCommand]
+    private async Task OpenDataGeneratorAsync(TreeNodeViewModel? node)
+    {
+        if (node is null && SelectedTab is TableTabViewModel selected)
+        { await selected.GenerateDataCommand.ExecuteAsync(null); return; }
+        node ??= SelectedNode;
+        if (node is not { Kind: TreeNodeKind.Table, Profile: { } profile, Database: { } database, Schema: { } schema } || node.Category == "Viste")
+        { StatusMessage = "Seleziona una tabella per generare dati di prova."; return; }
+        await OpenTableAsync(profile, database, schema, node.Name);
+        if (SelectedTab is TableTabViewModel table) await table.GenerateDataCommand.ExecuteAsync(null);
+    }
+
+    [RelayCommand]
     private async Task OpenOptionsAsync()
     {
         if (!await _dialogs.ShowOptionsAsync(new OptionsViewModel())) return;

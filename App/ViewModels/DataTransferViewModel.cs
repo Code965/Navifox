@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Navifox.App.Services;
 using Navifox.Core;
 using Navifox.Core.Models;
+using Navifox.Core.DataGen;
 using Navifox.Dialects;
 
 namespace Navifox.App.ViewModels;
@@ -238,6 +239,7 @@ public partial class DataTransferViewModel : ObservableObject
         var options = new List<string>();
         if (CreateTables) options.Add(TargetIsFile ? "struttura (DROP + CREATE)" : "ricrea le tabelle");
         if (CopyData) options.Add("dati");
+        if (CopyData && AnonymizeData) options.Add("maschera i campi personali riconosciuti (chiavi invariate)");
         if (!CreateTables && EmptyTarget && !TargetIsFile) options.Add("svuota prima");
         if (ContinueOnError) options.Add("continua in caso di errore");
         return $"""
@@ -293,6 +295,7 @@ public partial class DataTransferViewModel : ObservableObject
     [ObservableProperty] private string? _targetDatabase;
     [ObservableProperty] private bool _createTables = true;
     [ObservableProperty] private bool _copyData = true;
+    [ObservableProperty] private bool _anonymizeData;
     [ObservableProperty] private bool _emptyTarget;
     [ObservableProperty] private bool _continueOnError;
     [ObservableProperty]
@@ -446,9 +449,11 @@ public partial class DataTransferViewModel : ObservableObject
         try
         {
             activity = ActivityRecording.BeginOperation(target, targetDb, "Trasferimento dati",
-                $"{source.Name}/{sourceDb} → {target.Name}/{targetDb}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nCrea struttura: {CreateTables}; copia dati: {CopyData}; continua con errori: {ContinueOnError}");
+                $"{source.Name}/{sourceDb} → {target.Name}/{targetDb}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nCrea struttura: {CreateTables}; copia dati: {CopyData}; mascheramento: {AnonymizeData}; continua con errori: {ContinueOnError}");
             await using var from = await _databaseAccess.OpenAsync(source, sourceDb, token);
             await using var to = await _databaseAccess.OpenAsync(target, targetDb, token);
+            var maskers = await PrepareMaskersAsync(provider, from, sourceDb, sourceSchema, selected, token);
+            if (!await ConfirmMaskingAsync(maskers)) { activity?.Fail(new OperationCanceledException("Mascheramento non confermato.")); StatusMessage = "Trasferimento annullato."; return; }
             var tracker = await PrepareProgressAsync(provider, from, sourceSchema, selected, token);
 
             async Task Run(string sql, string? display = null)
@@ -458,6 +463,8 @@ public partial class DataTransferViewModel : ObservableObject
             }
 
             if (mysql) await Run("SET FOREIGN_KEY_CHECKS = 0");
+            // Come nel dump SQLite: le tabelle possono essere elencate prima dei rispettivi padri.
+            if (source.Kind == DatabaseKind.Sqlite) await Run("PRAGMA foreign_keys = OFF");
             for (var i = 0; i < selected.Length; i++)
             {
                 var table = selected[i];
@@ -481,7 +488,7 @@ public partial class DataTransferViewModel : ObservableObject
                     long rows = 0;
                     if (CopyData)
                     {
-                        var columns = (await provider.GetColumnsAsync(from, sourceDb, sourceSchema, table.Name, token)).Select(c => c.Name).ToArray();
+                        var columns = (await provider.GetColumnsAsync(from, sourceDb, sourceSchema, table.Name, token)).Where(c => !c.IsGenerated).Select(c => c.Name).ToArray();
                         var head = $"INSERT INTO {name} ({string.Join(", ", columns.Select(provider.QuoteIdentifier))}) VALUES";
                         var batch = new List<IReadOnlyList<object?>>(BatchSize);
                         async Task Flush()
@@ -500,9 +507,9 @@ public partial class DataTransferViewModel : ObservableObject
                             await Run($"IF OBJECTPROPERTY(OBJECT_ID({provider.FormatLiteral(name)}), 'TableHasIdentity') = 1 SET IDENTITY_INSERT {name} ON");
                         try
                         {
-                            await foreach (var row in provider.StreamRowsAsync(from, sourceSchema, table.Name, token))
+                            await foreach (var row in provider.StreamQueryAsync(from, SelectTransferColumns(provider, sourceSchema, table.Name, columns), _ => { }, token))
                             {
-                                batch.Add(row);
+                                batch.Add(maskers.GetValueOrDefault(table.Name)?.Mask(row) ?? row);
                                 if (batch.Count >= BatchSize) await Flush();
                             }
                             if (batch.Count > 0) await Flush();
@@ -539,6 +546,16 @@ public partial class DataTransferViewModel : ObservableObject
                 catch (Exception exception) when (ContinueOnError) { errors++; AddError($"Vincolo non applicato: {exception.Message}"); }
             }
             if (mysql) await Run("SET FOREIGN_KEY_CHECKS = 1");
+            if (source.Kind == DatabaseKind.Sqlite)
+            {
+                foreach (var table in selected)
+                {
+                    var check = $"PRAGMA {provider.QuoteIdentifier(targetSchema)}.foreign_key_check({provider.QuoteIdentifier(table.Name)})";
+                    if ((await provider.ExecuteAsync(to, check, 1, token)).Rows.Count > 0)
+                        throw new InvalidOperationException($"La copia di «{table.Name}» contiene relazioni non valide. Controlla le tabelle collegate e il registro attività.");
+                }
+                await Run("PRAGMA foreign_keys = ON");
+            }
             Progress = 100;
             ProgressText = $"100% · {tracker.DoneRows:N0} righe · {selected.Length} tabelle · {tracker.Elapsed}";
             StatusMessage = $"Completato: {selected.Length - tableErrors} tabelle, {tracker.DoneRows:N0} righe in {tracker.Elapsed}{(errors > 0 ? $", {errors} errori" : string.Empty)}.";
@@ -594,8 +611,10 @@ public partial class DataTransferViewModel : ObservableObject
         ActivityRecording.ActivityOperation? activity = null;
         try
         {
-            activity = ActivityRecording.BeginOperation(source, sourceDb, "Esportazione dati", $"{source.Name}/{sourceDb} → {TargetFile}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nStruttura: {CreateTables}; dati: {CopyData}");
+            activity = ActivityRecording.BeginOperation(source, sourceDb, "Esportazione dati", $"{source.Name}/{sourceDb} → {TargetFile}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nStruttura: {CreateTables}; dati: {CopyData}; mascheramento: {AnonymizeData}");
             await using var connection = await _databaseAccess.OpenAsync(source, sourceDb, token);
+            var maskers = await PrepareMaskersAsync(provider, connection, sourceDb, schema, selected, token);
+            if (!await ConfirmMaskingAsync(maskers)) { activity?.Fail(new OperationCanceledException("Mascheramento non confermato.")); StatusMessage = "Esportazione annullata."; return; }
             var tracker = await PrepareProgressAsync(provider, connection, schema, selected, token);
             await using var writer = new StreamWriter(TargetFile, false, new System.Text.UTF8Encoding(false));
             await ActivityRecording.WriteScriptAsync(writer, provider.DumpHeader(sourceDb));
@@ -621,7 +640,7 @@ public partial class DataTransferViewModel : ObservableObject
                 long rows = 0;
                 if (CopyData)
                 {
-                    var columns = (await provider.GetColumnsAsync(connection, sourceDb, schema, table.Name, token)).Select(c => c.Name).ToArray();
+                    var columns = (await provider.GetColumnsAsync(connection, sourceDb, schema, table.Name, token)).Where(c => !c.IsGenerated).Select(c => c.Name).ToArray();
                     var head = $"INSERT INTO {name} ({string.Join(", ", columns.Select(provider.QuoteIdentifier))}) VALUES";
                     var batch = new List<IReadOnlyList<object?>>(500);
                     async Task Flush()
@@ -634,9 +653,9 @@ public partial class DataTransferViewModel : ObservableObject
                         table.State = tracker.TableLabel(i, rows);
                         UpdateProgress(tracker);
                     }
-                    await foreach (var row in provider.StreamRowsAsync(connection, schema, table.Name, token))
+                    await foreach (var row in provider.StreamQueryAsync(connection, SelectTransferColumns(provider, schema, table.Name, columns), _ => { }, token))
                     {
-                        batch.Add(row);
+                        batch.Add(maskers.GetValueOrDefault(table.Name)?.Mask(row) ?? row);
                         if (batch.Count >= 500) await Flush();
                     }
                     if (batch.Count > 0) await Flush();

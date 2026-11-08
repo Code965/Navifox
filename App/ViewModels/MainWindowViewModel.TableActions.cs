@@ -43,6 +43,7 @@ public partial class MainWindowViewModel
             ContextAction.Separator,
             new("Import Wizard…", TableOperationCommand, new TableOperation(node, "import"), "import", !view),
             new("Export Wizard…", TableOperationCommand, new TableOperation(node, "export"), "export"),
+            new("Genera dati di prova…", OpenDataGeneratorCommand, node, "plus", !view && node.Profile?.ReadOnly != true),
             ContextAction.Separator,
             new("Dump file SQL", Glyph: "export", IsEnabled: !view, Children:
             [

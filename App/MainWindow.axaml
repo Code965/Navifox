@@ -130,6 +130,7 @@
           <MenuItem x:Name="FavoritesMenu" Header="Preferiti" />
           <MenuItem Header="Strumenti">
             <MenuItem Header="Trasferimento dati…" Command="{Binding OpenDataTransferCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="transfer" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
+            <MenuItem Header="Genera dati di prova…" Command="{Binding OpenDataGeneratorCommand}"><MenuItem.Icon><c:NfIcon Kind="plus" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Sincronizzazione dati…" Command="{Binding OpenDataSyncCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="sync" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Sincronizzazione struttura…" Command="{Binding OpenStructureSyncCommand}" CommandParameter="{x:Null}"><MenuItem.Icon><c:NfIcon Kind="layers" Classes="menu-icon" /></MenuItem.Icon></MenuItem>
             <MenuItem Header="Console…" Command="{Binding OpenConsoleCommand}" CommandParameter="{x:Null}" InputGesture="F6"><MenuItem.Icon><c:NfIcon Kind="terminal" Classes="menu-icon" /></MenuItem.Icon></MenuItem>

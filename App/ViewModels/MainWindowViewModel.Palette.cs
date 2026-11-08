@@ -58,6 +58,7 @@ public partial class MainWindowViewModel
         new("Console", "Riga di comando SQL", "terminal", "Comandi", () => { OpenConsoleCommand.Execute(null); return Task.CompletedTask; }, "F6"),
         new("Server Monitor", "Processi, variabili e stato dei server", "activity", "Comandi", () => { OpenServerMonitorCommand.Execute(null); return Task.CompletedTask; }),
         new("Trasferimento dati", "Copia tabelle tra database", "transfer", "Comandi", () => OpenDataTransferCommand.ExecuteAsync(null)),
+        new("Genera dati di prova", "Dati inventati nella tabella selezionata", "plus", "Comandi", () => OpenDataGeneratorCommand.ExecuteAsync(null)),
         new("Sincronizzazione struttura", "Confronta due database e genera lo script delle differenze", "layers", "Comandi", () => OpenStructureSyncCommand.ExecuteAsync(null)),
         new("Sincronizzazione dati", "Confronta i dati di due database", "sync", "Comandi", () => OpenDataSyncCommand.ExecuteAsync(null)),
         new("Utenti e privilegi", "Utenti, password e permessi del server", "users", "Comandi", () => { OpenUsersCommand.Execute(null); return Task.CompletedTask; }),
