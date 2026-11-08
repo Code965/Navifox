@@ -27,6 +27,16 @@
           <ToggleButton Classes="objbar" IsChecked="{Binding HideIdle, Mode=TwoWay}" ToolTip.Tip="Nascondi le sessioni inattive (Sleep / idle)">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="filter" Classes="objbar-icon" /><TextBlock Text="Solo attivi" /></StackPanel>
           </ToggleButton>
+          <Border Classes="toolbar-sep" />
+          <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" Margin="4,0"
+                      ToolTip.Tip="Notifica quando le connessioni superano la soglia o una query resta in esecuzione troppo a lungo (0 = disattivato). Funziona mentre il Monitor è aperto.">
+            <c:NfIcon Kind="zap" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Text="Avvisa: connessioni ≥" VerticalAlignment="Center" FontSize="12" />
+            <NumericUpDown Value="{Binding AlertConnectionsPercent, Mode=TwoWay}" Minimum="0" Maximum="100" Increment="5" FormatString="0" Width="92" MinHeight="26" FontSize="12" />
+            <TextBlock Text="%  · query &gt;" VerticalAlignment="Center" FontSize="12" />
+            <NumericUpDown Value="{Binding AlertSlowSeconds, Mode=TwoWay}" Minimum="0" Maximum="86400" Increment="5" FormatString="0" Width="92" MinHeight="26" FontSize="12" />
+            <TextBlock Text="s" VerticalAlignment="Center" FontSize="12" />
+          </StackPanel>
         </WrapPanel>
         <Grid Grid.Column="1" Width="220" VerticalAlignment="Center">
           <TextBox Text="{Binding FilterText, Mode=TwoWay}" Watermark="Filtra…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
@@ -36,7 +46,14 @@
     </Border>
 
     <!-- elenco dei server a sinistra + processi/variabili/stato -->
-    <Grid Grid.Row="1" Grid.RowSpan="2" ColumnDefinitions="250,1,*">
+    <!-- avvisi attivi -->
+    <Border Grid.Row="1" Classes="monitor-alert" IsVisible="{Binding AlertText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <c:NfIcon Kind="zap" Width="15" Height="15" VerticalAlignment="Top" Margin="0,1,0,0" />
+        <TextBlock Text="{Binding AlertText}" TextWrapping="Wrap" FontSize="12.5" />
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="2" ColumnDefinitions="250,1,*">
       <Border Background="{DynamicResource InsetBrush}">
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding Servers}" Margin="6">
@@ -126,6 +143,37 @@
             <DataGridTextColumn Header="Valore" Binding="{Binding Value}" Width="*" x:DataType="vm:ServerSetting" />
           </DataGrid.Columns>
         </DataGrid>
+      </TabItem>
+      <TabItem Header="Blocchi">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="10,6">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="objbar" Command="{Binding KillBlockingCommand}" ToolTip.Tip="Termina la sessione che tiene il blocco (le sue modifiche non confermate vengono annullate)">
+                <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="x" Classes="objbar-icon" /><TextBlock Text="Termina la sessione che blocca" /></StackPanel>
+              </Button>
+              <TextBlock Text="{Binding LockInfo}" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+            </DockPanel>
+          </Border>
+          <DataGrid Grid.Row="1" Classes="nf-grid" ItemsSource="{Binding Locks}" SelectedItem="{Binding SelectedLock, Mode=TwoWay}" IsReadOnly="True" AutoGenerateColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Server" Binding="{Binding ServerName}" Width="140" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="In attesa" Binding="{Binding WaitingPid}" Width="80" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="Utente" Binding="{Binding WaitingUser}" Width="100" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="Attesa" Binding="{Binding WaitLabel}" Width="80" SortMemberPath="WaitSeconds" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="Query in attesa" Binding="{Binding WaitingShort}" Width="320" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="Bloccata da" Binding="{Binding BlockingPid}" Width="90" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="Utente" Binding="{Binding BlockingUser}" Width="100" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="Query che blocca" Binding="{Binding BlockingShort}" Width="320" x:DataType="vm:LockRow" />
+              <DataGridTextColumn Header="Risorsa" Binding="{Binding Resource}" Width="200" x:DataType="vm:LockRow" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="10,6" MaxHeight="220"
+                  IsVisible="{Binding DeadlockInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <ScrollViewer>
+              <SelectableTextBlock Text="{Binding DeadlockInfo}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11.5" TextWrapping="Wrap" />
+            </ScrollViewer>
+          </Border>
+        </Grid>
       </TabItem>
       <TabItem Header="Query lente">
         <Grid RowDefinitions="Auto,*">

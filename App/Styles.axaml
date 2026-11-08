@@ -659,6 +659,24 @@
     <Setter Property="Foreground" Value="White" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <Style Selector="Border.monitor-alert">
+    <Setter Property="Background" Value="#26F5B400" />
+    <Setter Property="BorderBrush" Value="#F5B400" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="12,7" />
+  </Style>
+  <Style Selector="Border.plan-node">
+    <Setter Property="Background" Value="{DynamicResource InsetBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.plan-node.expensive">
+    <Setter Property="Background" Value="#26E5484D" />
+    <Setter Property="BorderBrush" Value="#E5484D" />
+  </Style>
+  <Style Selector="Border.plan-node.expensive TextBlock">
+    <Setter Property="Foreground" Value="#E5484D" />
+  </Style>
   <Style Selector="TextBlock.negative">
     <Setter Property="Foreground" Value="#E5484D" />
   </Style>

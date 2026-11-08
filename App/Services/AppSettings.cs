@@ -30,6 +30,10 @@ public sealed class AppSettings
     public bool QuickFilterRow { get; set; } = true;
     /// <summary>Formattazione condizionale delle griglie: numeri negativi in rosso, scadenze passate evidenziate.</summary>
     public bool ConditionalFormatting { get; set; } = true;
+    /// <summary>Server Monitor: avviso se le connessioni superano questa percentuale del massimo (0 = disattivato).</summary>
+    public int MonitorAlertConnectionsPercent { get; set; } = 80;
+    /// <summary>Server Monitor: avviso per le query in esecuzione da più di questi secondi (0 = disattivato).</summary>
+    public int MonitorAlertSlowSeconds { get; set; } = 30;
     /// <summary>Editor di campo della griglia: "right" (a destra) o "bottom" (in basso), con le dimensioni scelte.</summary>
     public string FieldPanelPosition { get; set; } = "right";
     public double FieldPanelWidth { get; set; } = 340;

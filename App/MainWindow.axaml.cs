@@ -16,6 +16,13 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+        // Avvisi del Server Monitor (connessioni oltre soglia, query lente): notifica in basso a destra.
+        var notifications = new Avalonia.Controls.Notifications.WindowNotificationManager(this)
+        { Position = Avalonia.Controls.Notifications.NotificationPosition.BottomRight, MaxItems = 4 };
+        void OnMonitorAlert(string title, string message) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            notifications.Show(new Avalonia.Controls.Notifications.Notification(title, message, Avalonia.Controls.Notifications.NotificationType.Warning, TimeSpan.FromSeconds(15))));
+        ServerMonitorViewModel.AlertRaised += OnMonitorAlert;
+        Closed += (_, _) => ServerMonitorViewModel.AlertRaised -= OnMonitorAlert;
         Opened += async (_, _) => await viewModel.InitializeAsync();
         viewModel.PropertyChanged += (_, args) =>
         {

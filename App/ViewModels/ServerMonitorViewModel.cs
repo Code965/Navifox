@@ -154,7 +154,7 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
             var results = await Task.WhenAll(tasks);
             _processes = results.SelectMany(r => r.Processes).ToList();
             _variables = results.SelectMany(r => r.Variables).ToList();
-            if (SelectedTab == 3)
+            if (SelectedTab == SlowQueriesTabIndex)
             {
                 List<SlowQueryRow> slow;
                 lock (_slowQueries)
@@ -167,6 +167,8 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
                 if (slow.Count > 0) SlowQueryInfo = $"{slow.Count} query più lente in media (statistiche cumulative del server).";
             }
             _status = results.SelectMany(r => r.Status).ToList();
+            if (SelectedTab == LocksTabIndex) PublishLocks();
+            CheckAlerts(servers, _processes);
             ApplyFilters();
             StatusMessage = $"{servers.Length} server · {_processes.Count} processi · aggiornato alle {DateTime.Now:HH:mm:ss}";
         }
@@ -188,7 +190,8 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
             var provider = _databaseAccess.Provider(server.Profile);
             var health = await provider.GetServerHealthAsync(connection, CancellationToken.None);
             UpdateHealth(server, health);
-            if (SelectedTab == 0)
+            // L'elenco dei processi serve anche agli avvisi sulle query lente, qualunque sia la scheda aperta.
+            if (SelectedTab == 0 || WantsSlowAlerts)
             {
                 var result = await provider.GetProcessListAsync(connection, CancellationToken.None);
                 int Col(string name) => result.Columns.ToList().FindIndex(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
@@ -198,8 +201,11 @@ public partial class ServerMonitorViewModel : WorkspaceTabViewModel
                     processes.Add(new ProcessRow(server, long.TryParse(S(row, id), out var pid) ? pid : 0, S(row, user), S(row, host), S(row, db),
                         S(row, command), long.TryParse(S(row, time), out var t) ? t : 0, S(row, state), S(row, info)));
             }
-            else if (SelectedTab == 3)
+            if (SelectedTab == 0) { }
+            else if (SelectedTab == SlowQueriesTabIndex)
                 await LoadSlowQueriesAsync(server, connection, provider);
+            else if (SelectedTab == LocksTabIndex)
+                await LoadLocksAsync(server, connection, provider);
             else if (SelectedTab == 1)
                 variables.AddRange((await provider.GetServerVariablesAsync(connection, CancellationToken.None)).Select(p => new ServerSetting($"{server.Name} · {Navifox.App.Controls.DialectVisuals.DialectName(server.Profile)}", p.Key, p.Value)));
             else

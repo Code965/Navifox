@@ -317,8 +317,59 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         var statement = Navifox.Core.SqlScriptSplitter.Split(sql ?? string.Empty, _profile.Kind).FirstOrDefault();
         if (statement is null || IsBusy) return;
         if (statement.StartsWith("EXPLAIN", StringComparison.OrdinalIgnoreCase)) statement = statement[7..].TrimStart();
+        if (await ResolveParametersAsync(statement) is not { } resolved) return;
+        statement = resolved.Trim().TrimEnd(';');
+        // Piano come albero (il comando non esegue la query): se il server non supporta il formato, si torna all'EXPLAIN in tabella.
+        if (await ShowPlanTreeAsync(statement)) return;
         await RunAsync("EXPLAIN " + statement, console: false);
     }
+
+    public System.Collections.ObjectModel.ObservableCollection<PlanNode> PlanNodes { get; } = [];
+    [ObservableProperty] private string _planInfo = "Premi «Explain» per vedere il piano di esecuzione dell'istruzione corrente come albero.";
+
+    private async Task<bool> ShowPlanTreeAsync(string statement)
+    {
+        IsBusy = true;
+        StatusMessage = "Piano di esecuzione…";
+        try
+        {
+            var provider = _databaseAccess.Provider(_profile);
+            await using var connection = await _databaseAccess.OpenAsync(_profile, SelectedDatabase, CancellationToken.None);
+            QueryResult? plan = null;
+            var statements = ExplainPlan.Statements(_profile.Kind, statement);
+            try
+            {
+                for (var i = 0; i < statements.Count; i++)
+                {
+                    var result = await provider.ExecuteAsync(connection, statements[i], 10_000, CancellationToken.None);
+                    if (result.HasResultSet && plan is null) plan = result;
+                }
+            }
+            finally
+            {
+                // SQL Server: SHOWPLAN resta attivo sulla sessione finché non lo si spegne.
+                if (_profile.Kind == DatabaseKind.SqlServer) try { await provider.ExecuteAsync(connection, "SET SHOWPLAN_XML OFF", 0, CancellationToken.None); } catch { }
+            }
+            if (plan is null || ExplainPlan.Parse(_profile.Kind, plan) is not { } root) return false;
+            PlanNodes.Clear();
+            PlanNodes.Add(root);
+            var expensive = root.SelfAndDescendants().Count(n => n.IsExpensive);
+            PlanInfo = (expensive == 0 ? "Nessun passaggio costoso evidente." : $"{expensive} passaggi costosi in rosso (scansioni complete, ordinamenti su disco o gran parte del costo).")
+                + " Stime del server: la query non è stata eseguita.";
+            ResultTabIndex = PlanTabIndex;
+            StatusMessage = "Piano di esecuzione pronto.";
+            return true;
+        }
+        catch (Exception error)
+        {
+            // MariaDB/MySQL < 8.0.16 non conoscono FORMAT=TREE: si usa l'EXPLAIN classico.
+            Messages.Add($"[{DateTime.Now:HH:mm:ss}] Piano ad albero non disponibile: {error.Message}");
+            return false;
+        }
+        finally { IsBusy = false; }
+    }
+
+    private const int PlanTabIndex = 4;
 
     [RelayCommand]
     private void Beautify()
