@@ -115,6 +115,7 @@ public static class ResultGridBuilder
             var cellIndex = index;
             var column = columns[index];
             var numeric = IsNumeric(column.DataType);
+            var expiry = IsExpiryColumn(column);
             var glyph = headerGlyph?.Invoke(index);
             var gridColumn = new DataGridTemplateColumn
             {
@@ -124,7 +125,7 @@ public static class ResultGridBuilder
                 Tag = index,
                 SortMemberPath = column.Name,
                 CanUserSort = onSort is null,
-                CellTemplate = new FuncDataTemplate<TableRowViewModel>((row, _) => CreateDisplay(row?.CellAt(cellIndex), numeric, cellIndex), supportsRecycling: false),
+                CellTemplate = new FuncDataTemplate<TableRowViewModel>((row, _) => CreateDisplay(row?.CellAt(cellIndex), numeric, cellIndex, expiry), supportsRecycling: false),
                 IsReadOnly = !editable || column.IsGenerated,
                 Width = new DataGridLength(Math.Clamp((column.Name.Length + (glyph?.Length + 2 ?? 0)) * 8.5 + 44, 70, 240))
             };
@@ -136,7 +137,39 @@ public static class ResultGridBuilder
         }
     }
 
-    private static Control CreateDisplay(CellViewModel? cell, bool numeric, int columnIndex)
+    /// <summary>Colonne di scadenza (scadenza, due_date, expires_at, valid_until…): le date passate si evidenziano.</summary>
+    private static readonly System.Text.RegularExpressions.Regex ExpiryName =
+        new(@"scad|expir|due|deadline|valid_?(to|until)|valid[oa]_?fino|fine_?valid|termine", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static bool IsExpiryColumn(ColumnInfo column)
+    {
+        var type = column.DataType.ToLowerInvariant();
+        return (type.Contains("date") || type.Contains("time")) && ExpiryName.IsMatch(column.Name);
+    }
+
+    /// <summary>Formattazione condizionale: numeri negativi in rosso, date di scadenza già passate evidenziate.</summary>
+    private static (bool Negative, bool Expired) Condition(CellViewModel cell, bool numeric, bool expiry)
+    {
+        if (!Services.AppSettings.Current.ConditionalFormatting || cell.IsNull) return (false, false);
+        var value = cell.Value;
+        var negative = numeric && value switch
+        {
+            sbyte n => n < 0, short n => n < 0, int n => n < 0, long n => n < 0, decimal n => n < 0, double n => n < 0, float n => n < 0,
+            string s => s.TrimStart().StartsWith('-') && decimal.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed) && parsed < 0,
+            _ => false
+        };
+        var expired = expiry && value switch
+        {
+            DateTime date => date < (date.TimeOfDay == TimeSpan.Zero ? DateTime.Today : DateTime.Now),
+            DateTimeOffset offset => offset < DateTimeOffset.Now,
+            DateOnly day => day < DateOnly.FromDateTime(DateTime.Today),
+            string s => DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate) && parsedDate < DateTime.Today,
+            _ => false
+        };
+        return (negative, expired);
+    }
+
+    private static Control CreateDisplay(CellViewModel? cell, bool numeric, int columnIndex, bool expiry = false)
     {
         var text = new TextBlock
         {
@@ -153,6 +186,10 @@ public static class ResultGridBuilder
             text.Classes.Set("null-cell", cell.IsNull);
             text.FontStyle = cell.IsNull ? FontStyle.Italic : FontStyle.Normal;
             border.Classes.Set("modified", cell.IsModified);
+            var (negative, expired) = Condition(cell, numeric, expiry);
+            text.Classes.Set("negative", negative);
+            border.Classes.Set("expired", expired);
+            if (expired) ToolTip.SetTip(border, "Data già passata");
         }
         Sync();
         void OnChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => Sync();

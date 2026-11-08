@@ -659,6 +659,16 @@
     <Setter Property="Foreground" Value="White" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <Style Selector="TextBlock.negative">
+    <Setter Property="Foreground" Value="#E5484D" />
+  </Style>
+  <Style Selector="Border.cell.expired">
+    <Setter Property="Background" Value="#26F5B400" />
+  </Style>
+  <Style Selector="Border.cell.expired TextBlock">
+    <Setter Property="Foreground" Value="#B7791F" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
   <Style Selector="DataGrid.nf-grid DataGridRow.diff-row">
     <Setter Property="Background" Value="#33E5484D" />
   </Style>

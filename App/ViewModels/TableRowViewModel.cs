@@ -3,8 +3,34 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Navifox.App.ViewModels;
 
 /// <summary>Una cella della griglia: valore originale, valore corrente e stato di modifica.</summary>
+/// <summary>Stato di una cella prima di una modifica (per «Annulla» a più passi).</summary>
+public sealed record CellSnapshot(object? Value, string Text, bool IsNull, bool IsModified, bool IsAssigned);
+
 public partial class CellViewModel : ObservableObject
 {
+    /// <summary>Sta per cambiare valore (digitazione, NULL, incolla): riceve lo stato precedente.</summary>
+    public event Action<CellViewModel, CellSnapshot>? Changing;
+
+    private CellSnapshot Snapshot() => new(Value, Text, IsNull, IsModified, IsAssigned);
+
+    partial void OnTextChanging(string value)
+    {
+        if (!_suppress) Changing?.Invoke(this, Snapshot());
+    }
+
+    /// <summary>Ripristina lo stato salvato (Annulla).</summary>
+    public void Restore(CellSnapshot snapshot)
+    {
+        _suppress = true;
+        Value = snapshot.Value;
+        Text = snapshot.Text;
+        IsNull = snapshot.IsNull;
+        IsModified = snapshot.IsModified;
+        IsAssigned = snapshot.IsAssigned;
+        _suppress = false;
+        OnPropertyChanged(nameof(EditText));
+    }
+
     private object? _original;
     private bool _suppress;
 
@@ -51,6 +77,7 @@ public partial class CellViewModel : ObservableObject
 
     public void SetValue(object? value)
     {
+        Changing?.Invoke(this, Snapshot());
         _suppress = true;
         Value = value is byte[] bytes ? bytes.ToArray() : value;
         Text = TableRowViewModel.Format(Value);
@@ -116,6 +143,7 @@ public partial class TableRowViewModel : ObservableObject
         if (index < 0 || index >= _values.Length) return null;
         if (_cells[index] is { } existing) return existing;
         var cell = new CellViewModel(_values[index]);
+        cell.Changing += (changed, before) => CellChanging?.Invoke(this, changed, before);
         cell.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(CellViewModel.IsModified)) RefreshState();
@@ -131,6 +159,12 @@ public partial class TableRowViewModel : ObservableObject
     public string TextAt(int index) => _cells.ElementAtOrDefault(index) is { } cell ? cell.Text : index < _values.Length ? Format(_values[index]) : string.Empty;
 
     partial void OnIsDeletedChanged(bool value) => RefreshState();
+    partial void OnIsDeletedChanging(bool value) => DeletedChanging?.Invoke(this, !value);
+
+    /// <summary>Una cella della riga sta per cambiare (riga, cella, stato precedente).</summary>
+    public event Action<TableRowViewModel, CellViewModel, CellSnapshot>? CellChanging;
+    /// <summary>La riga sta per essere contrassegnata (o non più) per l'eliminazione: riceve il valore precedente.</summary>
+    public event Action<TableRowViewModel, bool>? DeletedChanging;
     partial void OnStateChanged(RowState value) => OnPropertyChanged(nameof(StateGlyph));
 
     public void Revert()

@@ -24,7 +24,7 @@ public partial class TablePageView : UserControl
         Services.ImportFileDrop.Attach(this, _ => _viewModel is { IsView: false, IsBusy: false },
             (_, path) => _viewModel?.RequestImportFileAsync(path) ?? Task.CompletedTask, message => { if (_viewModel is not null) _viewModel.StatusMessage = message; });
         ResultGrid.Sorting += OnSorting;
-        ResultGrid.CurrentCellChanged += (_, _) => { SyncCurrent(); QueueSelectionSummary(); };
+        ResultGrid.CurrentCellChanged += (_, _) => { SyncCurrent(); QueueSelectionSummary(); _viewModel?.EndCellUndoStep(); };
         ResultGrid.SelectionChanged += (_, _) =>
         {
             if (_viewModel is null) return;
@@ -320,6 +320,65 @@ public partial class TablePageView : UserControl
 
     private int CurrentIndex() => ResultGrid.CurrentColumn?.Tag is int index ? index : -1;
 
+    // ───────────── Modifica multipla, confronto, raggruppamento, colonne bloccate ─────────────
+
+    private async void OnMultiEdit(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null || !CommitGridEdit()) return;
+        if (_selectionMode == SelectionKind.Column)
+        {
+            var columns = ResultGridBuilder.HighlightedColumns(ResultGrid).Where(i => i < _viewModel.Columns.Count).ToArray();
+            await _viewModel.MultiEditAsync(_viewModel.Rows.ToArray(), columns);
+        }
+        else await _viewModel.MultiEditAsync(_viewModel.SelectedRows.ToArray(), CurrentIndex() is var c and >= 0 ? [c] : []);
+    }
+
+    private async void OnCompareRows(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null || TopLevel.GetTopLevel(this) is not Window owner) return;
+        if (_viewModel.SelectedRows.Count != 2)
+        {
+            _viewModel.StatusMessage = "Seleziona esattamente 2 righe (Ctrl+clic) per confrontarle.";
+            return;
+        }
+        var first = _viewModel.SelectedRows[0];
+        var second = _viewModel.SelectedRows[1];
+        var rows = _viewModel.CompareRows(first, second);
+        var differences = rows.Count(r => !r.Same);
+        var window = new SimpleTableWindow("Confronto tra due righe",
+            differences == 0 ? "Le due righe hanno gli stessi valori in tutte le colonne." : $"{differences} colonne con valori diversi (evidenziate).",
+            ["Colonna", "Riga A", "Riga B"], rows.Select(r => new object?[] { r.Column, r.First, r.Second }).ToArray(), i => !rows[i].Same);
+        await window.ShowDialog(owner);
+    }
+
+    private async void OnGroupBy(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var column = _selectionMode == SelectionKind.Column ? ResultGridBuilder.GetHighlightColumn(ResultGrid) : CurrentIndex();
+        if (column < 0 || column >= _viewModel.Columns.Count) { _viewModel.StatusMessage = "Clicca una cella della colonna da raggruppare."; return; }
+        var (headers, rows) = _viewModel.GroupBy(column);
+        var numeric = headers.Select((_, i) => i > 0).ToArray();
+        var window = new SimpleTableWindow($"Raggruppa per «{_viewModel.Columns[column].Name}»",
+            $"{rows.Count - 1:N0} gruppi sulle {_viewModel.Rows.Count:N0} righe caricate in questa pagina; per ogni colonna numerica la somma del gruppo. L'ultima riga è il totale.",
+            headers, rows, i => i == rows.Count - 1, numeric);
+        await window.ShowDialog(owner);
+    }
+
+    private void OnFreezeColumns(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null) return;
+        var column = ResultGrid.CurrentColumn ?? ResultGrid.Columns.FirstOrDefault(c => c.Tag is int i && i == ResultGridBuilder.GetHighlightColumn(ResultGrid));
+        if (column is null) { _viewModel.StatusMessage = "Clicca una cella della colonna fino a cui bloccare."; return; }
+        ResultGrid.FrozenColumnCount = column.DisplayIndex + 1;
+        _viewModel.StatusMessage = $"Colonne bloccate a sinistra: {ResultGrid.FrozenColumnCount} (restano visibili scorrendo).";
+    }
+
+    private void OnUnfreezeColumns(object? sender, RoutedEventArgs e)
+    {
+        ResultGrid.FrozenColumnCount = 0;
+        if (_viewModel is not null) _viewModel.StatusMessage = "Colonne sbloccate.";
+    }
+
     private void SyncCurrent() => _viewModel?.SetCurrent(ResultGrid.SelectedItem as TableRowViewModel, CurrentIndex());
 
     private void OnGridKeyDown(object? sender, KeyEventArgs e)
@@ -327,6 +386,13 @@ public partial class TablePageView : UserControl
         // Tasti nella casella del filtro rapido: restano alla casella (niente copia/elimina righe).
         if ((e.Source as Avalonia.Visual)?.FindAncestorOfType<QuickFilterBox>(includeSelf: true) is not null) return;
         if (_viewModel is null || HandleColumnKeys(e)) return;
+        // Ctrl+Z fuori dalla modifica di una cella: annulla l'ultima modifica della griglia (più passi).
+        if (e.Key == Key.Z && e.KeyModifiers == KeyModifiers.Control && !_editingCell)
+        {
+            _viewModel.UndoCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
         var editor = (e.Source as Avalonia.Visual)?.FindAncestorOfType<TextBox>(includeSelf: true);
         var combo = (e.Source as Avalonia.Visual)?.FindAncestorOfType<ComboBox>(includeSelf: true);
         if (e.Key == Key.Down && e.KeyModifiers == KeyModifiers.None && editor?.AcceptsReturn != true && combo is null && ResultGrid.SelectedItems.Count <= 1)

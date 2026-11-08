@@ -56,6 +56,7 @@ public partial class TableTabViewModel
             // Riutilizza l'eventuale bozza appena creata con Freccia giù, senza salvare una riga vuota in più.
             if (CurrentRow is { IsNew: true } empty && !empty.Cells.Any(c => c.IsAssigned)) Rows.Remove(empty);
             foreach (var row in added) Rows.Add(row);
+            RecordUndo(() => { foreach (var row in added) Rows.Remove(row); });
             CurrentRow = added[0];
             RefreshPending();
             StatusMessage = $"{added.Length:N0} righe incollate da verificare · ✓ o Ctrl+S per salvare" +

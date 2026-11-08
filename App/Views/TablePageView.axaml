@@ -235,7 +235,14 @@
             </MenuItem>
             <MenuItem Header="Scegli dal riferimento…" Click="OnPickReference" IsVisible="{Binding HasCurrentReference}" />
             <MenuItem Header="Imposta a NULL" Command="{Binding SetNullCommand}" />
+            <MenuItem Header="Modifica multipla…" Click="OnMultiEdit" IsEnabled="{Binding CanEdit}" />
+            <MenuItem Header="Annulla ultima modifica" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" InputGesture="Ctrl+Z" />
             <MenuItem Header="Filtra per questo valore" Command="{Binding FilterByCurrentValueCommand}" />
+            <Separator />
+            <MenuItem Header="Confronta le 2 righe selezionate" Click="OnCompareRows" />
+            <MenuItem Header="Raggruppa per questa colonna (subtotali)…" Click="OnGroupBy" />
+            <MenuItem Header="Blocca le colonne fino a questa" Click="OnFreezeColumns" />
+            <MenuItem Header="Sblocca le colonne" Click="OnUnfreezeColumns" />
             <Separator />
             <MenuItem Header="Aggiungi riga" Command="{Binding AddRowCommand}" />
             <MenuItem Header="Elimina righe selezionate" Command="{Binding DeleteRowsCommand}" />

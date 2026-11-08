@@ -177,6 +177,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
                 OnPropertyChanged(nameof(ColumnNames));
             }
             Rows = new ObservableCollection<TableRowViewModel>(page.Rows.Select(row => TrackRow(new TableRowViewModel(row))));
+            ClearUndo();
             HasMore = page.HasMore;
             HasPendingChanges = false;
             CurrentCell = null;
@@ -523,6 +524,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         if (!EnsureEditable()) return;
         var row = TrackRow(new TableRowViewModel(Enumerable.Repeat<object?>(null, Columns.Count), isNew: true));
         Rows.Add(row);
+        RecordUndo(() => Rows.Remove(row));
         CurrentRow = row;
         HasPendingChanges = true;
         StatusMessage = "Nuova riga: compila i campi e premi ✓ per salvarla.";
@@ -534,11 +536,17 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     {
         if (!EnsureEditable()) return;
         var targets = SelectedRows.Count > 0 ? SelectedRows.ToArray() : CurrentRow is null ? [] : [CurrentRow];
-        foreach (var row in targets)
-        {
-            if (row.IsNew) Rows.Remove(row);
-            else row.IsDeleted = true;
-        }
+        using (BeginUndoGroup())
+            foreach (var row in targets)
+            {
+                if (row.IsNew)
+                {
+                    var index = Rows.IndexOf(row);
+                    Rows.Remove(row);
+                    RecordUndo(() => Rows.Insert(Math.Min(index, Rows.Count), row));
+                }
+                else row.IsDeleted = true;
+            }
         RefreshPending();
         if (targets.Length > 0) StatusMessage = $"{targets.Length} righe contrassegnate per l’eliminazione: premi ✓ per confermare.";
     }
@@ -557,6 +565,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     {
         foreach (var row in Rows.Where(row => row.IsNew).ToArray()) Rows.Remove(row);
         foreach (var row in Rows) row.Revert();
+        ClearUndo();
         RefreshPending();
         StatusMessage = "Modifiche annullate.";
     }
@@ -592,6 +601,7 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
         if (!ok) return;
         foreach (var row in Rows.Where(row => row.IsDeleted).ToArray()) Rows.Remove(row);
         foreach (var row in Rows) row.AcceptChanges();
+        ClearUndo();
         HasPendingChanges = false;
         StatusMessage = IsTransaction
             ? $"{statements.Count} modifiche applicate nella transazione (non ancora confermate)."
@@ -654,6 +664,14 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
 
     private TableRowViewModel TrackRow(TableRowViewModel row)
     {
+        row.CellChanging += (_, cell, before) =>
+        {
+            // Digitando nella stessa cella ogni tasto cambia il testo: un solo passo di Annulla per cella.
+            if (_undoGroup is null && ReferenceEquals(_lastUndoCell, cell) && _undo.Count > 0) return;
+            _lastUndoCell = _undoGroup is null ? cell : null;
+            RecordUndo(() => cell.Restore(before));
+        };
+        row.DeletedChanging += (target, wasDeleted) => RecordUndo(() => target.IsDeleted = wasDeleted);
         row.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(TableRowViewModel.State)) RefreshPending();
