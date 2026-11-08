@@ -47,7 +47,7 @@ public partial class MainWindowViewModel : ObservableObject
         _databaseAccess = databaseAccess;
         _connectionDialog = connectionDialog;
         _themeService = themeService;
-        ObjectsTab = new ObjectsTabViewModel(OpenObjectAsync, RefreshObjectsAsync, RunObjectWizardAsync);
+        ObjectsTab = new ObjectsTabViewModel(OpenObjectAsync, RefreshObjectsAsync, RunObjectWizardAsync, () => OpenImportWizardAsync(null));
         OpenTabs.Add(ObjectsTab);
         SelectedTab = ObjectsTab;
         Info = new InfoPanelViewModel(databaseAccess);
@@ -379,6 +379,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void ShowCategoryObjects(TreeNodeViewModel category, string? selectName = null, bool bringToFront = true)
     {
+        SelectedObjectRows = [];
         if (bringToFront) SelectedTab = ObjectsTab;
         // Visualizza › Appiattisci elenco oggetti: tabelle e viste dello stesso database/schema in un unico elenco.
         var objects = IsFlatObjectList && category.IsTableCategory && category.Parent is { } parent
@@ -609,6 +610,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         var isView = FindObjectKind(profile.Id, database, schema, table)?.Contains("VIEW", StringComparison.OrdinalIgnoreCase) == true;
         var tab = new TableTabViewModel(_databaseAccess, _dialogs, profile, database, schema, table, isView);
+        tab.OpenImportWizard = path => OpenImportWizardAsync(new TreeNodeViewModel(table, "table", TreeNodeKind.Table, profile, database, schema, isView ? "Viste" : "Tabelle"), path);
         OpenTabs.Add(tab);
         SelectedTab = tab;
         await RunOperationAsync(async token =>

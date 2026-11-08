@@ -20,13 +20,14 @@ public partial class ColumnMapping(ColumnInfo target, IReadOnlyList<string> sour
 {
     public const string Ignore = "(ignora)";
     public string Target => target.Name;
+    public ColumnInfo TargetInfo => target;
     public string TargetType => target.DataType + (target.IsPrimaryKey ? " · PK" : string.Empty) + (target.IsNullable ? string.Empty : " · NOT NULL");
     public IReadOnlyList<string> SourceFields { get; } = sourceFields;
     [ObservableProperty] private string _source = Ignore;
     public bool IsMapped => Source != Ignore;
 }
 
-/// <summary>Import Wizard in 5 passi: formato → file e opzioni (con anteprima) → mappatura → modalità → avvio.</summary>
+/// <summary>Importazione guidata: formato, file, righe/formati, destinazione, mappatura, modalità e avvio.</summary>
 public partial class ImportWizardViewModel : ObservableObject
 {
     private readonly IDatabaseAccessService _databaseAccess;
@@ -34,20 +35,22 @@ public partial class ImportWizardViewModel : ObservableObject
     private readonly ConnectionProfile _profile;
     private readonly string _database;
     private readonly string _schema;
-    private readonly string _table;
-    private readonly IReadOnlyList<ColumnInfo> _columns;
+    private string _table;
+    private IReadOnlyList<ColumnInfo> _columns;
     private IReadOnlyList<string> _fields = [];
     private CancellationTokenSource? _running;
 
-    public ImportWizardViewModel(IDatabaseAccessService databaseAccess, IDialogService dialogs, ConnectionProfile profile, string database, string schema, string table, IReadOnlyList<ColumnInfo> columns)
+    public ImportWizardViewModel(IDatabaseAccessService databaseAccess, IDialogService dialogs, ConnectionProfile profile, string database, string schema, string? table = null, IReadOnlyList<ColumnInfo>? columns = null)
     {
         _databaseAccess = databaseAccess;
         _dialogs = dialogs;
         _profile = profile;
         _database = database;
         _schema = schema;
-        _table = table;
-        _columns = columns;
+        _table = table ?? "";
+        _columns = columns ?? [];
+        _targetTable = _table;
+        _createNewTable = table is null;
         _selectedFormat = Formats.First(format => format.Format == ImportFormat.Csv);
     }
 
@@ -74,7 +77,7 @@ public partial class ImportWizardViewModel : ObservableObject
     public long ImportedRows { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StepTitle), nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4), nameof(IsStep5), nameof(CanGoBack), nameof(CanGoNext), nameof(IsLastStep))]
+    [NotifyPropertyChangedFor(nameof(StepTitle), nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4), nameof(IsStep5), nameof(IsStep6), nameof(IsStep7), nameof(CanGoBack), nameof(CanGoNext), nameof(IsLastStep))]
     private int _step = 1;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDelimited), nameof(IsExcel), nameof(CanGoNext), nameof(HasHeaderOption))]
@@ -99,27 +102,34 @@ public partial class ImportWizardViewModel : ObservableObject
 
     public string StepTitle => Step switch
     {
-        1 => $"Questa procedura guidata importa dati nella tabella «{_table}». Da quale formato vuoi importare? (1/5)",
-        2 => "Scegli il file e come leggerlo. L’anteprima mostra le prime righe. (2/5)",
-        3 => "Associa i campi del file alle colonne della tabella. (3/5)",
-        4 => "Scegli la modalità di importazione. (4/5)",
-        _ => "Tutto pronto: premi «Avvia» per importare. (5/5)"
+        1 => "1/7 · Scegli il formato del file da importare",
+        2 => "2/7 · File, codifica e delimitatori",
+        3 => "3/7 · Righe di origine e formati dei valori",
+        4 => "4/7 · Scegli una tabella esistente o crea una nuova tabella",
+        5 => "5/7 · Associa i campi del file alle colonne della tabella",
+        6 => "6/7 · Scegli la modalità di importazione",
+        _ => "7/7 · Controlla il riepilogo e premi Avvia"
     };
     public bool IsStep1 => Step == 1;
     public bool IsStep2 => Step == 2;
     public bool IsStep3 => Step == 3;
     public bool IsStep4 => Step == 4;
     public bool IsStep5 => Step == 5;
-    public bool IsLastStep => Step == 5;
-    public bool CanGoBack => Step > 1 && !IsRunning;
-    public bool CanGoNext => Step < 5 && SelectedFormat.IsAvailable && !IsRunning;
+    public bool IsStep6 => Step == 6;
+    public bool IsStep7 => Step == 7;
+    public bool IsLastStep => Step == 7;
+    public bool CanGoBack => Step > 1 && !IsRunning && !IsFinished;
+    public bool CanGoNext => Step < 7 && SelectedFormat.IsAvailable && !IsRunning && !IsFinished;
     public bool IsDelimited => SelectedFormat.Format is ImportFormat.Csv or ImportFormat.Text;
     public bool IsExcel => SelectedFormat.Format == ImportFormat.Excel;
     public bool HasHeaderOption => SelectedFormat.Format != ImportFormat.Json;
     public string Summary => $"""
-        Destinazione:  {_table} @{_database} ({_profile.Name})
+        Destinazione:  {_schema}.{_table} @{_database} ({_profile.Name})
+        Tabella:       {(CreateNewTable ? "nuova (creata soltanto all'avvio)" : "esistente")}
         File:          {Path}
         Formato:       {SelectedFormat.Label}
+        Righe:         {(HasHeaderOption ? $"{FirstDataRow}–{LastDataRow?.ToString() ?? "fine"}; intestazione {(FirstRowIsHeader ? HeaderRow?.ToString() : "assente")}" : "tutti gli oggetti JSON")}
+        Valori testo:  data {DateOrder}, decimali «{DecimalSymbol}», binari {BinaryEncoding}
         Colonne:       {Mappings.Count(mapping => mapping.IsMapped)} associate su {Mappings.Count}
         Modalità:      {(ReplaceExisting ? "svuota la tabella e aggiungi" : "aggiungi ai record esistenti")}
         Errori:        {(ContinueOnError ? "salta le righe con errori" : "interrompi al primo errore")}
@@ -130,6 +140,8 @@ public partial class ImportWizardViewModel : ObservableObject
     {
         if (value.Format == ImportFormat.Text) SelectedDelimiter = "Tabulazione";
         else if (value.Format == ImportFormat.Csv && SelectedDelimiter == "Tabulazione") SelectedDelimiter = "Virgola (,)";
+        LoadSheets();
+        RefreshPreview();
     }
 
     partial void OnIsRunningChanged(bool value)
@@ -145,7 +157,6 @@ public partial class ImportWizardViewModel : ObservableObject
     }
     partial void OnSelectedDelimiterChanged(string value) => RefreshPreview();
     partial void OnSelectedQualifierChanged(string value) => RefreshPreview();
-    partial void OnFirstRowIsHeaderChanged(bool value) => RefreshPreview();
     partial void OnSkipRowsChanged(decimal? value) => RefreshPreview();
     partial void OnSelectedSheetChanged(string? value) => RefreshPreview();
     partial void OnSelectedEncodingChanged(string value) => RefreshPreview();
@@ -155,18 +166,23 @@ public partial class ImportWizardViewModel : ObservableObject
     {
         var path = await _dialogs.PickOpenFileAsync("Importa da…", new FileFilter(SelectedFormat.Label, $"*.{SelectedFormat.Extension}"), new FileFilter("Tutti i file", "*.*"));
         if (path is null) return;
-        Path = path;
-        RefreshPreview();
+        try { SetSourceFile(path); }
+        catch (Exception error) { ErrorMessage = error.Message; }
     }
 
     [RelayCommand]
-    private void Next()
+    private async Task NextAsync()
     {
         if (!ValidateStep()) return;
-        if (Step == 2) BuildMappings();
-        Step = Math.Min(5, Step + 1);
+        try
+        {
+            if (Step == 3) { await LoadTargetsAsync(); InferColumns(); }
+            if (Step == 4) await PrepareMappingsAsync();
+        }
+        catch (Exception error) { ErrorMessage = error.Message; return; }
+        Step = Math.Min(7, Step + 1);
         if (Step == 2) RefreshPreview();
-        if (Step == 5) OnPropertyChanged(nameof(Summary));
+        if (Step == 7) OnPropertyChanged(nameof(Summary));
     }
 
     [RelayCommand]
@@ -192,20 +208,24 @@ public partial class ImportWizardViewModel : ObservableObject
     private void Close()
     {
         _running?.Cancel();
+        if (IsRunning) return;
         CloseRequested?.Invoke(ImportedRows > 0);
     }
 
     [RelayCommand]
     private async Task StartAsync()
     {
-        if (IsRunning) return;
+        if (IsRunning || IsFinished) return;
+        try { ValidateImport(); }
+        catch (Exception error) { ErrorMessage = error.Message; return; }
         var mapped = Mappings.Where(mapping => mapping.IsMapped).ToArray();
         if (mapped.Length == 0)
         {
             ErrorMessage = "Associa almeno una colonna.";
             return;
         }
-        if (ReplaceExisting && !await _dialogs.ConfirmAsync("Svuota tabella", $"Tutti i record esistenti di «{_table}» verranno eliminati prima dell’importazione. Continuare?", "Svuota e importa", danger: true))
+        if (!await SqlGuard.ConfirmProductionAsync(_dialogs, _profile, $"Importazione in «{_schema}.{_table}»{(CreateNewTable ? " con creazione di una nuova tabella" : "")}.")) return;
+        if (!CreateNewTable && ReplaceExisting && !await _dialogs.ConfirmAsync("Svuota tabella", $"Tutti i record esistenti di «{_table}» verranno eliminati prima dell’importazione. Continuare?", "Svuota e importa", danger: true))
             return;
 
         IsRunning = true;
@@ -220,8 +240,12 @@ public partial class ImportWizardViewModel : ObservableObject
         AddLog($"Importazione di «{System.IO.Path.GetFileName(Path)}» in {_table}");
         long errors = 0;
         long read = 0;
+        long retainedRows = 0;
+        var rollbackConfirmed = false;
+        Navifox.Dialects.ActivityRecording.ActivityOperation? activity = null;
         try
         {
+            activity = Navifox.Dialects.ActivityRecording.BeginOperation(_profile, _database, "Importazione dati", $"{System.IO.Path.GetFileName(Path)} → {_schema}.{_table}; nuova tabella: {CreateNewTable}");
             var provider = _databaseAccess.Provider(_profile);
             var sourceIndexes = mapped.Select(mapping => _fields.ToList().IndexOf(mapping.Source)).ToArray();
             var targetColumns = mapped.Select(mapping => mapping.Target).ToArray();
@@ -231,6 +255,8 @@ public partial class ImportWizardViewModel : ObservableObject
             var continueOnError = ContinueOnError;
             var useTransaction = UseTransaction;
             var replace = ReplaceExisting;
+            var valueOptions = ValueOptions();
+            var createStatements = CreateNewTable ? CreateTableStatements() : [];
             var progress = new Progress<(long Read, long Imported, long Errors)>(value =>
                 ProgressText = $"{value.Read:N0} letti · {value.Imported:N0} importati · {value.Errors:N0} errori");
             var logger = new Progress<string>(AddLog);
@@ -241,10 +267,26 @@ public partial class ImportWizardViewModel : ObservableObject
                 var target = $"{provider.QuoteIdentifier(_schema)}.{provider.QuoteIdentifier(_table)}";
                 long imported = 0, failed = 0, total = 0;
                 var logged = 0;
+                if (CreateNewTable)
+                {
+                    var existing = await provider.ListTablesAsync(connection, _database, _schema, token);
+                    if (existing.Any(t => t.Name.Equals(_table, StringComparison.OrdinalIgnoreCase))) throw new InvalidOperationException("Esiste già un oggetto con questo nome: scegli un altro nome per la nuova tabella.");
+                }
+                // MySQL esegue COMMIT impliciti sui DDL: la creazione precede la transazione dei dati.
+                if (_profile.Kind == DatabaseKind.MySql)
+                    foreach (var statement in createStatements) { await provider.ExecuteAsync(connection, statement, 0, token); TableCreated = true; }
+                if (useTransaction && _profile.Kind == DatabaseKind.MySql)
+                {
+                    var engine = (await provider.GetTableDesignAsync(connection, _database, _schema, _table, token)).Options.Engine;
+                    if (engine is { Length: > 0 } && !engine.Equals("InnoDB", StringComparison.OrdinalIgnoreCase) && !engine.StartsWith("NDB", StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("La transazione richiede una tabella transazionale (ad esempio InnoDB). Scegli un motore adeguato oppure disattiva l'opzione transazione.");
+                }
                 if (useTransaction) await provider.ExecuteAsync(connection, provider.Kind.BeginTransactionSql(), 0, token);
                 try
                 {
-                    if (replace) await provider.ExecuteAsync(connection, $"DELETE FROM {target}", 0, token);
+                    if (_profile.Kind != DatabaseKind.MySql)
+                        foreach (var statement in createStatements) { await provider.ExecuteAsync(connection, statement, 0, token); TableCreated = true; }
+                    if (!CreateNewTable && replace) await provider.ExecuteAsync(connection, $"DELETE FROM {target}", 0, token);
                     var source = DataImporter.Open(options);
                     var batch = new List<IReadOnlyList<object?>>(batchSize);
                     async Task Flush()
@@ -252,6 +294,7 @@ public partial class ImportWizardViewModel : ObservableObject
                         if (batch.Count == 0) return;
                         var (ok, ko, message) = await InsertBatchAsync(provider, connection, targetColumns, batch, useTransaction, continueOnError, token);
                         imported += ok;
+                        retainedRows = imported;
                         failed += ko;
                         if (message is not null && logged++ < 50) ((IProgress<string>)logger).Report(message);
                         batch.Clear();
@@ -261,11 +304,18 @@ public partial class ImportWizardViewModel : ObservableObject
                     {
                         token.ThrowIfCancellationRequested();
                         total++;
-                        batch.Add(sourceIndexes.Select(index =>
+                        try { batch.Add(sourceIndexes.Select((index, mappingIndex) =>
                         {
                             var value = index >= 0 && index < row.Length ? row[index] : null;
-                            return (object?)(emptyAsNull && string.IsNullOrEmpty(value) ? null : value);
-                        }).ToArray());
+                            try
+                            {
+                                var converted = ImportDataTypes.ConvertValue(value, ImportDataTypes.FromSql(mapped[mappingIndex].TargetInfo.DataType), valueOptions, emptyAsNull);
+                                ImportDataTypes.ValidatePrecision(converted, mapped[mappingIndex].TargetInfo.DataType);
+                                return converted;
+                            }
+                            catch (Exception error) when (error is FormatException or OverflowException) { throw new FormatException($"Record {total}, colonna «{mapped[mappingIndex].Target}»: {error.Message}", error); }
+                        }).ToArray()); }
+                        catch (FormatException error) when (continueOnError) { failed++; if (logged++ < 50) ((IProgress<string>)logger).Report(error.Message); continue; }
                         if (batch.Count >= batchSize) await Flush();
                     }
                     await Flush();
@@ -275,7 +325,12 @@ public partial class ImportWizardViewModel : ObservableObject
                 {
                     if (useTransaction)
                     {
-                        try { await provider.ExecuteAsync(connection, "ROLLBACK", 0, CancellationToken.None); }
+                        try
+                        {
+                            await provider.ExecuteAsync(connection, "ROLLBACK", 0, CancellationToken.None);
+                            rollbackConfirmed = true; retainedRows = 0;
+                            if (_profile.Kind != DatabaseKind.MySql) TableCreated = false;
+                        }
                         catch { /* connessione già chiusa */ }
                         imported = 0;
                     }
@@ -286,18 +341,25 @@ public partial class ImportWizardViewModel : ObservableObject
             ProgressText = $"{read:N0} letti · {ImportedRows:N0} importati · {errors:N0} errori · {timer.Elapsed.TotalSeconds:0.0} s";
             AddLog($"Completato: {ImportedRows:N0} record importati{(errors > 0 ? $", {errors:N0} righe scartate" : string.Empty)}.");
             IsFinished = true;
+            activity?.Complete();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException error)
         {
-            AddLog(UseTransaction ? "Importazione interrotta: nessuna modifica salvata." : "Importazione interrotta.");
+            activity?.Fail(error);
+            ImportedRows = retainedRows;
+            AddLog(rollbackConfirmed ? "Importazione interrotta: inserimenti annullati." : "Importazione interrotta: controlla l'esito nel registro attività.");
         }
         catch (Exception exception)
         {
+            activity?.Fail(exception);
+            ImportedRows = retainedRows;
             ErrorMessage = exception.Message;
             AddLog($"ERRORE: {exception.Message}");
-            if (UseTransaction) AddLog("Transazione annullata: nessun record importato.");
+            if (rollbackConfirmed) AddLog("Transazione annullata: nessun record importato.");
+            else if (ImportedRows > 0) AddLog($"{ImportedRows:N0} record già inseriti prima dell'errore: controlla il registro attività.");
+            if (TableCreated) AddLog($"La nuova tabella «{_table}» è stata creata; controllane il contenuto nel database.");
         }
-        finally { IsRunning = false; }
+        finally { activity?.Dispose(); _running?.Dispose(); _running = null; IsRunning = false; OnPropertyChanged(nameof(CanGoBack)); OnPropertyChanged(nameof(CanGoNext)); }
     }
 
     /// <summary>Inserisce un blocco; in modalità «continua» riprova riga per riga isolando quelle errate.</summary>
@@ -328,16 +390,18 @@ public partial class ImportWizardViewModel : ObservableObject
     private static async Task<string?> TryExecuteAsync(IDialectProvider provider, DbConnection connection, string sql, bool useSavepoint, CancellationToken token)
     {
         // In PostgreSQL un errore invalida la transazione: un SAVEPOINT permette di proseguire.
-        if (useSavepoint) await provider.ExecuteAsync(connection, "SAVEPOINT nf_import", 0, token);
+        var sqlServer = provider.Kind == DatabaseKind.SqlServer;
+        if (useSavepoint) await provider.ExecuteAsync(connection, sqlServer ? "SAVE TRANSACTION nf_import" : "SAVEPOINT nf_import", 0, token);
         try
         {
             await provider.ExecuteAsync(connection, sql, 0, token);
-            if (useSavepoint) await provider.ExecuteAsync(connection, "RELEASE SAVEPOINT nf_import", 0, token);
+            if (useSavepoint && !sqlServer) await provider.ExecuteAsync(connection, "RELEASE SAVEPOINT nf_import", 0, token);
             return null;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            if (useSavepoint) await provider.ExecuteAsync(connection, "ROLLBACK TO SAVEPOINT nf_import", 0, token);
+            if (useSavepoint) await provider.ExecuteAsync(connection, sqlServer ? "ROLLBACK TRANSACTION nf_import" : "ROLLBACK TO SAVEPOINT nf_import", 0, token);
+            if (useSavepoint && !sqlServer) await provider.ExecuteAsync(connection, "RELEASE SAVEPOINT nf_import", 0, token);
             return exception.Message;
         }
     }
@@ -382,7 +446,7 @@ public partial class ImportWizardViewModel : ObservableObject
     {
         var fields = new[] { ColumnMapping.Ignore }.Concat(_fields).ToArray();
         Mappings.Clear();
-        foreach (var column in _columns) Mappings.Add(new ColumnMapping(column, fields));
+        foreach (var column in _columns.Where(c => !c.IsGenerated && !c.IsAutoIncrement)) Mappings.Add(new ColumnMapping(column, fields));
         AutoMap();
         if (!Mappings.Any(mapping => mapping.IsMapped) && !FirstRowIsHeader)
             for (var index = 0; index < Math.Min(Mappings.Count, _fields.Count); index++) Mappings[index].Source = _fields[index];
@@ -401,6 +465,8 @@ public partial class ImportWizardViewModel : ObservableObject
             FirstRowIsHeader = FirstRowIsHeader,
             SkipRows = (int)Math.Max(0, SkipRows ?? 0),
             Sheet = SelectedSheet
+            , HeaderRow = (int)(HeaderRow ?? 1), FirstDataRow = HasHeaderOption ? (int)(FirstDataRow ?? 2) : 1, LastDataRow = LastDataRow is > 0 ? (int)LastDataRow.Value : null,
+            RecordDelimiter = SelectedRecordDelimiter switch { "CRLF" => "\r\n", "LF" => "\n", "CR" => "\r", _ => null }
         };
     }
 
@@ -417,13 +483,17 @@ public partial class ImportWizardViewModel : ObservableObject
                 return false;
             case 2:
                 RefreshPreview();
-                if (_fields.Count == 0)
+                if (_fields.Count == 0 || ErrorMessage.Length > 0)
                 {
                     ErrorMessage = ErrorMessage.Length > 0 ? ErrorMessage : "Il file non contiene campi leggibili.";
                     return false;
                 }
                 return true;
-            case 3 when !Mappings.Any(mapping => mapping.IsMapped):
+            case 3:
+                if (!ValidateRows()) return false;
+                RefreshPreview();
+                return _fields.Count > 0 && ErrorMessage.Length == 0;
+            case 5 when !Mappings.Any(mapping => mapping.IsMapped):
                 ErrorMessage = "Associa almeno una colonna.";
                 return false;
         }

@@ -17,10 +17,16 @@ public sealed class ImportReadOptions
     public bool FirstRowIsHeader { get; init; } = true;
     public int SkipRows { get; init; }
     public string? Sheet { get; init; }
+    public int? HeaderRow { get; init; }
+    public int? FirstDataRow { get; init; }
+    public int? LastDataRow { get; init; }
+    public string? RecordDelimiter { get; init; }
+    internal int HeaderIndex => HeaderRow ?? SkipRows + 1;
+    internal int DataIndex => FirstDataRow ?? SkipRows + (FirstRowIsHeader ? 2 : 1);
 }
 
 /// <summary>Sorgente dati per l'Import Wizard: intestazioni + righe di testo (null = valore assente).</summary>
-public sealed record ImportSource(IReadOnlyList<string> Fields, IEnumerable<string?[]> Rows);
+public sealed record ImportSource(IReadOnlyList<string> Fields, IEnumerable<object?[]> Rows);
 
 public static class DataImporter
 {
@@ -47,7 +53,7 @@ public static class DataImporter
         string[]? header = null;
         using (var reader = new StreamReader(options.Path, options.Encoding, detectEncodingFromByteOrderMarks: true))
         {
-            using var records = ParseDelimited(reader, options.Delimiter, options.Qualifier).Skip(options.SkipRows).GetEnumerator();
+            using var records = ParseDelimited(reader, options.Delimiter, options.Qualifier, options.RecordDelimiter).Skip((options.FirstRowIsHeader ? options.HeaderIndex : options.DataIndex) - 1).GetEnumerator();
             if (records.MoveNext()) header = records.Current;
         }
         header ??= [];
@@ -60,10 +66,12 @@ public static class DataImporter
     private static IEnumerable<string?[]> ReadDelimitedRows(ImportReadOptions options, int width)
     {
         using var reader = new StreamReader(options.Path, options.Encoding, detectEncodingFromByteOrderMarks: true);
-        var records = ParseDelimited(reader, options.Delimiter, options.Qualifier).Skip(options.SkipRows + (options.FirstRowIsHeader ? 1 : 0));
+        var records = ParseDelimited(reader, options.Delimiter, options.Qualifier, options.RecordDelimiter).Skip(options.DataIndex - 1);
+        if (options.LastDataRow is { } end) records = records.Take(Math.Max(0, end - options.DataIndex + 1));
         foreach (var record in records)
         {
             if (record.Length == 1 && record[0].Length == 0) continue; // riga vuota
+            if (record.Length > width) throw new FormatException($"Una riga contiene {record.Length} campi, ma l'intestazione ne prevede {width}. Controlla delimitatori e righe selezionate.");
             var row = new string?[Math.Max(width, record.Length)];
             Array.Copy(record, row, record.Length);
             yield return row;
@@ -71,7 +79,7 @@ public static class DataImporter
     }
 
     /// <summary>Parser RFC 4180: qualificatori raddoppiati come escape, campi su più righe.</summary>
-    public static IEnumerable<string[]> ParseDelimited(TextReader reader, char delimiter, char? qualifier)
+    public static IEnumerable<string[]> ParseDelimited(TextReader reader, char delimiter, char? qualifier, string? recordDelimiter = null)
     {
         var fields = new List<string>();
         var field = new StringBuilder();
@@ -94,9 +102,10 @@ public static class DataImporter
             }
             if (qualifier is not null && c == qualifier && field.Length == 0) { inQuotes = true; continue; }
             if (c == delimiter) { fields.Add(field.ToString()); field.Clear(); continue; }
-            if (c is '\r' or '\n')
+            var lineEnd = recordDelimiter switch { "\r\n" => c == '\r' && reader.Peek() == '\n', "\r" => c == '\r', "\n" => c == '\n', _ => c is '\r' or '\n' };
+            if (lineEnd)
             {
-                if (c == '\r' && reader.Peek() == '\n') reader.Read();
+                if (c == '\r' && reader.Peek() == '\n' && recordDelimiter != "\r") reader.Read();
                 fields.Add(field.ToString());
                 field.Clear();
                 yield return fields.ToArray();
@@ -106,6 +115,7 @@ public static class DataImporter
             }
             field.Append(c);
         }
+        if (inQuotes) throw new FormatException("Campo CSV con qualificatore non chiuso.");
         if (any || field.Length > 0 || fields.Count > 0)
         {
             fields.Add(field.ToString());
@@ -165,13 +175,29 @@ public static class DataImporter
         var range = sheet.RangeUsed();
         if (range is null) return new ImportSource([], []);
         var width = range.ColumnCount();
-        var all = range.Rows().Skip(options.SkipRows).Select(row => Enumerable.Range(1, width).Select(column => ExcelText(row.Cell(column))).ToArray()).ToList();
-        var header = all.Count == 0 ? [] : all[0];
+        var firstColumn = range.FirstColumn().ColumnNumber();
+        var rowIndex = options.FirstRowIsHeader ? options.HeaderIndex : options.DataIndex;
+        var header = Enumerable.Range(firstColumn, width).Select(column => ExcelText(sheet.Cell(rowIndex, column))).ToArray();
         var fields = options.FirstRowIsHeader
             ? Deduplicate(header.Select((name, index) => string.IsNullOrWhiteSpace(name) ? $"Campo{index + 1}" : name!.Trim()))
             : Enumerable.Range(1, width).Select(index => $"Campo{index}").ToArray();
-        return new ImportSource(fields, options.FirstRowIsHeader ? all.Skip(1).ToArray() : all.ToArray());
+        return new ImportSource(fields, ReadExcelRows(options, firstColumn, width));
     }
+
+    private static IEnumerable<object?[]> ReadExcelRows(ImportReadOptions options, int firstColumn, int width)
+    {
+        using var workbook = new XLWorkbook(options.Path);
+        var sheet = options.Sheet is { Length: > 0 } name ? workbook.Worksheet(name) : workbook.Worksheet(1);
+        var last = Math.Min(options.LastDataRow ?? int.MaxValue, sheet.LastRowUsed()?.RowNumber() ?? 0);
+        for (var row = options.DataIndex; row <= last; row++)
+            yield return Enumerable.Range(firstColumn, width).Select(column => ExcelValue(sheet.Cell(row, column))).ToArray();
+    }
+
+    private static object? ExcelValue(IXLCell cell) => cell.IsEmpty() ? null
+        : cell.Value.IsDateTime ? cell.Value.GetDateTime()
+        : cell.Value.IsNumber ? cell.Value.GetNumber()
+        : cell.Value.IsBoolean ? cell.Value.GetBoolean()
+        : cell.GetFormattedString();
 
     private static string? ExcelText(IXLCell cell)
     {

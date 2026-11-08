@@ -63,6 +63,18 @@ Le connessioni possono passare da un **tunnel SSH** (password o chiave privata, 
 - Editor del valore del campo **a destra o in basso**, a scelta.
 - Ricerca nei dati della tabella e **ricerca in tutto il database**.
 - Import (CSV, testo delimitato, Excel, JSON) ed export (CSV, testo, HTML, Excel, SQL, XML, JSON, Markdown), stampa.
+- Nell'elenco Oggetti puoi selezionare più tabelle con Ctrl/Maiusc o Ctrl+A ed eliminarle con **Elimina selezionate**, Canc o il menu contestuale.
+  Una sola conferma elenca tutti gli oggetti; le dipendenze da tabelle non selezionate vengono segnalate prima dell'eliminazione.
+
+**Import Wizard** importa in una tabella esistente oppure crea una nuova tabella da CSV, testo delimitato, Excel `.xlsx` o JSON.
+Puoi avviarlo anche senza una tabella selezionata, oppure trascinare un file sulla tabella nell'albero, nell'elenco Oggetti
+o nella sua scheda dati. Trascinando sullo spazio libero dell'elenco o sulla categoria Tabelle si prepara una nuova tabella.
+Il trascinamento apre il wizard con il file e la destinazione già impostati: l'importazione parte soltanto con **Avvia**.
+
+I passaggi permettono di scegliere codifica, delimitatori, foglio Excel, riga delle intestazioni, prima e ultima riga dati,
+formati di data/ora, separatore decimale e codifica binaria. Per le nuove tabelle puoi rivedere nomi e tipi delle colonne
+suggeriti dalle prime 200 righe. Seguono mappatura, modalità di importazione, riepilogo e registro degli esiti.
+Le celle numeriche e le date native di Excel conservano il proprio valore; gli ID automatici e le colonne calcolate sono esclusi dalla mappatura.
 
 ### Editor SQL
 - Evidenziazione, **autocompletamento** di tabelle, colonne e parole chiave con le lettere digitate evidenziate, formattazione, snippet.

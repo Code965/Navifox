@@ -21,6 +21,8 @@ public partial class TablePageView : UserControl
     public TablePageView()
     {
         InitializeComponent();
+        Services.ImportFileDrop.Attach(this, _ => _viewModel is { IsView: false, IsBusy: false },
+            (_, path) => _viewModel?.RequestImportFileAsync(path) ?? Task.CompletedTask, message => { if (_viewModel is not null) _viewModel.StatusMessage = message; });
         ResultGrid.Sorting += OnSorting;
         ResultGrid.CurrentCellChanged += (_, _) => { SyncCurrent(); QueueSelectionSummary(); };
         ResultGrid.SelectionChanged += (_, _) =>

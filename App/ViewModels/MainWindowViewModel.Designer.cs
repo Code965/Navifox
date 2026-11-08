@@ -36,8 +36,18 @@ public partial class MainWindowViewModel
     {
         if (ObjectsTab.Source is not { } category) return [];
         if (row is not null && category.SelfAndDescendants().FirstOrDefault(child => child.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject or TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile && child.Name == row.Name) is { } item)
-            return GetContextActions(item);
-        return category.Category == "Tabelle" ? TablesCategoryActions(category) : GetContextActions(category);
+        {
+            var actions = GetContextActions(item).ToList();
+            if (category.IsTableCategory && SelectedObjectRows.Count > 1)
+                for (var i = 0; i < actions.Count; i++)
+                    if (actions[i].Parameter is TableOperation { Kind: "drop" })
+                        actions[i] = new($"Elimina {SelectedObjectRows.Count} oggetti selezionati…", DeleteSelectedObjectsCommand, Glyph: "trash");
+            return actions;
+        }
+        var categoryActions = (category.Category == "Tabelle" ? TablesCategoryActions(category) : GetContextActions(category)).ToList();
+        if (category.IsTableCategory && SelectedObjectRows.Count > 0)
+            categoryActions.Insert(0, new($"Elimina {SelectedObjectRows.Count} oggetti selezionati…", DeleteSelectedObjectsCommand, Glyph: "trash"));
+        return categoryActions;
     }
 
     private TreeNodeViewModel? SelectedObjectNode()
@@ -78,35 +88,26 @@ public partial class MainWindowViewModel
     private async Task DeleteSelectedObjectsAsync()
     {
         if (ObjectsTab.Source is not { } category) return;
-        var rows = SelectedObjectRows.Count > 0 ? SelectedObjectRows : ObjectsTab.SelectedObject is { } one ? [one] : [];
-        var nodes = rows.Select(r => category.SelfAndDescendants().FirstOrDefault(c => c.Kind == TreeNodeKind.Table && c.Name == r.Name)).OfType<TreeNodeViewModel>().ToArray();
-        if (nodes.Length == 0)
+        if (!category.IsTableCategory || IsBusy || category.Profile is not { } profile || category.Database is not { } database || category.Schema is not { } schema) return;
+        var rows = (SelectedObjectRows.Count > 0 ? SelectedObjectRows : ObjectsTab.SelectedObject is { } one ? [one] : []).Where(r => ObjectsTab.VisibleObjects.Contains(r)).ToArray();
+        if (rows.Length == 0)
         {
             StatusMessage = "Seleziona una o più tabelle da eliminare.";
             return;
         }
-        if (nodes.Length == 1)
+        IsBusy = true;
+        try
         {
-            await TableOperationAsync(new TableOperation(nodes[0], "drop"));
-            return;
+            var result = await new Services.TableDeletionService(_databaseAccess, _dialogs).DeleteAsync(profile, database, schema, rows.Select(r => r.Name).ToArray(), category.Category == "Viste", CancellationToken.None);
+            if (!result.Confirmed) return;
+            foreach (var name in result.Deleted) CloseTabsForTable(profile.Id, database, name, schema);
+            SelectedObjectRows = [];
+            await RefreshTablesOfAsync(profile, database, schema);
+            StatusMessage = $"{result.Deleted.Count} di {rows.Length} oggetti eliminati.";
+            if (result.Error is { } error) await _dialogs.ShowMessageAsync("Eliminazione non completata", StatusMessage + "\n\n" + error, isError: true);
         }
-        var view = category.Category == "Viste";
-        if (!await _dialogs.ConfirmAsync(view ? "Elimina viste" : "Elimina tabelle",
-                $"Eliminare definitivamente {nodes.Length} {(view ? "viste" : "tabelle")} da «{category.Database}»?\n\n{string.Join("\n", nodes.Take(15).Select(n => "  • " + n.Name))}{(nodes.Length > 15 ? "\n  …" : string.Empty)}\n\nL’operazione non può essere annullata.",
-                "Elimina", danger: true)) return;
-        var errors = new List<string>();
-        foreach (var node in nodes)
-        {
-            try
-            {
-                await RunTableSqlAsync(node, $"DROP {(view ? "VIEW" : "TABLE")} {TableName(node)}");
-                CloseTabsForTable(node.Profile!.Id, node.Database!, node.Name);
-            }
-            catch (Exception exception) { errors.Add($"{node.Name}: {exception.Message}"); }
-        }
-        await RefreshTablesOfAsync(category.Profile!, category.Database!, category.Schema!);
-        if (errors.Count > 0) await _dialogs.ShowMessageAsync("Eliminazione non completata", string.Join("\n", errors), isError: true);
-        else StatusMessage = $"{nodes.Length} oggetti eliminati.";
+        catch (Exception error) { await ReportErrorAsync("Eliminazione non riuscita", error); }
+        finally { IsBusy = false; }
     }
 
     /// <summary>Import/Export Wizard dal menu della categoria: usa la tabella selezionata nell'elenco Oggetti.</summary>
@@ -114,6 +115,7 @@ public partial class MainWindowViewModel
     private async Task CategoryWizardAsync(TableOperation? operation)
     {
         if (operation is null) return;
+        if (operation.Kind == "import") { await OpenImportWizardAsync(operation.Node); return; }
         var row = ObjectsTab.Source == operation.Node ? ObjectsTab.SelectedObject : null;
         if (row is null)
         {

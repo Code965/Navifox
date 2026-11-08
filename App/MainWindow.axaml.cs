@@ -215,6 +215,10 @@ public partial class MainWindow : Window
             var (_, node, where) = DropTarget(args);
             await viewModel.DropAsync(key, node, where);
         });
+        TreeNodeViewModel? ImportTarget(object? source) => (source as Visual)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext as TreeNodeViewModel;
+        Services.ImportFileDrop.Attach(ConnectionTree,
+            source => ImportTarget(source) is { Profile.ReadOnly: false } target && (target.Kind == TreeNodeKind.Table && target.Category != "Viste" || target.Kind == TreeNodeKind.Category && target.Category == "Tabelle" || target.Kind is TreeNodeKind.Database or TreeNodeKind.Schema),
+            (source, path) => viewModel.OpenImportWizardAsync(ImportTarget(source), path), message => viewModel.StatusMessage = message);
     }
 
     /// <summary>Elemento sotto il puntatore e posizione (sopra, dentro, sotto) in base all'altezza nella riga.</summary>

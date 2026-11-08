@@ -40,9 +40,10 @@
             <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="plus" Classes="objbar-icon" /><TextBlock Text="Nuova tabella" /></StackPanel>
           </Button>
           <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteSelectedObjectsCommand}" IsEnabled="{Binding HasSelection}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina tabella" /></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="trash" Classes="objbar-icon" /><TextBlock Text="Elimina selezionate" /></StackPanel>
           </Button>
           <Button Classes="objbar" Command="{Binding ImportCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="import" Classes="objbar-icon" /><TextBlock Text="Import Wizard" /></StackPanel></Button>
+          <Button Classes="objbar" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ImportIntoNewTableCommand}" CommandParameter="{Binding Source}" IsVisible="{Binding !IsViewList}" IsEnabled="{Binding HasSource}" ToolTip.Tip="Crea una tabella da CSV o Excel .xlsx. Puoi anche trascinare un file nell'elenco."><TextBlock Text="Importa in nuova tabella…" /></Button>
           <Button Classes="objbar" Command="{Binding ExportCommand}"><StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="export" Classes="objbar-icon" /><TextBlock Text="Export Wizard" /></StackPanel></Button>
         </WrapPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top">

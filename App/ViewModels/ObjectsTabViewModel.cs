@@ -10,11 +10,13 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
     private readonly Func<ObjectRowViewModel, Task> _openTable;
     private readonly Func<Task> _refresh;
     private readonly Func<ObjectRowViewModel, string, Task>? _wizard;
+    private readonly Func<Task>? _newImport;
     private List<ObjectRowViewModel> _all = [];
 
-    public ObjectsTabViewModel(Func<ObjectRowViewModel, Task> openTable, Func<Task> refresh, Func<ObjectRowViewModel, string, Task>? wizard = null)
+    public ObjectsTabViewModel(Func<ObjectRowViewModel, Task> openTable, Func<Task> refresh, Func<ObjectRowViewModel, string, Task>? wizard = null, Func<Task>? newImport = null)
     {
         _wizard = wizard;
+        _newImport = newImport;
         _openTable = openTable;
         _refresh = refresh;
     }
@@ -106,6 +108,7 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
     public void Show(TreeNodeViewModel category, IEnumerable<ObjectRowViewModel> rows, string? selectName = null)
     {
         Source = category;
+        ImportCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(IsTableList));
         OnPropertyChanged(nameof(IsRoutineList));
         OnPropertyChanged(nameof(IsViewList));
@@ -156,8 +159,9 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
 
     private bool CanOpenSelected() => SelectedObject is not null;
 
-    [RelayCommand(CanExecute = nameof(CanOpenSelected))]
-    private Task ImportAsync() => SelectedObject is null || _wizard is null ? Task.CompletedTask : _wizard(SelectedObject, "import");
+    private bool CanImport() => HasSource && !IsViewList;
+    [RelayCommand(CanExecute = nameof(CanImport))]
+    private Task ImportAsync() => SelectedObject is { } selected && _wizard is not null ? _wizard(selected, "import") : _newImport?.Invoke() ?? Task.CompletedTask;
 
     [RelayCommand(CanExecute = nameof(CanOpenSelected))]
     private Task ExportAsync() => SelectedObject is null || _wizard is null ? Task.CompletedTask : _wizard(SelectedObject, "export");

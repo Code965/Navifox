@@ -118,7 +118,7 @@ public partial class MainWindowViewModel
                     if (!await _dialogs.ConfirmAsync(view ? "Elimina vista" : "Elimina tabella",
                             $"Eliminare definitivamente {(view ? "la vista" : "la tabella")} «{node.Name}» da «{database}»?\n\nL’operazione non può essere annullata.", "Elimina", danger: true)) return;
                     await RunTableSqlAsync(node, $"DROP {(view ? "VIEW" : "TABLE")} {name}");
-                    CloseTabsForTable(profile.Id, database, node.Name);
+                    CloseTabsForTable(profile.Id, database, node.Name, schema);
                     StatusMessage = $"«{node.Name}» eliminata.";
                     break;
                 case "empty":
@@ -179,7 +179,7 @@ public partial class MainWindowViewModel
                         DatabaseKind.Sqlite => $"ALTER TABLE {provider.QuoteIdentifier(node.Name)} RENAME TO {provider.QuoteIdentifier(newName)}",
                         _ => $"ALTER {(view ? "VIEW" : "TABLE")} {name} RENAME TO {provider.QuoteIdentifier(newName)}",
                     });
-                    CloseTabsForTable(profile.Id, database, node.Name);
+                    CloseTabsForTable(profile.Id, database, node.Name, schema);
                     StatusMessage = $"«{node.Name}» rinominata in «{newName}».";
                     break;
                 }
@@ -204,9 +204,9 @@ public partial class MainWindowViewModel
         if (results.FirstOrDefault(r => r.Error is not null) is { } failed) throw failed.Error!;
     }
 
-    private void CloseTabsForTable(Guid profileId, string database, string table)
+    private void CloseTabsForTable(Guid profileId, string database, string table, string? schema = null)
     {
-        foreach (var tab in OpenTabs.OfType<TableTabViewModel>().Where(t => t.ProfileId == profileId && t.Database == database && t.TableName == table).ToArray())
+        foreach (var tab in OpenTabs.OfType<TableTabViewModel>().Where(t => t.ProfileId == profileId && t.Database == database && t.TableName == table && (schema is null || t.Schema == schema)).ToArray())
             CloseTab(tab);
     }
 

@@ -8,7 +8,11 @@ public partial class ImportWizard : Window
 {
     private ImportWizardViewModel? _viewModel;
 
-    public ImportWizard() => InitializeComponent();
+    public ImportWizard()
+    {
+        InitializeComponent();
+        Closing += (_, e) => { if (_viewModel?.IsRunning == true) { e.Cancel = true; _viewModel.CloseCommand.Execute(null); } };
+    }
 
     protected override void OnDataContextChanged(EventArgs e)
     {

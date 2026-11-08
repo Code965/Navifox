@@ -734,15 +734,21 @@ public partial class TableTabViewModel : WorkspaceTabViewModel
     }
 
     [RelayCommand]
-    private async Task ImportAsync()
+    private Task ImportAsync() => RequestImportFileAsync(null);
+
+    public Func<string?, Task>? OpenImportWizard { get; set; }
+    public async Task RequestImportFileAsync(string? path)
     {
         if (IsView)
         {
             StatusMessage = "Non è possibile importare dati in una vista.";
             return;
         }
+        if (OpenImportWizard is { } open) { await open(path); return; }
+        if (await Services.SqlGuard.BlockIfReadOnlyAsync(_dialogs, _profile, "Importazione da file.")) return;
         var columns = _metadata.Count > 0 ? _metadata : Columns.ToArray();
         var wizard = new ImportWizardViewModel(_databaseAccess, _dialogs, _profile, Database, Schema, TableName, columns);
+        if (path is not null) wizard.SetSourceFile(path);
         if (await _dialogs.ShowImportWizardAsync(wizard) && wizard.ImportedRows > 0) await LoadAsync();
     }
 

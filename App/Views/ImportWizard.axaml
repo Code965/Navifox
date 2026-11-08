@@ -3,7 +3,7 @@
         xmlns:vm="using:Navifox.App.ViewModels"
         x:Class="Navifox.App.Views.ImportWizard"
         x:DataType="vm:ImportWizardViewModel"
-        Title="Import Wizard" Width="820" Height="620" MinWidth="660" MinHeight="520"
+        Title="Import Wizard" Width="980" Height="760" MinWidth="820" MinHeight="620"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource SurfaceBrush}">
   <Grid RowDefinitions="Auto,*,Auto">
     <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,16">
@@ -15,7 +15,7 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" Margin="20,14,20,10">
+    <Grid Grid.Row="1" Margin="20,14,20,10" IsEnabled="{Binding !IsRunning}">
       <!-- 1. Formato -->
       <StackPanel IsVisible="{Binding IsStep1}" Spacing="6">
         <TextBlock Text="Formato di import:" Classes="field-label" Margin="0,0,0,4" />
@@ -60,13 +60,12 @@
             <TextBlock Text="Foglio" Classes="field-label" />
             <ComboBox ItemsSource="{Binding Sheets}" SelectedItem="{Binding SelectedSheet, Mode=TwoWay}" HorizontalAlignment="Stretch" />
           </StackPanel>
-          <StackPanel Spacing="5" Width="120" Margin="0,0,12,6" IsVisible="{Binding HasHeaderOption}">
-            <TextBlock Text="Righe da saltare" Classes="field-label" />
-            <NumericUpDown Value="{Binding SkipRows}" Minimum="0" Maximum="1000" FormatString="0" />
+          <StackPanel Spacing="5" Width="150" Margin="0,0,12,6" IsVisible="{Binding IsDelimited}">
+            <TextBlock Text="Separatore record" Classes="field-label" />
+            <ComboBox ItemsSource="{Binding RecordDelimiters}" SelectedItem="{Binding SelectedRecordDelimiter, Mode=TwoWay}" HorizontalAlignment="Stretch" />
           </StackPanel>
         </WrapPanel>
         <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
-          <CheckBox Content="La prima riga contiene i nomi dei campi" IsChecked="{Binding FirstRowIsHeader}" IsVisible="{Binding HasHeaderOption}" />
           <TextBlock Grid.Column="1" Text="{Binding PreviewInfo}" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
         </Grid>
         <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
@@ -74,8 +73,51 @@
         </Border>
       </Grid>
 
-      <!-- 3. Mappatura -->
-      <Grid IsVisible="{Binding IsStep3}" RowDefinitions="Auto,*">
+      <ScrollViewer IsVisible="{Binding IsStep3}">
+        <StackPanel Spacing="14">
+          <TextBlock Text="Righe della sorgente (record CSV o numero di riga nel foglio Excel)" Classes="field-label" />
+          <CheckBox Content="Il file contiene una riga con i nomi dei campi" IsChecked="{Binding FirstRowIsHeader, Mode=TwoWay}" IsVisible="{Binding HasHeaderOption}" />
+          <WrapPanel IsVisible="{Binding HasHeaderOption}">
+            <StackPanel Width="200" Margin="0,0,12,8" Spacing="5" IsVisible="{Binding FirstRowIsHeader}"><TextBlock Text="Riga nomi dei campi" /><NumericUpDown Value="{Binding HeaderRow, Mode=TwoWay}" Minimum="1" Maximum="1048576" FormatString="0" /></StackPanel>
+            <StackPanel Width="200" Margin="0,0,12,8" Spacing="5"><TextBlock Text="Prima riga dati" /><NumericUpDown Value="{Binding FirstDataRow, Mode=TwoWay}" Minimum="1" Maximum="1048576" FormatString="0" /></StackPanel>
+            <StackPanel Width="200" Margin="0,0,12,8" Spacing="5"><TextBlock Text="Ultima riga dati (vuoto = fine)" /><NumericUpDown Value="{Binding LastDataRow, Mode=TwoWay}" Minimum="1" Maximum="1048576" FormatString="0" /></StackPanel>
+          </WrapPanel>
+          <Separator />
+          <TextBlock Text="Formati dei valori di testo" Classes="field-label" />
+          <WrapPanel>
+            <StackPanel Width="180" Margin="0,0,12,12" Spacing="5"><TextBlock Text="Ordine della data" /><ComboBox ItemsSource="{Binding DateOrders}" SelectedItem="{Binding DateOrder, Mode=TwoWay}" HorizontalAlignment="Stretch" /></StackPanel>
+            <StackPanel Width="160" Margin="0,0,12,12" Spacing="5"><TextBlock Text="Separatore data" /><TextBox Text="{Binding DateDelimiter, Mode=TwoWay}" MaxLength="1" /></StackPanel>
+            <StackPanel Width="160" Margin="0,0,12,12" Spacing="5"><TextBlock Text="Separatore ora" /><TextBox Text="{Binding TimeDelimiter, Mode=TwoWay}" MaxLength="1" /></StackPanel>
+            <StackPanel Width="160" Margin="0,0,12,12" Spacing="5"><TextBlock Text="Simbolo decimale" /><ComboBox ItemsSource="{Binding DecimalSymbols}" SelectedItem="{Binding DecimalSymbol, Mode=TwoWay}" HorizontalAlignment="Stretch" /></StackPanel>
+            <StackPanel Width="180" Margin="0,0,12,12" Spacing="5"><TextBlock Text="Ordine data e ora" /><ComboBox ItemsSource="{Binding DateTimeOrders}" SelectedItem="{Binding DateTimeOrder, Mode=TwoWay}" HorizontalAlignment="Stretch" /></StackPanel>
+            <StackPanel Width="180" Margin="0,0,12,12" Spacing="5"><TextBlock Text="Codifica dati binari" /><ComboBox ItemsSource="{Binding BinaryEncodings}" SelectedItem="{Binding BinaryEncoding, Mode=TwoWay}" HorizontalAlignment="Stretch" /></StackPanel>
+          </WrapPanel>
+          <TextBlock Text="Le celle numeriche e le date native di Excel mantengono il proprio valore. I formati si applicano ai campi di testo e al CSV. Con la nuova tabella i tipi suggeriti si basano sulle prime 200 righe: controllali nel passaggio successivo." TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" />
+        </StackPanel>
+      </ScrollViewer>
+
+      <Grid IsVisible="{Binding IsStep4}" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+        <TextBlock Text="{Binding TargetContext}" Foreground="{DynamicResource MutedTextBrush}" />
+        <CheckBox Grid.Row="1" Content="Crea una nuova tabella dal file" IsChecked="{Binding CreateNewTable, Mode=TwoWay}" />
+        <StackPanel Grid.Row="2" Spacing="6">
+          <TextBlock Text="Tabella di destinazione" Classes="field-label" />
+          <TextBox Text="{Binding TargetTable, Mode=TwoWay}" IsVisible="{Binding CreateNewTable}" Watermark="Nome della nuova tabella" />
+          <ComboBox ItemsSource="{Binding ExistingTables}" SelectedItem="{Binding TargetTable, Mode=TwoWay}" IsVisible="{Binding !CreateNewTable}" HorizontalAlignment="Stretch" PlaceholderText="Seleziona una tabella" />
+        </StackPanel>
+        <Grid Grid.Row="3" IsVisible="{Binding CreateNewTable}" RowDefinitions="Auto,*" RowSpacing="8">
+          <TextBlock Text="Controlla nomi e tipi delle colonne. Nessuna tabella viene creata prima di Avvia." TextWrapping="Wrap" />
+          <DataGrid Grid.Row="1" ItemsSource="{Binding NewColumns}" AutoGenerateColumns="False" Classes="nf-grid">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Campo sorgente" Binding="{Binding Source}" IsReadOnly="True" Width="*" x:DataType="vm:NewImportColumn" />
+              <DataGridTextColumn Header="Nuova colonna" Binding="{Binding Name, Mode=TwoWay}" Width="*" x:DataType="vm:NewImportColumn" />
+              <DataGridTemplateColumn Header="Tipo" Width="210"><DataGridTemplateColumn.CellTemplate><DataTemplate x:DataType="vm:NewImportColumn"><ComboBox ItemsSource="{x:Static vm:NewImportColumn.Types}" SelectedItem="{Binding SelectedType, Mode=TwoWay}" HorizontalAlignment="Stretch"><ComboBox.ItemTemplate><DataTemplate x:DataType="vm:ImportTypeOption"><TextBlock Text="{Binding Label}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </Grid>
+
+      <!-- 5. Mappatura -->
+      <Grid IsVisible="{Binding IsStep5}" RowDefinitions="Auto,*">
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
           <TextBlock Text="Colonna di destinazione ← campo sorgente" Classes="field-label" VerticalAlignment="Center" />
           <Button Content="Associa per nome" Classes="objbar" Command="{Binding AutoMapCommand}" />
@@ -96,11 +138,11 @@
         </Border>
       </Grid>
 
-      <!-- 4. Modalità -->
-      <StackPanel IsVisible="{Binding IsStep4}" Spacing="12">
+      <!-- 6. Modalità -->
+      <StackPanel IsVisible="{Binding IsStep6}" Spacing="12">
         <TextBlock Text="Modalità" Classes="field-label" />
         <RadioButton GroupName="mode" Content="Aggiungi: inserisci i record dopo quelli esistenti" IsChecked="{Binding !ReplaceExisting}" />
-        <RadioButton GroupName="mode" Content="Copia: svuota la tabella e inserisci i record" IsChecked="{Binding ReplaceExisting, Mode=TwoWay}" />
+        <RadioButton GroupName="mode" Content="Copia: svuota la tabella e inserisci i record" IsChecked="{Binding ReplaceExisting, Mode=TwoWay}" IsEnabled="{Binding !CreateNewTable}" />
         <Separator />
         <CheckBox Content="Tratta i campi vuoti come NULL" IsChecked="{Binding EmptyAsNull}" />
         <CheckBox Content="Continua in caso di errore (salta le righe non valide)" IsChecked="{Binding ContinueOnError}" />
@@ -111,8 +153,8 @@
         </StackPanel>
       </StackPanel>
 
-      <!-- 5. Avvio -->
-      <Grid IsVisible="{Binding IsStep5}" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+      <!-- 7. Avvio -->
+      <Grid IsVisible="{Binding IsStep7}" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
         <Border Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
           <SelectableTextBlock Text="{Binding Summary}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12" />
         </Border>

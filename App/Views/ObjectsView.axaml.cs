@@ -13,6 +13,12 @@ public partial class ObjectsView : UserControl
     public ObjectsView()
     {
         InitializeComponent();
+        ObjectRowViewModel? ImportRow(object? source) => (source as Avalonia.Visual)?.FindAncestorOfType<DataGridRow>(includeSelf: true)?.DataContext as ObjectRowViewModel
+            ?? (source as Avalonia.Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext as ObjectRowViewModel;
+        Services.ImportFileDrop.Attach(this,
+            source => _viewModel?.Source is { Category: "Tabelle", Profile.ReadOnly: false } && ImportRow(source)?.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase) != true,
+            (source, path) => TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel main ? main.ImportFileIntoObjectsAsync(ImportRow(source), path) : Task.CompletedTask,
+            message => { if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel main) main.StatusMessage = message; });
         ObjectsGrid.DoubleTapped += (_, _) => OpenSelected();
         ObjectsGrid.AddHandler(KeyDownEvent, (_, args) =>
         {
@@ -29,18 +35,36 @@ public partial class ObjectsView : UserControl
                 else main.PasteTablesCommand.Execute(_viewModel?.Source);
                 args.Handled = true;
             }
+            else if (main is not null && args.Key == Key.Delete && args.KeyModifiers == KeyModifiers.None && _viewModel?.IsTableList == true)
+            {
+                main.SelectedObjectRows = ObjectsGrid.SelectedItems.OfType<ObjectRowViewModel>().ToArray();
+                main.DeleteSelectedObjectsCommand.Execute(null);
+                args.Handled = true;
+            }
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         ObjectsList.DoubleTapped += (_, _) => OpenSelected();
         ObjectsList.ContextRequested += (_, args) =>
         {
             if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel main) return;
             var row = (args.Source as Avalonia.Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext as ObjectRowViewModel;
-            if (row is not null) ObjectsList.SelectedItem = row;
+            if (row is not null && !ObjectsList.SelectedItems!.Contains(row)) ObjectsList.SelectedItem = row;
+            main.SelectedObjectRows = ObjectsList.SelectedItems!.OfType<ObjectRowViewModel>().ToArray();
             var actions = main.GetObjectListActions(row);
             if (actions.Count == 0) return;
             new ContextMenu { ItemsSource = MainWindow.BuildMenuItems(actions) }.Open(ObjectsList);
             args.Handled = true;
         };
+        ObjectsList.SelectionChanged += (_, _) =>
+        {
+            if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel main)
+                main.SelectedObjectRows = ObjectsList.SelectedItems!.OfType<ObjectRowViewModel>().ToArray();
+        };
+        ObjectsList.AddHandler(KeyDownEvent, (_, args) =>
+        {
+            if (args.Key != Key.Delete || args.KeyModifiers != KeyModifiers.None || _viewModel?.IsTableList != true || TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel main) return;
+            main.SelectedObjectRows = ObjectsList.SelectedItems!.OfType<ObjectRowViewModel>().ToArray();
+            main.DeleteSelectedObjectsCommand.Execute(null); args.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         ObjectsGrid.SelectionChanged += (_, _) =>
         {
             if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel main)
@@ -52,6 +76,7 @@ public partial class ObjectsView : UserControl
             if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel main) return;
             var row = (args.Source as Avalonia.Visual)?.FindAncestorOfType<DataGridRow>(includeSelf: true)?.DataContext as ObjectRowViewModel;
             if (row is not null && !ObjectsGrid.SelectedItems.Contains(row)) ObjectsGrid.SelectedItem = row;
+            main.SelectedObjectRows = ObjectsGrid.SelectedItems.OfType<ObjectRowViewModel>().ToArray();
             var actions = main.GetObjectListActions(row);
             if (actions.Count == 0) return;
             new ContextMenu { ItemsSource = MainWindow.BuildMenuItems(actions) }.Open(ObjectsGrid);
