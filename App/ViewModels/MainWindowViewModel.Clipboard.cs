@@ -74,9 +74,9 @@ public partial class MainWindowViewModel
         var sameDatabase = target.Profile.Id == clip.Profile.Id && target.Database == clip.Database && target.Schema == clip.Schema;
         if (!sameDatabase)
         {
-            // Trasferimento già impostato: origine, destinazione e tabelle; si apre sul riepilogo.
+            // Trasferimento già impostato (origine, destinazione e tabelle), ma si parte sempre dal primo passo per rivederlo.
             await _dialogs.ShowDataTransferAsync(new DataTransferViewModel(_databaseAccess, Profiles.ToArray(), clip.Profile, clip.Database, _dialogs,
-                target.Profile, target.Database, clip.Tables, jumpToSummary: true));
+                target.Profile, target.Database, clip.Tables));
             await RefreshTablesOfAsync(target.Profile, target.Database, target.Schema);
             return;
         }
