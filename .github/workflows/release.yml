@@ -52,6 +52,10 @@ jobs:
           if ('${{ github.event_name }}' -eq 'push') {
             $tag = '${{ github.ref_name }}'
             $version = $tag.TrimStart('v')
+            # checkout può ricreare il tag locale dal commit, perdendo l'annotazione.
+            # Rileggere il riferimento remoto conserva le note Markdown del tag originale.
+            git fetch --force origin "refs/tags/${tag}:refs/tags/${tag}"
+            if ($LASTEXITCODE -ne 0) { throw 'Impossibile leggere il tag annotato della release' }
             # Il messaggio del tag annotato è la nota di rilascio (Markdown).
             $notes = (git tag -l --format='%(contents)' $tag | Out-String).Trim()
             $publish = 'true'
