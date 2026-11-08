@@ -163,6 +163,11 @@ Requisiti: Windows 10 o 11 a 64 bit.
 
 I dati dell'applicazione (connessioni, impostazioni, query salvate, backup) si trovano in `%APPDATA%\Navifox`.
 
+**Lingua:** l'interfaccia è in italiano e in inglese (*Preferenze › Lingua · Language*; in automatico segue la lingua di Windows).
+
+**Segnalazione errori:** dopo un errore imprevisto Navifox mostra un rapporto anonimo (senza nomi utente, cartelle,
+password, indirizzi o valori) e, solo se scegli «Segnala su GitHub», apre la segnalazione già compilata. Si disattiva in Preferenze.
+
 ## Compilare dai sorgenti
 
 Serve l'SDK [.NET 10](https://dotnet.microsoft.com/download). Puoi installarne una copia locale nella cartella `.dotnet`
@@ -190,6 +195,18 @@ git push origin v1.4.0
 GitHub compila, esegue i test, crea installer e pacchetti di aggiornamento (anche il delta rispetto alla versione
 precedente) e pubblica la Release con tutti i file. Le installazioni esistenti si aggiornano da sole.
 Da *Actions › Release › Run workflow* si può fare una build di prova che non pubblica nulla.
+
+#### Firma digitale dell'installer
+
+La pipeline firma `Navifox.exe` e il Setup da sola appena nei *Settings › Secrets and variables › Actions* del repository c'è:
+
+- **un certificato di firma del codice** (.pfx): `SIGNING_CERT_PFX` (il file in Base64:
+  `[Convert]::ToBase64String([IO.File]::ReadAllBytes("firma.pfx"))`) e `SIGNING_CERT_PASSWORD`;
+- oppure **Azure Trusted Signing**: `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`,
+  `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`.
+
+Senza questi segreti le release restano non firmate (Windows mostra «editore sconosciuto»).
+In locale: `.\release.ps1 1.4.0 -SignParams '/f firma.pfx /p password /fd sha256 /tr http://timestamp.digicert.com /td sha256'`.
 
 Per una build locale (senza pubblicare) resta disponibile lo script [Velopack](https://velopack.io/):
 
