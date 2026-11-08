@@ -5,7 +5,8 @@ namespace Navifox.App.ViewModels;
 
 /// <summary>
 /// Voce del catalogo driver mostrata nella procedura di nuova connessione.
-/// I badge sono monogrammi originali Navifox (niente loghi di terze parti).
+/// Il riquadro mostra il logo del database (Simple Icons, vedi Controls.DriverLogos) quando disponibile,
+/// altrimenti una sigla colorata. I marchi appartengono ai rispettivi proprietari.
 /// <see cref="Kind"/> è valorizzato solo per i motori con un dialect disponibile
 /// (direttamente o tramite protocollo compatibile).
 /// </summary>
@@ -13,6 +14,7 @@ public sealed class DriverInfo
 {
     public DriverInfo(string name, string monogram, string color, int popularity, int port, DatabaseKind? kind, string description, params string[] categories)
     {
+        Logo = LogoFor(name);
         Name = name;
         Monogram = monogram;
         BadgeBrush = new SolidColorBrush(Color.Parse(color));
@@ -23,6 +25,8 @@ public sealed class DriverInfo
         Categories = categories;
     }
 
+    /// <summary>Logo del marchio (null = si usa la sigla).</summary>
+    public Controls.DriverLogo? Logo { get; }
     public string Name { get; }
     public string Monogram { get; }
     public IBrush BadgeBrush { get; }
@@ -36,6 +40,24 @@ public sealed class DriverInfo
     public bool IsSupported => Kind is not null;
     public bool IsComingSoon => Kind is null;
     public double TileOpacity => IsSupported ? 1 : 0.55;
+
+    private static readonly Dictionary<string, string> LogoSlugs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["MySQL"] = "mysql", ["PostgreSQL"] = "postgresql", ["MariaDB"] = "mariadb", ["SQLite"] = "sqlite", ["Supabase"] = "supabase",
+        ["Neon"] = "neon", ["TiDB"] = "tidb", ["CockroachDB"] = "cockroachlabs", ["TimescaleDB"] = "timescale", ["ClickHouse"] = "clickhouse",
+        ["DuckDB"] = "duckdb", ["Snowflake"] = "snowflake", ["BigQuery"] = "googlebigquery", ["MongoDB"] = "mongodb", ["Redis"] = "redis",
+        ["Cassandra"] = "apachecassandra", ["InfluxDB"] = "influxdb", ["Elasticsearch"] = "elasticsearch", ["Neo4j"] = "neo4j",
+        ["PlanetScale"] = "planetscale", ["SingleStore"] = "singlestore", ["Vitess"] = "vitess", ["Apache Doris"] = "apachedoris",
+        ["Google Cloud SQL per MySQL"] = "googlecloud", ["Google Cloud SQL per PostgreSQL"] = "googlecloud", ["AlloyDB"] = "googlecloud",
+        ["DigitalOcean MySQL"] = "digitalocean", ["DigitalOcean PostgreSQL"] = "digitalocean", ["Render PostgreSQL"] = "render",
+        ["Railway PostgreSQL"] = "railway", ["Railway MySQL"] = "railway", ["Couchbase"] = "couchbase", ["CouchDB"] = "apachecouchdb",
+        ["ScyllaDB"] = "scylladb", ["ArangoDB"] = "arangodb", ["Trino"] = "trino", ["Apache Druid"] = "apachedruid", ["Databricks"] = "databricks",
+        ["SAP HANA"] = "sap", ["Teradata"] = "teradata", ["Turso"] = "turso", ["SurrealDB"] = "surrealdb", ["Meilisearch"] = "meilisearch",
+        ["OpenSearch"] = "opensearch", ["Dgraph"] = "dgraph", ["Firebase Firestore"] = "firebase", ["Qdrant"] = "qdrant", ["Milvus"] = "milvus",
+    };
+
+    private static Controls.DriverLogo? LogoFor(string name) =>
+        LogoSlugs.TryGetValue(name, out var slug) && Controls.DriverLogos.All.TryGetValue(slug, out var logo) ? logo : null;
 }
 
 public sealed record DriverCategory(string Name, string Glyph, int Count)
@@ -49,12 +71,12 @@ public static class DriverCatalog
     public const string Popular = "Popolari";
 
     public static IReadOnlyList<string> CategoryOrder { get; } =
-        [All, Popular, "SQL", "Cloud", "NoSQL", "Analitici", "Serie temporali", "Embedded", "File", "Ricerca full-text", "Grafi"];
+        [All, Popular, "SQL", "Cloud", "NoSQL", "Analitici", "Serie temporali", "Embedded", "File", "Ricerca full-text", "Grafi", "Vettoriali"];
 
     public static string GlyphFor(string category) => category switch
     {
         All => "▤", Popular => "★", "SQL" => "▦", "Cloud" => "☁", "NoSQL" => "◇", "Analitici" => "▥",
-        "Serie temporali" => "◷", "Embedded" => "▣", "File" => "▢", "Ricerca full-text" => "⌕", "Grafi" => "⬡", _ => "•"
+        "Serie temporali" => "◷", "Embedded" => "▣", "File" => "▢", "Ricerca full-text" => "⌕", "Grafi" => "⬡", "Vettoriali" => "◈", _ => "•"
     };
 
     public static IReadOnlyList<DriverInfo> Drivers { get; } =
@@ -89,5 +111,47 @@ public static class DriverCatalog
         new("H2", "H2", "#3466A8", 30, 0, null, "Database Java embedded", "Embedded", "SQL"),
         new("File CSV", "Csv", "#5E8C3A", 38, 0, null, "Cartella di file CSV come tabelle", "File"),
         new("Excel", "Xl", "#2F7D4A", 36, 0, null, "Fogli .xlsx come tabelle", "File"),
+        // ── Compatibili con i driver già presenti (protocollo MySQL, PostgreSQL o SQL Server) ──
+        new("Percona Server", "Pc", "#B5283A", 47, 3306, DatabaseKind.MySql, "Percona Server for MySQL", "SQL") { DefaultUser = "root" },
+        new("PlanetScale", "Ps", "#222222", 49, 3306, DatabaseKind.MySql, "MySQL serverless su Vitess", "Cloud", "SQL") { DefaultSslMode = "Require" },
+        new("SingleStore", "S2", "#AA00FF", 41, 3306, DatabaseKind.MySql, "SQL distribuito (protocollo MySQL)", "SQL", "Analitici", "Cloud") { DefaultSslMode = "Require" },
+        new("Vitess", "Vt", "#F16728", 34, 15306, DatabaseKind.MySql, "Clustering di MySQL (vtgate)", "SQL"),
+        new("Apache Doris", "Do", "#5A86C9", 33, 9030, DatabaseKind.MySql, "Database analitico (protocollo MySQL)", "Analitici") { DefaultUser = "root" },
+        new("Amazon RDS per MySQL", "Rm", "#D9822B", 64, 3306, DatabaseKind.MySql, "MySQL gestito su AWS", "Cloud", "SQL") { DefaultSslMode = "Require" },
+        new("Amazon RDS per PostgreSQL", "Rp", "#C46D1F", 63, 5432, DatabaseKind.PostgreSql, "PostgreSQL gestito su AWS", "Cloud", "SQL") { DefaultSslMode = "Require", DefaultUser = "postgres" },
+        new("Amazon RDS per SQL Server", "Rs", "#B85C1C", 46, 1433, DatabaseKind.SqlServer, "SQL Server gestito su AWS", "Cloud", "SQL") { DefaultSslMode = "Require" },
+        new("Google Cloud SQL per MySQL", "Gm", "#4285F4", 62, 3306, DatabaseKind.MySql, "MySQL gestito su Google Cloud", "Cloud", "SQL") { DefaultSslMode = "Require", DefaultUser = "root" },
+        new("Google Cloud SQL per PostgreSQL", "Gp", "#4285F4", 61, 5432, DatabaseKind.PostgreSql, "PostgreSQL gestito su Google Cloud", "Cloud", "SQL") { DefaultSslMode = "Require", DefaultUser = "postgres" },
+        new("AlloyDB", "Ad", "#4285F4", 43, 5432, DatabaseKind.PostgreSql, "Google AlloyDB per PostgreSQL", "Cloud", "SQL") { DefaultSslMode = "Require", DefaultUser = "postgres" },
+        new("Azure Database per MySQL", "Am", "#2F7FC1", 59, 3306, DatabaseKind.MySql, "MySQL Flexible Server su Azure", "Cloud", "SQL") { DefaultSslMode = "Require" },
+        new("Azure Database per PostgreSQL", "Ap", "#2F7FC1", 58, 5432, DatabaseKind.PostgreSql, "PostgreSQL Flexible Server su Azure", "Cloud", "SQL") { DefaultSslMode = "Require" },
+        new("Azure SQL Managed Instance", "Mi", "#2F7FC1", 44, 1433, DatabaseKind.SqlServer, "Istanza gestita SQL Server su Azure", "Cloud", "SQL") { DefaultSslMode = "Require" },
+        new("DigitalOcean MySQL", "Dm", "#0080FF", 39, 25060, DatabaseKind.MySql, "MySQL gestito da DigitalOcean", "Cloud", "SQL") { DefaultSslMode = "Require", DefaultUser = "doadmin" },
+        new("DigitalOcean PostgreSQL", "Dp", "#0080FF", 39, 25060, DatabaseKind.PostgreSql, "PostgreSQL gestito da DigitalOcean", "Cloud", "SQL") { DefaultSslMode = "Require", DefaultUser = "doadmin" },
+        new("YugabyteDB", "Yb", "#FF6E42", 37, 5433, DatabaseKind.PostgreSql, "SQL distribuito (protocollo PostgreSQL)", "SQL", "Cloud") { DefaultUser = "yugabyte" },
+        new("Citus", "Ci", "#3D6FB6", 32, 5432, DatabaseKind.PostgreSql, "PostgreSQL distribuito", "SQL", "Analitici") { DefaultUser = "citus" },
+        new("Render PostgreSQL", "Re", "#46E3B7", 31, 5432, DatabaseKind.PostgreSql, "PostgreSQL gestito da Render", "Cloud", "SQL") { DefaultSslMode = "Require" },
+        new("Railway PostgreSQL", "Rw", "#0B0D0E", 30, 5432, DatabaseKind.PostgreSql, "PostgreSQL su Railway", "Cloud", "SQL") { DefaultSslMode = "Require", DefaultUser = "postgres" },
+        new("Railway MySQL", "Rw", "#0B0D0E", 29, 3306, DatabaseKind.MySql, "MySQL su Railway", "Cloud", "SQL") { DefaultUser = "root" },
+        // ── In arrivo ──
+        new("SAP HANA", "Hn", "#0FAAFF", 40, 30015, null, "SAP HANA", "SQL", "Analitici"),
+        new("Teradata", "Td", "#F37440", 28, 1025, null, "Teradata Vantage", "Analitici"),
+        new("Databricks", "Db", "#FF3621", 46, 443, null, "Databricks SQL", "Analitici", "Cloud"),
+        new("Trino", "Tr", "#DD00A1", 35, 8080, null, "Motore SQL federato (anche Presto)", "Analitici"),
+        new("Apache Druid", "Dr", "#29F1FB", 27, 8082, null, "Analisi in tempo reale", "Analitici", "Serie temporali"),
+        new("Turso", "Tu", "#4FF8D2", 30, 0, null, "SQLite distribuito (libSQL)", "Cloud", "Embedded"),
+        new("Couchbase", "Cb", "#EA2328", 36, 8091, null, "Database documentale", "NoSQL"),
+        new("CouchDB", "Cd", "#E42528", 30, 5984, null, "Apache CouchDB", "NoSQL"),
+        new("ScyllaDB", "Sc", "#6CD5E7", 31, 9042, null, "Wide-column compatibile Cassandra", "NoSQL"),
+        new("ArangoDB", "Ar", "#DDE072", 29, 8529, null, "Multi-modello (documenti e grafi)", "NoSQL", "Grafi"),
+        new("SurrealDB", "Su", "#FF00A0", 28, 8000, null, "Multi-modello", "NoSQL"),
+        new("Dgraph", "Dg", "#E50695", 22, 9080, null, "Database a grafo (GraphQL)", "Grafi", "NoSQL"),
+        new("Amazon DynamoDB", "Dy", "#4053D6", 50, 443, null, "Chiave-valore gestito su AWS", "NoSQL", "Cloud"),
+        new("Azure Cosmos DB", "Co", "#2F7FC1", 45, 443, null, "Database multi-modello su Azure", "NoSQL", "Cloud"),
+        new("Firebase Firestore", "Fs", "#DD2C00", 42, 443, null, "Database documentale di Firebase", "NoSQL", "Cloud"),
+        new("OpenSearch", "Os", "#005EB8", 33, 9200, null, "Ricerca e analisi (fork di Elasticsearch)", "Ricerca full-text", "NoSQL"),
+        new("Meilisearch", "Me", "#FF5CAA", 27, 7700, null, "Motore di ricerca istantanea", "Ricerca full-text"),
+        new("Qdrant", "Qd", "#DC244C", 26, 6333, null, "Database vettoriale", "Vettoriali", "NoSQL"),
+        new("Milvus", "Mv", "#00A1EA", 25, 19530, null, "Database vettoriale", "Vettoriali", "NoSQL"),
     ];
 }

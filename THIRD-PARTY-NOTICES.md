@@ -22,5 +22,8 @@ Tutte sono compatibili con la GPL-3.0. I testi completi delle licenze si trovano
 
 Solo per i test: xUnit (Apache-2.0), Microsoft.NET.Test.Sdk (MIT).
 
-I nomi MySQL, MariaDB, PostgreSQL, SQL Server, SQLite e degli altri prodotti citati sono marchi dei rispettivi proprietari
+Loghi dei database nella scelta del driver: tracciati SVG da [Simple Icons](https://simpleicons.org) 16.30.0 (CC0 1.0).
+I loghi restano marchi dei rispettivi proprietari; dove un marchio non è disponibile Navifox usa una sigla.
+
+I nomi e i loghi di MySQL, MariaDB, PostgreSQL, SQL Server, SQLite e degli altri prodotti citati sono marchi dei rispettivi proprietari
 e sono usati solo per indicare la compatibilità. Navifox non è affiliato né approvato da nessuno di loro.

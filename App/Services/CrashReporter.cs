@@ -13,7 +13,7 @@ public static class CrashReporter
     private static string Folder => AppPaths.File("crash");
     private static int _showing;
 
-    /// <summary>Chiamato all'avvio: registra i gestori degli errori non gestiti.</summary>
+    /// <summary>Chiamato all'avvio (prima di Avalonia): registra i gestori degli errori del processo.</summary>
     public static void Install()
     {
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
@@ -25,7 +25,12 @@ public static class CrashReporter
             Save(e.Exception, "operazione in background");
             e.SetObserved();
         };
-        // Errori sull'interfaccia: si salvano e si propone la segnalazione, senza chiudere il programma.
+    }
+
+    /// <summary>Dopo l'avvio di Avalonia (il Dispatcher non va toccato prima): errori sull'interfaccia
+    /// salvati e proposti per la segnalazione, senza chiudere il programma.</summary>
+    public static void InstallUiHandler()
+    {
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {
             var path = Save(e.Exception, "interfaccia");
