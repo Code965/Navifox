@@ -64,9 +64,14 @@ public partial class ImportWizardViewModel
     public async Task LoadTargetsAsync()
     {
         var tables = await _databaseAccess.ListTablesAsync(_profile, _database, _schema, CancellationToken.None);
+        // Svuotare l'elenco azzera la selezione della ComboBox (e, col binding TwoWay, la tabella scelta): si ripristina dopo.
+        var chosen = TargetTable;
         ExistingTables.Clear();
         foreach (var table in tables.Where(t => !t.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase))) ExistingTables.Add(table.Name);
-        if (TargetTable.Length == 0 && !CreateNewTable) TargetTable = ExistingTables.FirstOrDefault() ?? "";
+        if (CreateNewTable) { TargetTable = chosen ?? string.Empty; return; }
+        var match = ExistingTables.FirstOrDefault(t => string.Equals(t, chosen, StringComparison.OrdinalIgnoreCase));
+        TargetTable = string.Empty; // forza la notifica, così la ComboBox mostra la tabella anche se il valore non cambia
+        TargetTable = match ?? ExistingTables.FirstOrDefault() ?? string.Empty;
     }
 
     private ImportValueOptions ValueOptions() => new(DateOrder, DateDelimiter, TimeDelimiter, DecimalSymbol, DateTimeOrder, BinaryEncoding);
