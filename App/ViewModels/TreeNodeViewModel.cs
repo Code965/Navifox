@@ -21,6 +21,9 @@ public partial class TreeNodeViewModel : ObservableObject
         Category = category;
         if (IsLazy) Children.Add(CreatePlaceholder());
         else if (kind != TreeNodeKind.Group) IsLoaded = true;
+        _visibleChildren = Children;
+        // I figli cambiano mentre è attivo un filtro: si torna all'elenco completo finché il filtro non viene riapplicato.
+        Children.CollectionChanged += (_, _) => { if (!ReferenceEquals(_visibleChildren, Children)) VisibleChildren = Children; };
     }
 
     private string _nodeName = string.Empty;
@@ -41,7 +44,29 @@ public partial class TreeNodeViewModel : ObservableObject
     public string? Schema { get; }
     public string? Category { get; }
     public TreeNodeViewModel? Parent { get; private set; }
-    public ObservableCollection<TreeNodeViewModel> Children { get; } = [];
+    public BulkObservableCollection<TreeNodeViewModel> Children { get; } = [];
+
+    private IList<TreeNodeViewModel> _visibleChildren;
+
+    /// <summary>
+    /// Figli mostrati nell'albero: tutti, oppure solo quelli che passano il filtro di ricerca.
+    /// Con migliaia di tabelle è molto più rapido che creare le righe e nasconderle.
+    /// </summary>
+    public IList<TreeNodeViewModel> VisibleChildren
+    {
+        get => _visibleChildren;
+        private set => SetProperty(ref _visibleChildren, value);
+    }
+
+    /// <summary>Mostra solo i figli visibili per il filtro (null = tutti).</summary>
+    public void ShowFilteredChildren(bool filtered)
+    {
+        if (!filtered) { if (!ReferenceEquals(_visibleChildren, Children)) VisibleChildren = Children; return; }
+        var visible = Children.Where(child => child.IsVisible).ToArray();
+        if (visible.Length == Children.Count) { if (!ReferenceEquals(_visibleChildren, Children)) VisibleChildren = Children; return; }
+        if (!ReferenceEquals(_visibleChildren, Children) && _visibleChildren.SequenceEqual(visible)) return;
+        VisibleChildren = visible;
+    }
 
     /// <summary>Metadati degli oggetti caricati per una categoria (Tabelle, Viste, Funzioni, Trigger…).</summary>
     public IReadOnlyList<DatabaseObjectInfo>? Objects { get; set; }
@@ -70,6 +95,9 @@ public partial class TreeNodeViewModel : ObservableObject
     [ObservableProperty] private bool _isVisible = true;
 
     public bool IsPlaceholder => Kind == TreeNodeKind.Placeholder;
+
+    /// <summary>Le categorie possono contenere migliaia di tabelle: nell'albero se ne creano solo le righe visibili.</summary>
+    public bool VirtualizeChildren => Kind == TreeNodeKind.Category;
     public bool IsConnection => Kind == TreeNodeKind.Connection;
     public bool IsObjectCategory => Kind == TreeNodeKind.Category && (Category is "Tabelle" or "Viste" or "Query salvate" or "Backup" || SchemaKind is not null);
     public bool IsLocalCategory => Kind == TreeNodeKind.Category && Category is "Query salvate" or "Backup";
@@ -102,13 +130,14 @@ public partial class TreeNodeViewModel : ObservableObject
 
     public void SetChildren(IEnumerable<TreeNodeViewModel> children)
     {
-        Children.Clear();
-        foreach (var child in children)
+        var list = children.ToList();
+        foreach (var child in list)
         {
             child.Parent = this;
             child.ExpandHandler ??= ExpandHandler;
-            Children.Add(child);
         }
+        // Un solo aggiornamento per tutto l'elenco (non uno per tabella).
+        Children.ReplaceAll(list);
         IsLoaded = true;
     }
 
@@ -130,4 +159,18 @@ public partial class TreeNodeViewModel : ObservableObject
     }
 
     private TreeNodeViewModel CreatePlaceholder() => new("Caricamento…", "", TreeNodeKind.Placeholder) { Parent = this };
+}
+
+/// <summary>ObservableCollection che sostituisce tutto il contenuto con una sola notifica.</summary>
+public sealed class BulkObservableCollection<T> : ObservableCollection<T>
+{
+    public void ReplaceAll(IEnumerable<T> items)
+    {
+        CheckReentrancy();
+        Items.Clear();
+        foreach (var item in items) Items.Add(item);
+        OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(Count)));
+        OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Item[]"));
+        OnCollectionChanged(new System.Collections.Specialized.NotifyCollectionChangedEventArgs(System.Collections.Specialized.NotifyCollectionChangedAction.Reset));
+    }
 }

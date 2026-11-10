@@ -25,7 +25,7 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
     public override string TabGlyph => "list";
     public override bool CanClose => false;
 
-    public ObservableCollection<ObjectRowViewModel> VisibleObjects { get; } = [];
+    public BulkObservableCollection<ObjectRowViewModel> VisibleObjects { get; } = [];
 
     /// <summary>Nodo categoria (Tabelle/Viste) da cui provengono gli oggetti mostrati.</summary>
     public TreeNodeViewModel? Source { get; private set; }
@@ -173,7 +173,6 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
     {
         var query = SearchText.Trim();
         var selected = SelectedObject;
-        VisibleObjects.Clear();
         IEnumerable<ObjectRowViewModel> rows = _all.Where(row => row.Matches(query));
         Func<ObjectRowViewModel, IComparable>? key = SortKey switch
         {
@@ -186,8 +185,10 @@ public partial class ObjectsTabViewModel : WorkspaceTabViewModel
             _ => null
         };
         if (key is not null) rows = SortDescending ? rows.OrderByDescending(key) : rows.OrderBy(key);
-        foreach (var row in rows) VisibleObjects.Add(row);
-        if (selected is not null && VisibleObjects.Contains(selected)) SelectedObject = selected;
+        // Un solo aggiornamento della griglia anche con migliaia di oggetti.
+        var list = rows.ToList();
+        VisibleObjects.ReplaceAll(list);
+        if (selected is not null && list.Contains(selected)) SelectedObject = selected;
         CountLabel = query.Length == 0
             ? $"{_all.Count} {(_all.Count == 1 ? "oggetto" : "oggetti")}"
             : $"{VisibleObjects.Count} di {_all.Count} oggetti · filtro «{query}»";

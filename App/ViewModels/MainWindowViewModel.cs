@@ -132,7 +132,8 @@ public partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
     {
-        if (value is null || value.IsPlaceholder) return;
+        if (value is null || value.IsPlaceholder || _restoringSelection) return;
+        _hiddenSelection = null;
         UpdateInfoTarget();
         _ = ActivateAndRefreshInfoAsync(value);
     }
@@ -578,9 +579,38 @@ public partial class MainWindowViewModel : ObservableObject
     private void ApplyTreeFilter()
     {
         var query = SearchText.Trim();
+        var selected = SelectedNode ?? _hiddenSelection;
         _filtering = true;
         try { foreach (var root in RootNodes) FilterNode(root, query, ancestorMatched: false); }
         finally { _filtering = false; }
+        // L'albero mostra solo i nodi filtrati e, cambiando l'elenco, perde la selezione (dopo il layout):
+        // la si ripristina appena il nodo torna visibile, se nel frattempo l'utente non ha scelto altro.
+        if (selected is null) return;
+        _hiddenSelection = selected;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_hiddenSelection != selected || (SelectedNode is not null && SelectedNode != selected) || !IsShownInTree(selected)) return;
+            _hiddenSelection = null;
+            if (SelectedNode == selected) return;
+            _restoringSelection = true;
+            try { SelectedNode = selected; }
+            finally { _restoringSelection = false; }
+        }, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Nodo selezionato nascosto dal filtro: torna selezionato quando il filtro cambia o si cancella.</summary>
+    private TreeNodeViewModel? _hiddenSelection;
+    private bool _restoringSelection;
+
+    private bool IsShownInTree(TreeNodeViewModel node)
+    {
+        for (var current = node; current is not null; current = current.Parent)
+        {
+            if (!current.IsVisible) return false;
+            if (current.Parent is { } parent && !parent.VisibleChildren.Contains(current)) return false;
+            if (current.Parent is null && !RootNodes.Contains(current)) return false;
+        }
+        return true;
     }
 
     private bool FilterNode(TreeNodeViewModel node, string query, bool ancestorMatched)
@@ -594,6 +624,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             foreach (var child in node.Children) FilterNode(child, query, false);
             node.IsVisible = true;
+            node.ShowFilteredChildren(false);
             return true;
         }
         var self = node.Kind != TreeNodeKind.Category && node.Kind != TreeNodeKind.Group
@@ -602,6 +633,7 @@ public partial class MainWindowViewModel : ObservableObject
         var anyDescendant = false;
         foreach (var child in node.Children) anyDescendant |= FilterNode(child, query, ancestorMatched || self);
         node.IsVisible = self || anyDescendant || ancestorMatched;
+        node.ShowFilteredChildren(true);
         // Ogni nodo si apre per conto suo (anche con due connessioni sullo stesso database); quelli chiusi a mano restano chiusi.
         if (anyDescendant && node.IsLoaded && !_filterCollapsed.Contains(node)) node.IsExpanded = true;
         return self || anyDescendant;

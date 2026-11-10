@@ -244,40 +244,66 @@
                 <Setter Property="IsVisible" Value="{Binding IsVisible}" />
                 <Setter Property="MinHeight" Value="24" />
                 <Setter Property="Padding" Value="0" />
+                <!-- Dentro le categorie (Tabelle, Viste…) si creano solo le righe visibili: con migliaia di tabelle aprire resta immediato.
+                     Gli altri livelli restano normali, così la categoria aperta non viene mai riciclata (e la selezione non si perde). -->
+                <Setter Property="ItemsPanel" Value="{Binding VirtualizeChildren, Converter={x:Static c:TreePanels.ForChildren}}" />
               </Style>
             </TreeView.Styles>
             <TreeView.ItemTemplate>
-              <TreeDataTemplate DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,2">
-                  <c:NfIcon Kind="{Binding Glyph}" Classes="tree-icon" Classes.open="{Binding IsLoaded}" Classes.connection="{Binding IsConnection}" Width="15" Height="15" VerticalAlignment="Center" />
-                  <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center"
+              <!-- Modello completo solo per le connessioni; righe leggere per tutto il resto (anche migliaia di tabelle). -->
+              <c:TreeNodeTemplateSelector>
+                <c:TreeNodeTemplateSelector.Connection>
+                  <TreeDataTemplate DataType="vm:TreeNodeViewModel" ItemsSource="{Binding VisibleChildren}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,2">
+                      <c:NfIcon Kind="{Binding Glyph}" Classes="tree-icon" Classes.open="{Binding IsLoaded}" Classes.connection="{Binding IsConnection}" Width="15" Height="15" VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center"
+                                     IsVisible="{Binding !IsRenaming}" />
+                          <TextBox Classes="rename-box" Text="{Binding EditName, Mode=TwoWay}" IsVisible="{Binding IsRenaming}" MinWidth="140"
+                                   KeyDown="OnTreeRenameKeyDown" LostFocus="OnTreeRenameLostFocus" />
+                          <c:DialectBadge Profile="{Binding Profile}" ShowName="True" IsVisible="{Binding IsConnection}" />
+                          <Border Classes="env-chip" IsVisible="{Binding Profile, Converter={x:Static c:DialectVisuals.HasEnvironmentConverter}}"
+                                  Background="{Binding Profile, Converter={x:Static c:DialectVisuals.ProfileColorConverter}}">
+                            <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EnvironmentLabelConverter}}" />
+                          </Border>
+                          <Border Classes="env-chip readonly" ToolTip.Tip="Connessione in sola lettura: le modifiche sono bloccate">
+                            <Border.IsVisible>
+                              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="IsConnection" />
+                                <Binding Path="Profile" Converter="{x:Static c:DialectVisuals.IsReadOnlyConverter}" />
+                              </MultiBinding>
+                            </Border.IsVisible>
+                            <TextBlock Text="R/O" />
+                          </Border>
+                          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="28" Height="2" MinWidth="0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <!-- Connessione: host e porta su una seconda riga, piccola -->
+                        <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EndpointConverter}}" IsVisible="{Binding IsConnection}"
+                                   FontSize="10.5" Foreground="{DynamicResource MutedTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,-1,0,0" />
+                      </StackPanel>
+                    </Grid>
+                  </TreeDataTemplate>
+                </c:TreeNodeTemplateSelector.Connection>
+                <c:TreeNodeTemplateSelector.Node>
+                <TreeDataTemplate DataType="vm:TreeNodeViewModel" ItemsSource="{Binding VisibleChildren}">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,2">
+                    <c:NfIcon Kind="{Binding Glyph}" Classes="tree-icon" Classes.open="{Binding IsLoaded}" Width="15" Height="15" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" VerticalAlignment="Center"
                                  IsVisible="{Binding !IsRenaming}" />
                       <TextBox Classes="rename-box" Text="{Binding EditName, Mode=TwoWay}" IsVisible="{Binding IsRenaming}" MinWidth="140"
                                KeyDown="OnTreeRenameKeyDown" LostFocus="OnTreeRenameLostFocus" />
-                      <c:DialectBadge Profile="{Binding Profile}" ShowName="True" IsVisible="{Binding IsConnection}" />
                       <Border Classes="env-chip" IsVisible="{Binding Profile, Converter={x:Static c:DialectVisuals.HasEnvironmentConverter}}"
                               Background="{Binding Profile, Converter={x:Static c:DialectVisuals.ProfileColorConverter}}">
                         <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EnvironmentLabelConverter}}" />
                       </Border>
-                      <Border Classes="env-chip readonly" ToolTip.Tip="Connessione in sola lettura: le modifiche sono bloccate">
-                        <Border.IsVisible>
-                          <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="IsConnection" />
-                            <Binding Path="Profile" Converter="{x:Static c:DialectVisuals.IsReadOnlyConverter}" />
-                          </MultiBinding>
-                        </Border.IsVisible>
-                        <TextBlock Text="R/O" />
-                      </Border>
                       <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="28" Height="2" MinWidth="0" VerticalAlignment="Center" />
                     </StackPanel>
-                    <!-- Connessione: host e porta su una seconda riga, piccola -->
-                    <TextBlock Text="{Binding Profile, Converter={x:Static c:DialectVisuals.EndpointConverter}}" IsVisible="{Binding IsConnection}"
-                               FontSize="10.5" Foreground="{DynamicResource MutedTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,-1,0,0" />
-                  </StackPanel>
-                </Grid>
-              </TreeDataTemplate>
+                  </Grid>
+                </TreeDataTemplate>
+                </c:TreeNodeTemplateSelector.Node>
+              </c:TreeNodeTemplateSelector>
             </TreeView.ItemTemplate>
           </TreeView>
         </Grid>
