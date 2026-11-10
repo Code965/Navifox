@@ -136,15 +136,15 @@ public partial class MainWindowViewModel
         OpenOrSelect<AutomationTabViewModel>(_ => true, () => new AutomationTabViewModel(_automation, _databaseAccess, _dialogs, Profiles.ToArray()));
 
     [RelayCommand]
-    private void CloseCurrentTab()
+    private async Task CloseCurrentTabAsync()
     {
-        if (SelectedTab is { CanClose: true } tab) CloseTab(tab);
+        if (SelectedTab is { CanClose: true } tab) await CloseTabAsync(tab);
     }
 
     [RelayCommand]
-    private void CloseAllTabs()
+    private async Task CloseAllTabsAsync()
     {
-        foreach (var tab in OpenTabs.Where(t => t.CanClose).ToArray()) CloseTab(tab);
+        foreach (var tab in OpenTabs.Where(t => t.CanClose).ToArray()) await CloseTabAsync(tab);
         SelectedTab = ObjectsTab;
     }
 }

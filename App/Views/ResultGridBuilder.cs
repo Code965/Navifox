@@ -268,6 +268,9 @@ public sealed class ColumnHeaderContent : Grid
                 args.Handled = true;
             };
         if (onSort is null) return;
+        // Il modello della DataGrid riserva a destra 32 px alla propria icona di ordinamento (qui non usata):
+        // il contenuto si allarga in quello spazio, così la freccina sta tutta a destra della colonna.
+        Margin = new Avalonia.Thickness(0, 0, -28, 0);
         var arrow = new Button
         {
             Content = new Controls.NfIcon { Kind = "chevron-down", Width = 11, Height = 11 },

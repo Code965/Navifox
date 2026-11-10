@@ -166,23 +166,9 @@ public partial class MainWindowViewModel
                     }
                     return;
                 case "rename":
-                {
-                    var newName = await _dialogs.PromptAsync("Rinomina", $"Nuovo nome per «{node.Name}»:", node.Name, "Rinomina");
-                    if (string.IsNullOrWhiteSpace(newName) || newName.Trim() == node.Name) return;
-                    newName = newName.Trim();
-                    var target = mysql ? provider.QuoteIdentifier(newName) : $"{provider.QuoteIdentifier(schema)}.{provider.QuoteIdentifier(newName)}";
-                    await RunTableSqlAsync(node, profile.Kind switch
-                    {
-                        DatabaseKind.MySql => $"RENAME TABLE {name} TO {target}",
-                        DatabaseKind.SqlServer => $"EXEC sp_rename {provider.FormatLiteral($"{schema}.{node.Name}")}, {provider.FormatLiteral(newName)}",
-                        DatabaseKind.Sqlite when view => throw new NotSupportedException("SQLite non permette di rinominare una vista: modificala e salvala con un altro nome."),
-                        DatabaseKind.Sqlite => $"ALTER TABLE {provider.QuoteIdentifier(node.Name)} RENAME TO {provider.QuoteIdentifier(newName)}",
-                        _ => $"ALTER {(view ? "VIEW" : "TABLE")} {name} RENAME TO {provider.QuoteIdentifier(newName)}",
-                    });
-                    CloseTabsForTable(profile.Id, database, node.Name, schema);
-                    StatusMessage = $"«{node.Name}» rinominata in «{newName}».";
-                    break;
-                }
+                    // Rinomina sul posto (nell'albero o nell'elenco Oggetti, dove è stato aperto il menu).
+                    RequestInlineRename(node);
+                    return;
                 case "info":
                     IsInfoVisible = true;
                     SelectedNode = node;
@@ -197,6 +183,58 @@ public partial class MainWindowViewModel
         }
         if (node.Parent is { } category) await RefreshTablesOfAsync(profile, database, schema);
     }
+
+    /// <summary>Rinomina una tabella o una vista con il nome scritto sul posto. True se riuscita.</summary>
+    public async Task<bool> RenameTableAsync(TreeNodeViewModel node, string newName)
+    {
+        if (node is not { Profile: { } profile, Database: { } database, Schema: { } schema }) return false;
+        newName = newName.Trim();
+        if (newName.Length == 0 || newName == node.Name) return false;
+        if (await SqlGuard.BlockIfReadOnlyAsync(_dialogs, profile, "Non è possibile rinominare oggetti.")) return false;
+        if (!await SqlGuard.ConfirmProductionAsync(_dialogs, profile, $"Stai per rinominare «{node.Name}» in «{newName}».")) return false;
+        var provider = _databaseAccess.Provider(profile);
+        var mysql = provider.UsesMySqlScriptSyntax;
+        var name = TableName(node);
+        var view = IsViewNode(node);
+        var target = mysql ? provider.QuoteIdentifier(newName) : $"{provider.QuoteIdentifier(schema)}.{provider.QuoteIdentifier(newName)}";
+        try
+        {
+            await RunTableSqlAsync(node, profile.Kind switch
+            {
+                DatabaseKind.MySql => $"RENAME TABLE {name} TO {target}",
+                DatabaseKind.SqlServer => $"EXEC sp_rename {provider.FormatLiteral($"{schema}.{node.Name}")}, {provider.FormatLiteral(newName)}",
+                DatabaseKind.Sqlite when view => throw new NotSupportedException("SQLite non permette di rinominare una vista: modificala e salvala con un altro nome."),
+                DatabaseKind.Sqlite => $"ALTER TABLE {provider.QuoteIdentifier(node.Name)} RENAME TO {provider.QuoteIdentifier(newName)}",
+                _ => $"ALTER {(view ? "VIEW" : "TABLE")} {name} RENAME TO {provider.QuoteIdentifier(newName)}",
+            });
+        }
+        catch (Exception exception)
+        {
+            await ReportErrorAsync("Rinomina non riuscita", exception);
+            return false;
+        }
+        CloseTabsForTable(profile.Id, database, node.Name, schema);
+        StatusMessage = $"«{node.Name}» rinominata in «{newName}».";
+        await RefreshTablesOfAsync(profile, database, schema);
+        return true;
+    }
+
+    /// <summary>Dove è stato aperto l'ultimo menu contestuale: «objects» (elenco Oggetti) oppure l'albero.</summary>
+    public string ContextOrigin { get; set; } = "tree";
+
+    /// <summary>La vista avvia la rinomina sul posto del nodo (albero) o della riga corrispondente (Oggetti).</summary>
+    public event Action<TreeNodeViewModel, string>? InlineRenameRequested;
+
+    public void RequestInlineRename(TreeNodeViewModel node) => InlineRenameRequested?.Invoke(node, ContextOrigin);
+
+    /// <summary>Conferma della rinomina sul posto di un nodo dell'albero (connessione, cartella, tabella o vista).</summary>
+    public Task<bool> RenameNodeAsync(TreeNodeViewModel node, string newName) => node.Kind switch
+    {
+        TreeNodeKind.Connection => RenameConnectionToAsync(node, newName),
+        TreeNodeKind.Group => RenameFolderToAsync(node.FolderPath, newName),
+        TreeNodeKind.Table => RenameTableAsync(node, newName),
+        _ => Task.FromResult(false)
+    };
 
     private async Task RunTableSqlAsync(TreeNodeViewModel node, string sql)
     {

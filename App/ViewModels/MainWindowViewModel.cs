@@ -43,6 +43,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         _dialogs = dialogs;
         _automation = automation;
+        TreeNodeViewModel.Collapsed += node => { if (!_filtering && HasTreeFilter) _filterCollapsed.Add(node); };
         _profileStore = profileStore;
         _databaseAccess = databaseAccess;
         _connectionDialog = connectionDialog;
@@ -138,8 +139,34 @@ public partial class MainWindowViewModel : ObservableObject
 
     partial void OnSearchTextChanged(string value)
     {
+        _filterCollapsed.Clear();
         ApplyTreeFilter();
         OnPropertyChanged(nameof(HasTreeFilter));
+        if (value.Trim().Length >= 2) _ = PreloadTablesForFilterAsync(value);
+    }
+
+    /// <summary>Nodi chiusi dall'utente mentre il filtro è attivo: le ricerche successive non li riaprono.</summary>
+    private readonly HashSet<TreeNodeViewModel> _filterCollapsed = [];
+    private bool _filtering;
+
+    /// <summary>
+    /// Il filtro trova anche le tabelle dei database già aperti in ogni connessione (non solo quelli espansi fino alle tabelle):
+    /// carica le categorie Tabelle/Viste ancora chiuse e rifiltra, così due connessioni sullo stesso database mostrano entrambe i risultati.
+    /// </summary>
+    private async Task PreloadTablesForFilterAsync(string query)
+    {
+        await Task.Delay(350); // si aspetta che l'utente smetta di scrivere
+        if (SearchText != query) return;
+        var categories = RootNodes.SelectMany(n => n.SelfAndDescendants())
+            .Where(n => n.Kind == TreeNodeKind.Category && (n.Category is "Tabelle" or "Viste") && !n.IsLoaded && !n.IsLoading && n.Profile is not null
+                        && n.Parent is { IsLoaded: true })
+            .Take(40)
+            .ToArray();
+        foreach (var category in categories)
+        {
+            if (SearchText != query) return;
+            await EnsureLoadedAsync(category);
+        }
     }
 
     public async Task InitializeAsync()
@@ -221,7 +248,15 @@ public partial class MainWindowViewModel : ObservableObject
         else if (node.Kind is TreeNodeKind.SavedQuery or TreeNodeKind.BackupFile) await OpenLibraryItemAsync(node);
     }
 
+    /// <summary>Chiude la scheda chiedendo prima se salvare (query modificate).</summary>
     [RelayCommand]
+    private async Task CloseTabAsync(WorkspaceTabViewModel? tab)
+    {
+        if (tab is null || !tab.CanClose || !await tab.ConfirmCloseAsync()) return;
+        CloseTab(tab);
+    }
+
+    /// <summary>Chiude subito la scheda (tabella eliminata, connessione rimossa…).</summary>
     private void CloseTab(WorkspaceTabViewModel? tab)
     {
         if (tab is null || !tab.CanClose) return;
@@ -543,10 +578,12 @@ public partial class MainWindowViewModel : ObservableObject
     private void ApplyTreeFilter()
     {
         var query = SearchText.Trim();
-        foreach (var root in RootNodes) FilterNode(root, query, ancestorMatched: false);
+        _filtering = true;
+        try { foreach (var root in RootNodes) FilterNode(root, query, ancestorMatched: false); }
+        finally { _filtering = false; }
     }
 
-    private static bool FilterNode(TreeNodeViewModel node, string query, bool ancestorMatched)
+    private bool FilterNode(TreeNodeViewModel node, string query, bool ancestorMatched)
     {
         if (node.IsPlaceholder)
         {
@@ -565,7 +602,8 @@ public partial class MainWindowViewModel : ObservableObject
         var anyDescendant = false;
         foreach (var child in node.Children) anyDescendant |= FilterNode(child, query, ancestorMatched || self);
         node.IsVisible = self || anyDescendant || ancestorMatched;
-        if (anyDescendant && node.IsLoaded) node.IsExpanded = true;
+        // Ogni nodo si apre per conto suo (anche con due connessioni sullo stesso database); quelli chiusi a mano restano chiusi.
+        if (anyDescendant && node.IsLoaded && !_filterCollapsed.Contains(node)) node.IsExpanded = true;
         return self || anyDescendant;
     }
 

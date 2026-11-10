@@ -35,6 +35,8 @@
             <TextBlock Text="Lingua · Language" VerticalAlignment="Center" ToolTip.Tip="Vale dal prossimo avvio di Navifox · Applies after restarting Navifox" />
             <ComboBox Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding Language, Mode=TwoWay}" HorizontalAlignment="Stretch" />
           </Grid>
+          <CheckBox Classes="crit-check" Content="Usa l'ora del PC nelle sessioni (NOW(), TIMESTAMP, timestamptz)" IsChecked="{Binding UseLocalTimeZone, Mode=TwoWay}"
+                    ToolTip.Tip="Se il server è in un altro fuso (es. UTC su Supabase o nel cloud) le date con fuso orario e NOW() mostrano comunque l'ora del tuo PC. Togli la spunta per usare l'ora del server. Vale per le connessioni aperte da ora in poi." />
           <CheckBox Classes="crit-check" Content="Dopo un errore imprevisto proponi di inviare una segnalazione anonima" IsChecked="{Binding OfferCrashReports, Mode=TwoWay}"
                     ToolTip.Tip="Navifox mostra il testo della segnalazione (senza nomi, password, indirizzi o valori) e, solo se scegli «Segnala su GitHub», apre la pagina con la segnalazione già compilata." />
           <CheckBox Classes="crit-check" Content="Formattazione condizionale: numeri negativi in rosso, scadenze passate evidenziate" IsChecked="{Binding ConditionalFormatting, Mode=TwoWay}"

@@ -47,7 +47,7 @@ public partial class MainWindowViewModel
         }
         _clipboard = clip;
         OnPropertyChanged(nameof(HasClipboard));
-        StatusMessage = $"Copiato {clip.Label} da {clip.Profile.Name} · {clip.Database}. Seleziona un database e premi Ctrl+V.";
+        StatusMessage = $"Copiato {clip.Label} dalla connessione «{clip.Profile.Name}» · database «{clip.Database}». Seleziona il database di destinazione e premi Ctrl+V.";
     }
 
     [RelayCommand]
@@ -58,7 +58,8 @@ public partial class MainWindowViewModel
             StatusMessage = "Niente da incollare: copia prima una tabella (Ctrl+C).";
             return;
         }
-        if (CurrentDatabaseContext(node) is not { } target)
+        // Destinazione: il nodo indicato (menu o elenco Oggetti) oppure quello selezionato nell'albero, mai la scheda aperta.
+        if (CurrentDatabaseContext(node ?? SelectedNode) is not { } target)
         {
             StatusMessage = "Seleziona il database di destinazione nell’albero e premi Ctrl+V.";
             return;
@@ -71,7 +72,10 @@ public partial class MainWindowViewModel
             return;
         }
 
-        var sameDatabase = target.Profile.Id == clip.Profile.Id && target.Database == clip.Database && target.Schema == clip.Schema;
+        // Stesso database fisico anche da un'altra connessione verso lo stesso server: copia «_copy» lì, con la connessione di destinazione.
+        // (Un trasferimento sullo stesso database eliminerebbe e ricreerebbe proprio le tabelle di origine.)
+        var sameDatabase = clip.Profile.IsSameDatabase(clip.Database, clip.Schema, target.Profile, target.Database, target.Schema);
+        if (sameDatabase && target.Profile.Id != clip.Profile.Id) clip = clip with { Profile = target.Profile, Database = target.Database, Schema = target.Schema };
         if (!sameDatabase)
         {
             // Trasferimento già impostato (origine, destinazione e tabelle), ma si parte sempre dal primo passo per rivederlo.
@@ -100,7 +104,9 @@ public partial class MainWindowViewModel
             plan.Add((table, name));
         }
         var list = string.Join("\n", plan.Select(p => $"  • {p.Source} → {p.Copy}"));
-        if (!await _dialogs.ConfirmAsync("Duplica tabelle", $"Creare una copia ({(withData ? "struttura e dati" : "solo struttura")}) in «{clip.Database}»?\n\n{list}", "Crea copia")) return;
+        var where = $"Connessione: «{clip.Profile.Name}» ({clip.Profile.Endpoint})\nDatabase: «{clip.Database}»" +
+                    (clip.Profile.Kind.HasSchemas() ? $"\nSchema: «{clip.Schema}»" : string.Empty);
+        if (!await _dialogs.ConfirmAsync("Duplica tabelle", $"Creare una copia ({(withData ? "struttura e dati" : "solo struttura")}) di queste tabelle?\n\n{where}\n\n{list}", "Crea copia")) return;
 
         string Name(string table) => mysql ? provider.QuoteIdentifier(table) : $"{provider.QuoteIdentifier(clip.Schema)}.{provider.QuoteIdentifier(table)}";
         var errors = new List<string>();

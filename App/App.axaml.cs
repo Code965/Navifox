@@ -41,6 +41,7 @@ public partial class App : Application
             AppSettings.Load();
             Localization.Initialize(Environment.GetEnvironmentVariable("NAVIFOX_LANGUAGE") ?? AppSettings.Current.Language);
             CrashReporter.InstallUiHandler();
+            Navifox.Dialects.SessionTimeZone.UseLocal = AppSettings.Current.UseLocalTimeZone;
             ActivityRecording.Journal = new ActivityJournal(AppPaths.File("activities.db"));
             _services.GetRequiredService<IThemeService>().Apply(AppSettings.Current.Theme);
 

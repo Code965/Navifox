@@ -139,7 +139,7 @@ public partial class MainWindowViewModel
             new("Nuova sottocartella…", NewFolderCommand, path, "folder"),
             new("Nuova cartella…", NewFolderCommand, string.Empty, "folder"),
             ContextAction.Separator,
-            new("Rinomina cartella…", RenameFolderCommand, path, "pencil"),
+            new("Rinomina cartella", RenameFolderCommand, path, "pencil"),
             new("Sposta su", ReorderCommand, new ReorderRequest(FolderKey(path), -1), "arrow-up"),
             new("Sposta giù", ReorderCommand, new ReorderRequest(FolderKey(path), 1), "arrow-down"),
             new("Sposta in cartella", Glyph: "folder", Children: MoveFolderActions(path)),
@@ -175,7 +175,7 @@ public partial class MainWindowViewModel
     /// <summary>Voci aggiunte al menu della connessione: rinomina e ordine.</summary>
     private IReadOnlyList<ContextAction> ConnectionOrganizeActions(TreeNodeViewModel node) =>
     [
-        new("Rinomina connessione…", RenameConnectionCommand, node, "pencil"),
+        new("Rinomina connessione", RenameConnectionCommand, node, "pencil"),
         new("Modifica connessione…", EditConnectionCommand, node, "settings"),
         new("Sposta su", ReorderCommand, new ReorderRequest(ConnectionKey(node.Profile!.Id), -1), "arrow-up"),
         new("Sposta giù", ReorderCommand, new ReorderRequest(ConnectionKey(node.Profile!.Id), 1), "arrow-down"),
@@ -217,12 +217,18 @@ public partial class MainWindowViewModel
     }
 
     [RelayCommand]
-    private async Task RenameConnectionAsync(TreeNodeViewModel? node)
+    private void RenameConnection(TreeNodeViewModel? node)
     {
         var connection = node is null ? null : ConnectionOf(node);
-        if (connection?.Profile is not { } current || Profiles.FirstOrDefault(p => p.Id == current.Id) is not { } saved) return;
-        var name = await _dialogs.PromptAsync("Rinomina connessione", $"Nuovo nome per «{saved.Name}»:", saved.Name, "Rinomina");
-        if (string.IsNullOrWhiteSpace(name) || name.Trim() == saved.Name) return;
+        if (connection is not null) RequestInlineRename(connection);
+    }
+
+    /// <summary>Rinomina la connessione con il nome scritto sul posto nell'albero.</summary>
+    public async Task<bool> RenameConnectionToAsync(TreeNodeViewModel node, string name)
+    {
+        var connection = ConnectionOf(node);
+        if (connection?.Profile is not { } current || Profiles.FirstOrDefault(p => p.Id == current.Id) is not { } saved) return false;
+        if (string.IsNullOrWhiteSpace(name) || name.Trim() == saved.Name) return false;
         var renamed = saved with { Name = name.Trim() };
         Profiles[Profiles.IndexOf(saved)] = renamed;
         connection.Name = renamed.Name;
@@ -230,6 +236,7 @@ public partial class MainWindowViewModel
         RebuildConnectionTree();
         await SaveProfilesAsync();
         StatusMessage = $"Connessione rinominata in «{renamed.Name}».";
+        return true;
     }
 
     [RelayCommand]
@@ -311,17 +318,24 @@ public partial class MainWindowViewModel
     }
 
     [RelayCommand]
-    private async Task RenameFolderAsync(string? folder)
+    private void RenameFolder(string? folder)
+    {
+        if (FindFolderNode(NormalizeFolder(folder)) is { } node) RequestInlineRename(node);
+    }
+
+    /// <summary>Rinomina la cartella con il nome scritto sul posto nell'albero.</summary>
+    public async Task<bool> RenameFolderToAsync(string? folder, string newName)
     {
         folder = NormalizeFolder(folder);
-        if (folder.Length == 0) return;
-        var name = NormalizeFolder(await _dialogs.PromptAsync("Rinomina cartella", $"Nuovo nome per «{LeafOf(folder)}»:", LeafOf(folder), "Rinomina"));
-        if (name.Length == 0 || name.Contains(Separator) || name == LeafOf(folder)) return;
+        if (folder.Length == 0) return false;
+        var name = NormalizeFolder(newName);
+        if (name.Length == 0 || name.Contains(Separator) || name == LeafOf(folder)) return false;
         var target = Combine(ParentOf(folder), name);
         ReplaceFolderPrefix(folder, target);
         RebuildConnectionTree();
         await SaveProfilesAsync();
         StatusMessage = $"Cartella «{LeafOf(folder)}» rinominata in «{name}».";
+        return true;
     }
 
     [RelayCommand]

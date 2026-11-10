@@ -22,6 +22,7 @@ public partial class ObjectsView : UserControl
         ObjectsGrid.DoubleTapped += (_, _) => OpenSelected();
         ObjectsGrid.AddHandler(KeyDownEvent, (_, args) =>
         {
+            if (args.Source is TextBox) return; // rinomina sul posto: Canc e Invio restano alla casella
             var main = TopLevel.GetTopLevel(this)?.DataContext as MainWindowViewModel;
             if (args.Key == Key.Enter)
             {
@@ -43,9 +44,18 @@ public partial class ObjectsView : UserControl
             }
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         ObjectsList.DoubleTapped += (_, _) => OpenSelected();
+        // F2: rinomina sul posto della tabella selezionata.
+        AddHandler(KeyDownEvent, (_, args) =>
+        {
+            if (args.Key != Key.F2 || args.KeyModifiers != KeyModifiers.None || _viewModel?.SelectedObject is not { IsRenaming: false } row) return;
+            if (args.Source is TextBox) return;
+            BeginRename(row.Name);
+            args.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         ObjectsList.ContextRequested += (_, args) =>
         {
             if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel main) return;
+            main.ContextOrigin = "objects";
             var row = (args.Source as Avalonia.Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext as ObjectRowViewModel;
             if (row is not null && !ObjectsList.SelectedItems!.Contains(row)) ObjectsList.SelectedItem = row;
             main.SelectedObjectRows = ObjectsList.SelectedItems!.OfType<ObjectRowViewModel>().ToArray();
@@ -61,6 +71,7 @@ public partial class ObjectsView : UserControl
         };
         ObjectsList.AddHandler(KeyDownEvent, (_, args) =>
         {
+            if (args.Source is TextBox) return;
             if (args.Key != Key.Delete || args.KeyModifiers != KeyModifiers.None || _viewModel?.IsTableList != true || TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel main) return;
             main.SelectedObjectRows = ObjectsList.SelectedItems!.OfType<ObjectRowViewModel>().ToArray();
             main.DeleteSelectedObjectsCommand.Execute(null); args.Handled = true;
@@ -74,6 +85,7 @@ public partial class ObjectsView : UserControl
         ObjectsGrid.ContextRequested += (_, args) =>
         {
             if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel main) return;
+            main.ContextOrigin = "objects";
             var row = (args.Source as Avalonia.Visual)?.FindAncestorOfType<DataGridRow>(includeSelf: true)?.DataContext as ObjectRowViewModel;
             if (row is not null && !ObjectsGrid.SelectedItems.Contains(row)) ObjectsGrid.SelectedItem = row;
             main.SelectedObjectRows = ObjectsGrid.SelectedItems.OfType<ObjectRowViewModel>().ToArray();
@@ -122,5 +134,42 @@ public partial class ObjectsView : UserControl
     {
         if (args.PropertyName != nameof(ObjectsTabViewModel.IsSearchOpen)) return;
         if (_viewModel?.IsSearchOpen == true) Dispatcher.UIThread.Post(() => SearchBox.Focus(), DispatcherPriority.Input);
+    }
+
+    /// <summary>Rinomina sul posto della riga con questo nome (tabelle e viste). False se la riga non è nell'elenco.</summary>
+    public bool BeginRename(string name)
+    {
+        if (_viewModel is null || !_viewModel.IsTableList) return false;
+        var row = _viewModel.VisibleObjects.FirstOrDefault(r => r.Name == name);
+        if (row is null) return false;
+        _viewModel.SelectedObject = row;
+        if (ObjectsGrid.IsVisible) ObjectsGrid.ScrollIntoView(row, null);
+        else ObjectsList.ScrollIntoView(row);
+        row.EditName = row.Name;
+        row.IsRenaming = true;
+        return true;
+    }
+
+    private async void CommitRename(TextBox box, bool cancel)
+    {
+        if (box.DataContext is not ObjectRowViewModel { IsRenaming: true } row) return;
+        row.IsRenaming = false;
+        if (ObjectsGrid.IsVisible) ObjectsGrid.Focus(); else ObjectsList.Focus();
+        if (cancel || string.IsNullOrWhiteSpace(row.EditName) || row.EditName.Trim() == row.Name) return;
+        if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel main || _viewModel?.Source is not { } category) return;
+        if (category.SelfAndDescendants().FirstOrDefault(n => n.Kind == TreeNodeKind.Table && n.Name == row.Name) is { } node)
+            await main.RenameTableAsync(node, row.EditName);
+    }
+
+    private void OnRenameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        if (e.Key == Key.Enter) { CommitRename(box, cancel: false); e.Handled = true; }
+        else if (e.Key == Key.Escape) { CommitRename(box, cancel: true); e.Handled = true; }
+    }
+
+    private void OnRenameLostFocus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is TextBox box) CommitRename(box, cancel: false);
     }
 }

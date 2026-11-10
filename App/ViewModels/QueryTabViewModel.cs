@@ -59,7 +59,34 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         SavedQueryId = query.Id;
         _savedQueryName = query.Name;
         FilePath = query.FilePath;
+        MarkClean();
         RefreshTitle();
+    }
+
+    /// <summary>Testo al momento dell'ultimo salvataggio (o dell'apertura): se cambia, chiudendo si chiede se salvare.</summary>
+    private string _cleanText = string.Empty;
+
+    public bool IsDirty => !IsConsole && (SqlText ?? string.Empty).Trim() != _cleanText.Trim();
+
+    /// <summary>Il testo attuale è considerato salvato (query aperta, salvata o generata da Navifox).</summary>
+    public void MarkClean() => _cleanText = SqlText ?? string.Empty;
+
+    public override async Task<bool> ConfirmCloseAsync()
+    {
+        if (!IsDirty || _dialogs is null) return true;
+        var dialog = new Views.ChoiceDialog("Query non salvata",
+            $"La query «{TabTitle}» contiene modifiche non salvate.\n\nVuoi salvarla prima di chiudere?", ["Salva", "Non salvare", "Annulla"]);
+        await _dialogs.ShowDialogAsync(dialog);
+        switch (dialog.Choice)
+        {
+            case 0:
+                await SaveToLibraryCoreAsync(false);
+                return !IsDirty; // salvataggio annullato o non riuscito: la scheda resta aperta
+            case 1:
+                return true;
+            default:
+                return false;
+        }
     }
 
     /// <summary>Salva il testo nella categoria «Query salvate» del database (aggiorna se già salvata).</summary>
@@ -404,6 +431,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         try
         {
             await File.WriteAllTextAsync(path, SqlText, new UTF8Encoding(false));
+            MarkClean();
             StatusMessage = $"Esportato in {path}";
         }
         catch (Exception exception) { await _dialogs.ShowMessageAsync("Esportazione non riuscita", exception.Message, isError: true); }
@@ -416,6 +444,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         var path = await _dialogs.PickOpenFileAsync("Apri script SQL", new FileFilter("Script SQL", "*.sql"), new FileFilter("Tutti i file", "*.*"));
         if (path is null) return;
         SqlText = await File.ReadAllTextAsync(path);
+        MarkClean();
         SavedQueryId = null;
         _savedQueryName = null;
         FilePath = path;
@@ -544,10 +573,10 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         SelectedResultSet = ResultSets.FirstOrDefault();
         foreach (var result in results)
         {
-            var head = OneLine(result.Sql);
+            // Come nei client classici: l'istruzione intera, poi l'esito e il tempo su righe che iniziano con «>».
             Messages.Add(result.Error is not null
-                ? $"[{DateTime.Now:HH:mm:ss}] {head}\n    ERRORE: {result.Error.Message}"
-                : $"[{DateTime.Now:HH:mm:ss}] {head}\n    {Describe(result.Result!)} · {result.Elapsed.TotalMilliseconds:N0} ms");
+                ? $"{result.Sql.Trim()}\n> Errore: {result.Error.Message}\n> Tempo: {Seconds(result.Elapsed)}s"
+                : $"{result.Sql.Trim()}\n> {Outcome(result.Result!)}\n> Tempo: {Seconds(result.Elapsed)}s");
         }
         var failed = results.FirstOrDefault(result => result.Error is not null);
         if (failed is not null) RememberError(failed.Sql, failed.Error!.Message);
@@ -577,6 +606,13 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
         }
         StatusMessage = "Pronto";
     }
+
+    /// <summary>Esito per la scheda Messaggi: «Righe interessate: 22869» o «Righe restituite: 100».</summary>
+    private static string Outcome(QueryResult result) => result.HasResultSet
+        ? $"Righe restituite: {result.Rows.Count}{(result.Truncated ? " (risultato troncato)" : string.Empty)}"
+        : $"Righe interessate: {Math.Max(0, result.RecordsAffected)}";
+
+    private static string Seconds(TimeSpan elapsed) => elapsed.TotalSeconds.ToString("0.000", System.Globalization.CultureInfo.GetCultureInfo("it-IT"));
 
     private static string Describe(QueryResult result) => result.HasResultSet
         ? $"{result.Rows.Count:N0} righe{(result.Truncated ? " (risultato troncato)" : string.Empty)}"

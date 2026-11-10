@@ -63,7 +63,7 @@ public static class Localization
         {
             if (!block.Classes.Contains("no-tr")) Apply(block, TextBlock.TextProperty, e.NewValue);
         });
-        ContentControl.ContentProperty.Changed.AddClassHandler<ContentControl>((control, e) => Apply(control, ContentControl.ContentProperty, e.NewValue));
+        ContentControl.ContentProperty.Changed.AddClassHandler<ContentControl>((control, e) => { if (!control.Classes.Contains("no-tr")) Apply(control, ContentControl.ContentProperty, e.NewValue); });
         HeaderedContentControl.HeaderProperty.Changed.AddClassHandler<HeaderedContentControl>((control, e) => Apply(control, HeaderedContentControl.HeaderProperty, e.NewValue));
         HeaderedSelectingItemsControl.HeaderProperty.Changed.AddClassHandler<HeaderedSelectingItemsControl>((control, e) => Apply(control, HeaderedSelectingItemsControl.HeaderProperty, e.NewValue));
         HeaderedItemsControl.HeaderProperty.Changed.AddClassHandler<HeaderedItemsControl>((control, e) => Apply(control, HeaderedItemsControl.HeaderProperty, e.NewValue));

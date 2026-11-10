@@ -29,8 +29,24 @@ public partial class MainWindow : Window
             if (args.PropertyName == nameof(MainWindowViewModel.IsTreeVisible)) SetPanelVisible(0, 1, viewModel.IsTreeVisible, ref _treeWidth);
             else if (args.PropertyName == nameof(MainWindowViewModel.IsInfoVisible)) SetPanelVisible(4, 3, viewModel.IsInfoVisible, ref _infoWidth);
         };
+        // Casella di rinomina appena comparsa: cursore dentro e testo selezionato.
+        TextBox.IsVisibleProperty.Changed.AddClassHandler<TextBox>((box, e) =>
+        {
+            if (box.Classes.Contains("rename-box") && e.NewValue is true)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => { box.Focus(); box.SelectAll(); }, Avalonia.Threading.DispatcherPriority.Input);
+        });
+        // «Rinomina» dal menu: sul posto, nell'elenco Oggetti se il menu è stato aperto lì, altrimenti nell'albero.
+        viewModel.InlineRenameRequested += (node, origin) =>
+        {
+            if (origin == "objects" && viewModel.SelectedTab == viewModel.ObjectsTab
+                && this.GetVisualDescendants().OfType<Views.ObjectsView>().FirstOrDefault(v => v.IsEffectivelyVisible) is { } objects && objects.BeginRename(node.Name))
+                return;
+            for (var parent = node.Parent; parent is not null; parent = parent.Parent) parent.IsExpanded = true;
+            StartTreeRename(node);
+        };
         ConnectionTree.ContextRequested += (_, args) =>
         {
+            viewModel.ContextOrigin = "tree";
             if (args.Source is not Avalonia.Visual source || source.FindAncestorOfType<TreeViewItem>(includeSelf: true) is not { DataContext: TreeNodeViewModel node } item) return;
             if (node.IsPlaceholder) return;
             if (viewModel.SelectedNode != node) viewModel.SelectedNode = node;
@@ -42,6 +58,8 @@ public partial class MainWindow : Window
         };
         ConnectionTree.AddHandler(KeyDownEvent, (_, args) =>
         {
+            // Durante la rinomina sul posto i tasti restano alla casella di testo (Canc non elimina, Invio non apre…).
+            if (args.Source is TextBox) return;
             // Canc sulla connessione: elimina (con conferma) · F2: modifica connessione / rinomina cartella.
             // Alt+Su / Alt+Giù: riordina connessioni e cartelle.
             if (args.KeyModifiers == Avalonia.Input.KeyModifiers.Alt && args.Key is Avalonia.Input.Key.Up or Avalonia.Input.Key.Down
@@ -62,8 +80,9 @@ public partial class MainWindow : Window
                     args.Handled = true;
                 }
                 else if (args.Key == Avalonia.Input.Key.Delete && selected.Kind == TreeNodeKind.Connection) { viewModel.DeleteSelectedConnectionCommand.Execute(null); args.Handled = true; }
-                else if (args.Key == Avalonia.Input.Key.F2 && selected.Kind == TreeNodeKind.Connection) { viewModel.RenameConnectionCommand.Execute(selected); args.Handled = true; }
-                else if (args.Key == Avalonia.Input.Key.F2 && selected.Kind == TreeNodeKind.Group) { viewModel.RenameFolderCommand.Execute(selected.FolderPath); args.Handled = true; }
+                // F2: rinomina sul posto (connessioni, cartelle, tabelle e viste).
+                else if (args.Key == Avalonia.Input.Key.F2 && selected.Kind is TreeNodeKind.Connection or TreeNodeKind.Group or TreeNodeKind.Table && !selected.IsRenaming)
+                { StartTreeRename(selected); args.Handled = true; }
                 if (args.Handled) return;
             }
             if (!args.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)) return;
@@ -108,7 +127,23 @@ public partial class MainWindow : Window
             }
             FavoritesMenu.ItemsSource = items;
         };
-        Closing += (_, _) => viewModel.SaveSession();
+        // Uscita con query modificate e non salvate: se la sessione non viene riaperta al prossimo avvio
+        // (altrimenti il testo resta nelle schede), si chiede per ciascuna se salvarla.
+        Closing += async (_, e) =>
+        {
+            if (_closeConfirmed || Navifox.App.Services.AppSettings.Current.RestoreSession) return;
+            var dirty = viewModel.OpenTabs.OfType<QueryTabViewModel>().Where(t => t.IsDirty).ToArray();
+            if (dirty.Length == 0) return;
+            e.Cancel = true;
+            foreach (var tab in dirty)
+            {
+                viewModel.SelectedTab = tab;
+                if (!await tab.ConfirmCloseAsync()) return;
+            }
+            _closeConfirmed = true;
+            Close();
+        };
+        Closing += (_, e) => { if (!e.Cancel) viewModel.SaveSession(); };
         RecentMenu.SubmenuOpened += (_, _) =>
         {
             var items = new List<object>();
@@ -125,6 +160,7 @@ public partial class MainWindow : Window
         ConnectionTree.Tapped += (_, args) =>
         {
             if (args.Source is not Avalonia.Visual source || source.FindAncestorOfType<TreeViewItem>(includeSelf: true) is not { DataContext: TreeNodeViewModel node } item) return;
+            if (source.FindAncestorOfType<TextBox>(includeSelf: true) is not null) return; // clic nella casella di rinomina
             viewModel.ReactivateNode(node);
             // Un clic in qualsiasi punto della riga apre o chiude connessioni, database, categorie e cartelle
             // (la freccina continua a funzionare da sola: lì non si inverte una seconda volta).
@@ -150,6 +186,38 @@ public partial class MainWindow : Window
     }
 
     private (TreeViewItem Item, bool Expanded)? _lastToggled;
+
+    // ───────────── Rinomina sul posto nell'albero ─────────────
+
+    private void StartTreeRename(TreeNodeViewModel node)
+    {
+        node.EditName = node.Name;
+        node.IsRenaming = true;
+        if (DataContext is MainWindowViewModel vm && vm.SelectedNode != node) vm.SelectedNode = node;
+    }
+
+    private async void CommitTreeRename(TextBox box, bool cancel)
+    {
+        if (box.DataContext is not TreeNodeViewModel { IsRenaming: true } node || DataContext is not MainWindowViewModel vm) return;
+        node.IsRenaming = false;
+        ConnectionTree.Focus();
+        if (cancel || string.IsNullOrWhiteSpace(node.EditName) || node.EditName.Trim() == node.Name) return;
+        await vm.RenameNodeAsync(node, node.EditName);
+    }
+
+    private void OnTreeRenameKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        if (e.Key == Avalonia.Input.Key.Enter) { CommitTreeRename(box, cancel: false); e.Handled = true; }
+        else if (e.Key == Avalonia.Input.Key.Escape) { CommitTreeRename(box, cancel: true); e.Handled = true; }
+        else e.Handled = e.Key is Avalonia.Input.Key.Left or Avalonia.Input.Key.Right or Avalonia.Input.Key.Home or Avalonia.Input.Key.End or Avalonia.Input.Key.Space; // non all'albero
+    }
+
+    private void OnTreeRenameLostFocus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is TextBox box) CommitTreeRename(box, cancel: false);
+    }
+    private bool _closeConfirmed;
 
     /// <summary>Nodi che si aprono e chiudono con un clic sulla riga: tutto tranne tabelle, oggetti, query salvate e backup.</summary>
     private static bool IsExpandable(TreeNodeViewModel node) =>

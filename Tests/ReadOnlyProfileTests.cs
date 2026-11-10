@@ -26,3 +26,20 @@ public sealed class ReadOnlyProfileTests
         Assert.False(JsonSerializer.Deserialize<StoredConnectionRecord>(json)!.ToProfile("", "", "", "").ReadOnly);
     }
 }
+
+public sealed class SameDatabaseTests
+{
+    [Fact]
+    public void DueConnessioniVersoLoStessoServer()
+    {
+        var a = new ConnectionProfile { Name = "Localhost", Kind = DatabaseKind.MySql, Host = "localhost", Port = 3306 };
+        var b = new ConnectionProfile { Name = "locale", Kind = DatabaseKind.MySql, Host = "127.0.0.1" };
+        Assert.True(a.IsSameDatabase("biblionet", "biblionet", b, "BIBLIONET", "biblionet"));
+        Assert.False(a.IsSameDatabase("biblionet", "biblionet", b, "sitoweb", "sitoweb"));
+        Assert.False(a.IsSameDatabase("x", null, b with { Port = 3307 }, "x", null));
+        var pg = new ConnectionProfile { Kind = DatabaseKind.PostgreSql, Host = "db.example.com" };
+        Assert.False(pg.IsSameDatabase("app", "public", pg with { Id = Guid.NewGuid() }, "App", "public")); // in PostgreSQL i nomi distinguono le maiuscole
+        Assert.True(pg.IsSameDatabase("app", "public", pg with { Id = Guid.NewGuid() }, "app", "public"));
+        Assert.False(pg.IsSameDatabase("app", "public", pg with { Id = Guid.NewGuid(), Kind = DatabaseKind.MySql }, "app", "public"));
+    }
+}

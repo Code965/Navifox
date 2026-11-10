@@ -186,6 +186,8 @@ public partial class TableRowViewModel : ObservableObject
     {
         null => "(NULL)",
         byte[] bytes => $"(BLOB) {bytes.Length:N0} byte",
+        // Valori in UTC (timestamptz di PostgreSQL): mostrati nell'ora del PC, se è quella scelta per le sessioni.
+        DateTime { Kind: DateTimeKind.Utc } utc when Navifox.Dialects.SessionTimeZone.UseLocal => utc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
         DateTime dateTime => dateTime.TimeOfDay == TimeSpan.Zero ? dateTime.ToString("yyyy-MM-dd") : dateTime.ToString("yyyy-MM-dd HH:mm:ss"),
         DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("yyyy-MM-dd HH:mm:ss zzz"),
         bool flag => flag ? "1" : "0",

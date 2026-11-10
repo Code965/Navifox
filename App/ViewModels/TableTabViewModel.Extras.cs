@@ -280,6 +280,25 @@ public partial class TableTabViewModel
     }
 
     /// <summary>Record della tabella collegata per scegliere il valore della chiave esterna.</summary>
+    /// <summary>Valori distinti di una colonna (al massimo 200), per scegliere il valore di un criterio del filtro.</summary>
+    public async Task<IReadOnlyList<string>> DistinctValuesAsync(string column, string? contains)
+    {
+        await using var connection = await _databaseAccess.OpenAsync(_profile, Database, CancellationToken.None);
+        var table = $"{_provider.QuoteIdentifier(Schema)}.{_provider.QuoteIdentifier(TableName)}";
+        var quoted = _provider.QuoteIdentifier(column);
+        var asText = _provider.Kind switch
+        {
+            Navifox.Core.Models.DatabaseKind.PostgreSql => $"CAST({quoted} AS TEXT)",
+            Navifox.Core.Models.DatabaseKind.SqlServer => $"CAST({quoted} AS NVARCHAR(400))",
+            _ => quoted
+        };
+        var like = _provider.Kind == Navifox.Core.Models.DatabaseKind.PostgreSql ? "ILIKE" : "LIKE";
+        var where = $"WHERE {quoted} IS NOT NULL" + (string.IsNullOrWhiteSpace(contains) ? string.Empty : $" AND {asText} {like} {_provider.FormatLiteral("%" + contains + "%")}");
+        var sql = _provider.Kind.LimitSelect($"DISTINCT {quoted}", $"FROM {table} {where} ORDER BY {quoted}", 200);
+        var result = await _provider.ExecuteAsync(connection, sql, 200, CancellationToken.None);
+        return result.Rows.Select(r => TableRowViewModel.Format(r[0])).ToArray();
+    }
+
     public async Task<QueryResult?> LoadReferenceRowsAsync(ColumnReference reference, string? filter)
     {
         await using var connection = await _databaseAccess.OpenAsync(_profile, Database, CancellationToken.None);

@@ -110,9 +110,9 @@
                   <Button Classes="crit-link connector" Content="{Binding Connector}" Tag="connector" Click="OnCriteriaLinkClick" IsVisible="{Binding !IsFirst}" />
                   <Button Classes="crit-link column" Content="{Binding Column}" Tag="column" Click="OnCriteriaLinkClick" IsVisible="{Binding ShowColumn}" />
                   <Button Classes="crit-link operator" Content="{Binding Operator.Label}" Tag="operator" Click="OnCriteriaLinkClick" />
-                  <TextBox Classes="crit-value" Text="{Binding Value, Mode=TwoWay}" Watermark="&lt;?&gt;" IsVisible="{Binding NeedsValue}" />
+                  <Button Classes="crit-link value no-tr" Content="{Binding ValueLabel}" Tag="value" Click="OnCriteriaValueClick" IsVisible="{Binding NeedsValue}" ToolTip.Tip="Clicca per inserire il valore" />
                   <TextBlock Text="e" IsVisible="{Binding NeedsSecondValue}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Margin="2,0" />
-                  <TextBox Classes="crit-value" Text="{Binding Value2, Mode=TwoWay}" Watermark="&lt;?&gt;" IsVisible="{Binding NeedsSecondValue}" />
+                  <Button Classes="crit-link value no-tr" Content="{Binding Value2Label}" Tag="value2" Click="OnCriteriaValueClick" IsVisible="{Binding NeedsSecondValue}" ToolTip.Tip="Clicca per inserire il valore" />
                   <Button Classes="crit-chip" Margin="6,0,0,0" ToolTip.Tip="Aggiungi un criterio"
                           Command="{Binding $parent[UserControl].((vm:TableTabViewModel)DataContext).AddFilterCommand}" CommandParameter="{Binding .}">
                     <c:NfIcon Kind="plus" Width="11" Height="11" StrokeWidth="3" />

@@ -34,8 +34,16 @@ public partial class FilterConditionViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NeedsValue), nameof(NeedsSecondValue), nameof(IsCustom), nameof(ShowColumn))]
     private FilterOperator _operator = FilterOperator.All[0];
-    [ObservableProperty] private string _value = string.Empty;
-    [ObservableProperty] private string _value2 = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ValueLabel))]
+    private string _value = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Value2Label))]
+    private string _value2 = string.Empty;
+
+    /// <summary>Testo del valore nel criterio: «&lt;?&gt;» finché non è inserito.</summary>
+    public string ValueLabel => Value.Length == 0 ? "<?>" : Value;
+    public string Value2Label => Value2.Length == 0 ? "<?>" : Value2;
     [ObservableProperty] private string _connector = "AND";
     [ObservableProperty] private bool _isFirst;
     [ObservableProperty] private bool _isSelected;

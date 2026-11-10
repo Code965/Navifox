@@ -223,11 +223,12 @@
     <Grid x:Name="MainGrid" Grid.Row="2" ColumnDefinitions="280,6,*,6,300" Margin="10,10,10,8">
       <!-- Pannello connessioni: connessione → database → (schema) → categorie → tabelle -->
       <Border Grid.Column="0" IsVisible="{Binding IsTreeVisible}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
-        <Grid RowDefinitions="Auto,Auto,*">
+        <Grid RowDefinitions="Auto,*,Auto">
           <Grid ColumnDefinitions="*" Margin="10,10,6,8">
             <TextBlock Text="Connessioni" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" />
           </Grid>
-          <Grid Grid.Row="1" Margin="8,0,8,6">
+          <!-- Ricerca nell'albero: in basso, sotto le connessioni -->
+          <Grid Grid.Row="2" Margin="8,4,8,8">
             <TextBox Text="{Binding SearchText, Mode=TwoWay}" Watermark="Cerca connessioni, database, tabelle" Padding="28,5,26,5" MinHeight="28" FontSize="12">
               <TextBox.KeyBindings>
                 <KeyBinding Gesture="Escape" Command="{Binding ClearTreeFilterCommand}" />
@@ -236,7 +237,7 @@
             <c:NfIcon Kind="search" Width="14" Height="14" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
             <Button Content="✕" Classes="tree-tool" HorizontalAlignment="Right" Margin="0,0,2,0" IsVisible="{Binding HasTreeFilter}" Command="{Binding ClearTreeFilterCommand}" ToolTip.Tip="Cancella filtro (Esc)" />
           </Grid>
-          <TreeView x:Name="ConnectionTree" Grid.Row="2" ItemsSource="{Binding RootNodes}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}" Background="Transparent" Margin="0,0,0,4">
+          <TreeView x:Name="ConnectionTree" Grid.Row="1" ItemsSource="{Binding RootNodes}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}" Background="Transparent" Margin="0,0,0,4">
             <TreeView.Styles>
               <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
@@ -251,7 +252,10 @@
                   <c:NfIcon Kind="{Binding Glyph}" Classes="tree-icon" Classes.open="{Binding IsLoaded}" Classes.connection="{Binding IsConnection}" Width="15" Height="15" VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding Name}" Classes="tree-label" Classes.placeholder="{Binding IsPlaceholder}" Classes.connection="{Binding IsConnection}" VerticalAlignment="Center"
+                                 IsVisible="{Binding !IsRenaming}" />
+                      <TextBox Classes="rename-box" Text="{Binding EditName, Mode=TwoWay}" IsVisible="{Binding IsRenaming}" MinWidth="140"
+                               KeyDown="OnTreeRenameKeyDown" LostFocus="OnTreeRenameLostFocus" />
                       <c:DialectBadge Profile="{Binding Profile}" ShowName="True" IsVisible="{Binding IsConnection}" />
                       <Border Classes="env-chip" IsVisible="{Binding Profile, Converter={x:Static c:DialectVisuals.HasEnvironmentConverter}}"
                               Background="{Binding Profile, Converter={x:Static c:DialectVisuals.ProfileColorConverter}}">

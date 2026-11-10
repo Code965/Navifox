@@ -423,6 +423,14 @@ public partial class DataTransferViewModel : ObservableObject
             StatusMessage = "Origine e destinazione coincidono.";
             return;
         }
+        // Due connessioni diverse verso lo stesso database: ricreare le tabelle cancellerebbe quelle di origine.
+        if (source.IsSameDatabase(sourceDb, null, target, targetDb, null))
+        {
+            await _dialogs.ShowMessageAsync("Origine e destinazione coincidono",
+                $"«{source.Name}» e «{target.Name}» puntano allo stesso database «{targetDb}» ({target.Endpoint}).\n\n" +
+                "Il trasferimento eliminerebbe e ricreerebbe le tabelle di origine. Per duplicare una tabella usa Copia e Incolla nello stesso database: Navifox crea una copia «_copy».", isError: true);
+            return;
+        }
         var selected = Tables.Where(t => t.IsSelected && !t.IsView).ToArray();
         if (selected.Length == 0)
         {
@@ -717,6 +725,7 @@ public partial class OptionsViewModel : ObservableObject
         _safeMode = settings.SafeMode;
         _conditionalFormatting = settings.ConditionalFormatting;
         _offerCrashReports = settings.OfferCrashReports;
+        _useLocalTimeZone = settings.UseLocalTimeZone;
         _language = Languages.FirstOrDefault(l => l.Value == settings.Language) ?? Languages[0];
         _rowPreview = RowPreviewModes.FirstOrDefault(m => m.Value == settings.RowPreview) ?? RowPreviewModes[1];
         _restoreSession = settings.RestoreSession;
@@ -840,6 +849,7 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private bool _safeMode;
     [ObservableProperty] private bool _conditionalFormatting;
     [ObservableProperty] private bool _offerCrashReports;
+    [ObservableProperty] private bool _useLocalTimeZone;
     [ObservableProperty] private RowPreviewMode? _language;
 
     /// <summary>Lingua dell'interfaccia (vale dal prossimo avvio).</summary>
@@ -874,6 +884,8 @@ public partial class OptionsViewModel : ObservableObject
         settings.SafeMode = SafeMode;
         settings.ConditionalFormatting = ConditionalFormatting;
         settings.OfferCrashReports = OfferCrashReports;
+        settings.UseLocalTimeZone = UseLocalTimeZone;
+        Navifox.Dialects.SessionTimeZone.UseLocal = UseLocalTimeZone;
         settings.Language = Language?.Value ?? string.Empty;
         settings.RowPreview = RowPreview?.Value ?? SqlGuard.PreviewWithConfirm;
         settings.RestoreSession = RestoreSession;

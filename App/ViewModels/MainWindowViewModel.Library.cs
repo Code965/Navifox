@@ -254,6 +254,7 @@ public partial class MainWindowViewModel
             return;
         }
         var tab = new QueryTabViewModel(_databaseAccess, profile, database, false, Profiles.ToArray(), _dialogs) { SqlText = await File.ReadAllTextAsync(path), FilePath = path };
+        tab.MarkClean();
         OpenTabs.Add(tab);
         SelectedTab = tab;
     }

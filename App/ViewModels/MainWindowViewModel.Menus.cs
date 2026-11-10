@@ -58,6 +58,7 @@ public partial class MainWindowViewModel
             SqlText = await File.ReadAllTextAsync(path),
             FilePath = path,
         };
+        tab.MarkClean();
         OpenTabs.Add(tab);
         SelectedTab = tab;
         RememberRecent(path);

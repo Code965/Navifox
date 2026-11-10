@@ -2,8 +2,12 @@ using Navifox.Core.Models;
 
 namespace Navifox.App.ViewModels;
 
-public sealed class ObjectRowViewModel(DatabaseObjectInfo info)
+public sealed partial class ObjectRowViewModel(DatabaseObjectInfo info) : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
 {
+    /// <summary>Rinomina sul posto nell'elenco Oggetti.</summary>
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isRenaming;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private string _editName = string.Empty;
+
     public string Name => info.Name;
     public string Kind => info.Kind;
     public string Glyph => GlyphFor(info.Kind);

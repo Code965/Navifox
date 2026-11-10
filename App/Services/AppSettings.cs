@@ -34,6 +34,8 @@ public sealed class AppSettings
     public bool OfferCrashReports { get; set; } = true;
     /// <summary>Lingua dell'interfaccia: "" = automatica (quella di Windows), "it" o "en". Vale dal riavvio.</summary>
     public string Language { get; set; } = string.Empty;
+    /// <summary>Fuso orario delle sessioni: true = ora del PC (predefinito), false = ora del server.</summary>
+    public bool UseLocalTimeZone { get; set; } = true;
     /// <summary>Server Monitor: avviso se le connessioni superano questa percentuale del massimo (0 = disattivato).</summary>
     public int MonitorAlertConnectionsPercent { get; set; } = 80;
     /// <summary>Server Monitor: avviso per le query in esecuzione da più di questi secondi (0 = disattivato).</summary>

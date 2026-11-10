@@ -256,6 +256,7 @@ public partial class MainWindowViewModel
         {
             var provider = _databaseAccess.Provider(profile);
             tab.SqlText = profile.Kind.LimitSelect("*", $"FROM {provider.QuoteIdentifier(node.Schema!)}.{provider.QuoteIdentifier(node.Name)}", 100) + ";";
+            tab.MarkClean();
         }
         OpenTabs.Add(tab);
         SelectedTab = tab;

@@ -12,4 +12,6 @@ public abstract class WorkspaceTabViewModel : ObservableObject
     public virtual Navifox.Core.Models.ConnectionProfile? TabConnection => null;
     /// <summary>Chiamato alla chiusura della scheda (es. per annullare una transazione aperta).</summary>
     public virtual ValueTask CloseAsync() => ValueTask.CompletedTask;
+    /// <summary>Prima di chiudere (scheda o programma): false se l'utente annulla (es. query non salvata).</summary>
+    public virtual Task<bool> ConfirmCloseAsync() => Task.FromResult(true);
 }

@@ -43,6 +43,35 @@ public sealed record ConnectionProfile
         _ => $"{Host}:{EffectivePort}",
     };
 
+    /// <summary>
+    /// Vero se questa connessione e <paramref name="other"/> raggiungono lo stesso database fisico
+    /// (stesso tipo, server e porta, stesso database/schema): due connessioni diverse verso lo stesso server sono la stessa destinazione.
+    /// </summary>
+    public bool IsSameDatabase(string? database, string? schema, ConnectionProfile other, string? otherDatabase, string? otherSchema)
+    {
+        if (Kind != other.Kind) return false;
+        if (Id == other.Id) return string.Equals(database, otherDatabase, StringComparison.Ordinal) && string.Equals(schema, otherSchema, StringComparison.Ordinal);
+        if (Kind == DatabaseKind.Sqlite)
+            return string.Equals(System.IO.Path.GetFullPath(System.Environment.ExpandEnvironmentVariables(Host.Trim().Trim('"'))),
+                System.IO.Path.GetFullPath(System.Environment.ExpandEnvironmentVariables(other.Host.Trim().Trim('"'))), StringComparison.OrdinalIgnoreCase);
+        if (UseSshTunnel || other.UseSshTunnel)
+        {
+            // Dietro un tunnel conta il server raggiunto attraverso l'host SSH.
+            if (!string.Equals(SshHost.Trim(), other.SshHost.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
+        }
+        var names = Kind is DatabaseKind.MySql or DatabaseKind.SqlServer ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        return string.Equals(NormalizeHost(Host), NormalizeHost(other.Host), StringComparison.OrdinalIgnoreCase)
+               && EffectivePort == other.EffectivePort
+               && names.Equals(database ?? string.Empty, otherDatabase ?? string.Empty)
+               && names.Equals(schema ?? string.Empty, otherSchema ?? string.Empty);
+    }
+
+    private static string NormalizeHost(string host)
+    {
+        var value = host.Trim().TrimEnd('.');
+        return value is "127.0.0.1" or "::1" or "[::1]" or "." or "(local)" ? "localhost" : value;
+    }
+
     public int EffectivePort => Port > 0 ? Port : Kind switch
     {
         DatabaseKind.MySql => 3306,

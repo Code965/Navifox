@@ -29,17 +29,17 @@ public partial class MainWindowViewModel
     public sealed record TabMove(WorkspaceTabViewModel Tab, int Delta);
 
     [RelayCommand]
-    private void CloseOtherTabs(WorkspaceTabViewModel? keep)
+    private async Task CloseOtherTabsAsync(WorkspaceTabViewModel? keep)
     {
-        foreach (var tab in OpenTabs.Where(t => t.CanClose && t != keep).ToArray()) CloseTab(tab);
+        foreach (var tab in OpenTabs.Where(t => t.CanClose && t != keep).ToArray()) await CloseTabAsync(tab);
         if (keep is not null) SelectedTab = keep;
     }
 
     [RelayCommand]
-    private void CloseTabsToRight(WorkspaceTabViewModel? from)
+    private async Task CloseTabsToRightAsync(WorkspaceTabViewModel? from)
     {
         if (from is null) return;
-        foreach (var tab in OpenTabs.Skip(OpenTabs.IndexOf(from) + 1).Where(t => t.CanClose).ToArray()) CloseTab(tab);
+        foreach (var tab in OpenTabs.Skip(OpenTabs.IndexOf(from) + 1).Where(t => t.CanClose).ToArray()) await CloseTabAsync(tab);
         SelectedTab = from;
     }
 

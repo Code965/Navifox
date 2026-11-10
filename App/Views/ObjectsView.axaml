@@ -83,7 +83,9 @@
             <DataTemplate x:DataType="vm:ObjectRowViewModel">
               <StackPanel Orientation="Horizontal" Spacing="7" Margin="8,0" VerticalAlignment="Center">
                 <c:NfIcon Kind="{Binding Glyph}" Foreground="{DynamicResource AccentBrush}" Width="14" Height="14" />
-                <TextBlock Text="{Binding Name}" />
+                <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsRenaming}" />
+                <TextBox Classes="rename-box" Text="{Binding EditName, Mode=TwoWay}" IsVisible="{Binding IsRenaming}" MinWidth="180"
+                         KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" />
               </StackPanel>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
@@ -130,7 +132,9 @@
         <DataTemplate x:DataType="vm:ObjectRowViewModel">
           <StackPanel Orientation="Horizontal" Spacing="7" Margin="2,1">
             <c:NfIcon Kind="{Binding Glyph}" Foreground="{DynamicResource AccentBrush}" Width="14" Height="14" />
-            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding !IsRenaming}" />
+            <TextBox Classes="rename-box" Text="{Binding EditName, Mode=TwoWay}" IsVisible="{Binding IsRenaming}" MinWidth="180"
+                     KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" />
           </StackPanel>
         </DataTemplate>
       </ListBox.ItemTemplate>

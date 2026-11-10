@@ -556,8 +556,81 @@ public partial class TablePageView : UserControl
         flyout.ShowAt(button);
     }
 
+    /// <summary>Clic su «&lt;?&gt;»: popup per scrivere il valore oppure sceglierlo tra quelli presenti nella colonna.</summary>
+    private void OnCriteriaValueClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: FilterConditionViewModel condition, Tag: string part } button || _viewModel is not { } table) return;
+        table.SelectFilterCommand.Execute(condition);
+        var second = part == "value2";
+        var box = new TextBox { Text = second ? condition.Value2 : condition.Value, Watermark = "Valore", MinWidth = 260, AcceptsReturn = false };
+        // Valori dei dati: mai tradotti (elementi non testuali + TextBlock «no-tr»).
+        var list = new ListBox
+        {
+            MaxHeight = 220, MinWidth = 260,
+            ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<FilterValueItem>((item, _) => new TextBlock { Text = item?.Text, Classes = { "no-tr" } })
+        };
+        var info = new TextBlock { FontSize = 11.5, Opacity = 0.7, Text = "Valori presenti nella colonna «" + condition.Column + "»…" };
+        var ok = new Button { Content = "OK", Classes = { "dialog-primary" }, MinWidth = 80, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center };
+        var apply = new Button { Content = "OK e applica", Classes = { "small-muted" }, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center };
+        var buttons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 6, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
+        buttons.Children.Add(apply);
+        buttons.Children.Add(ok);
+        var panel = new StackPanel { Spacing = 6, Margin = new Avalonia.Thickness(4) };
+        panel.Children.Add(new TextBlock { Text = $"{condition.Column} {condition.Operator.Label}", FontWeight = Avalonia.Media.FontWeight.SemiBold });
+        panel.Children.Add(box);
+        panel.Children.Add(info);
+        panel.Children.Add(list);
+        panel.Children.Add(buttons);
+        var flyout = new Flyout { Content = panel, Placement = PlacementMode.BottomEdgeAlignedLeft, ShowMode = FlyoutShowMode.Standard };
+        void Commit(bool run)
+        {
+            if (second) condition.Value2 = box.Text ?? string.Empty;
+            else condition.Value = box.Text ?? string.Empty;
+            flyout.Hide();
+            if (run) table.ApplyFilterCommand.Execute(null);
+        }
+        ok.Click += (_, _) => Commit(false);
+        apply.Click += (_, _) => Commit(true);
+        box.KeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Enter) { Commit(args.KeyModifiers.HasFlag(KeyModifiers.Control)); args.Handled = true; }
+            else if (args.Key == Key.Escape) { flyout.Hide(); args.Handled = true; }
+            else if (args.Key == Key.Down && list.ItemCount > 0) { list.SelectedIndex = 0; list.Focus(); args.Handled = true; }
+        };
+        list.SelectionChanged += (_, _) => { if (list.SelectedItem is FilterValueItem value) box.Text = value.Text; };
+        list.DoubleTapped += (_, _) => Commit(false);
+        list.KeyDown += (_, args) => { if (args.Key == Key.Enter) { Commit(false); args.Handled = true; } };
+        System.Threading.CancellationTokenSource? pending = null;
+        async Task LoadAsync(string? contains)
+        {
+            pending?.Cancel();
+            var mine = pending = new System.Threading.CancellationTokenSource();
+            try
+            {
+                await Task.Delay(contains is null ? 0 : 300, mine.Token);
+                var values = await table.DistinctValuesAsync(condition.Column, contains);
+                if (mine.IsCancellationRequested) return;
+                list.ItemsSource = values.Select(v => new FilterValueItem(v)).ToArray();
+                info.Text = values.Count == 0 ? "Nessun valore trovato." : values.Count >= 200 ? "Primi 200 valori (scrivi per filtrare)." : $"{values.Count} valori presenti nella colonna.";
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception error) { info.Text = "Valori non disponibili: " + error.Message; }
+        }
+        box.TextChanged += (_, _) => { if (box.IsFocused) _ = LoadAsync(box.Text); };
+        flyout.Opened += (_, _) =>
+        {
+            box.Focus();
+            box.SelectAll();
+            _ = LoadAsync(null);
+        };
+        flyout.ShowAt(button);
+    }
+
     private void OnFilterRowPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is Control { Tag: FilterConditionViewModel condition }) _viewModel?.SelectFilterCommand.Execute(condition);
     }
 }
+
+/// <summary>Valore proposto nel popup del filtro.</summary>
+public sealed record FilterValueItem(string Text);

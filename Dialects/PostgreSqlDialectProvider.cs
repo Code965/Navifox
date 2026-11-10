@@ -23,6 +23,8 @@ public sealed partial class PostgreSqlDialectProvider : AdoDialectProvider
             IncludeErrorDetail = true
         };
         if (!string.IsNullOrWhiteSpace(endpoint.ConnectionStringOverride)) builder.ConnectionString = endpoint.ConnectionStringOverride;
+        // Ora del PC: la sessione usa il fuso di Windows (salvo un «Timezone» scelto nei parametri avanzati).
+        if (SessionTimeZone.UseLocal && string.IsNullOrEmpty(builder.Timezone) && SessionTimeZone.IanaName() is { } zone) builder.Timezone = zone;
         ApplyAdvancedParameters(builder, endpoint.AdvancedParameters);
         var connection = new NpgsqlConnection(builder.ConnectionString);
         try

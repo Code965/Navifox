@@ -90,7 +90,15 @@ public partial class TreeNodeViewModel : ObservableObject
     partial void OnIsExpandedChanged(bool value)
     {
         if (value && !IsLoaded && !IsLoading && IsLazy) ExpandHandler?.Invoke(this);
+        if (!value) Collapsed?.Invoke(this);
     }
+
+    /// <summary>Rinomina sul posto (F2 o «Rinomina»): al posto del nome compare una casella di testo.</summary>
+    [ObservableProperty] private bool _isRenaming;
+    [ObservableProperty] private string _editName = string.Empty;
+
+    /// <summary>Un nodo è stato chiuso (dall'utente o dal programma).</summary>
+    public static event Action<TreeNodeViewModel>? Collapsed;
 
     public void SetChildren(IEnumerable<TreeNodeViewModel> children)
     {

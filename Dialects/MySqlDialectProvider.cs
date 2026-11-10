@@ -31,6 +31,13 @@ public sealed partial class MySqlDialectProvider : AdoDialectProvider
         {
             await OpenAsync(connection, cancellationToken);
             await ApplyReadOnlyAsync(connection, profile, "SET SESSION TRANSACTION READ ONLY", cancellationToken);
+            if (SessionTimeZone.UseLocal && !endpoint.AdvancedParameters.Contains("time_zone", StringComparison.OrdinalIgnoreCase))
+            {
+                // Ora del PC: NOW() e le colonne TIMESTAMP come l'orologio di Windows.
+                await using var zone = connection.CreateCommand();
+                zone.CommandText = $"SET time_zone = '{SessionTimeZone.MySqlOffset()}'";
+                try { await zone.ExecuteNonQueryAsync(cancellationToken); } catch (MySqlException) { /* server che non lo consente: si resta sull'ora del server */ }
+            }
             tunnel?.Attach(connection);
             ActivityRecording.Register(connection, profile);
             return connection;
