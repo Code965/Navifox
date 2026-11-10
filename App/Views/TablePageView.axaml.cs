@@ -18,9 +18,47 @@ public partial class TablePageView : UserControl
     private bool _editingCell;
     private bool CommitGridEdit() => !_editingCell || ResultGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
+    // ───── Altezza del pannello filtro (trascinando la maniglia sotto «Applica») ─────
+
+    private const double DefaultFilterHeight = 150;
+    /// <summary>Ultima altezza scelta: vale anche per le tabelle aperte dopo.</summary>
+    private static double s_filterHeight = DefaultFilterHeight;
+    private double? _resizeStartY;
+    private double _resizeStartHeight;
+
+    private void SetupFilterResizer()
+    {
+        FilterPanel.Height = s_filterHeight;
+        FilterResizer.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(FilterResizer).Properties.IsLeftButtonPressed) return;
+            if (e.ClickCount == 2) { SetFilterHeight(DefaultFilterHeight); e.Handled = true; return; }
+            _resizeStartY = e.GetPosition(this).Y;
+            _resizeStartHeight = FilterPanel.Bounds.Height;
+            e.Pointer.Capture(FilterResizer);
+            e.Handled = true;
+        };
+        FilterResizer.PointerMoved += (_, e) =>
+        {
+            if (_resizeStartY is not { } start) return;
+            SetFilterHeight(_resizeStartHeight + e.GetPosition(this).Y - start);
+        };
+        FilterResizer.PointerReleased += (_, e) => { _resizeStartY = null; e.Pointer.Capture(null); };
+        FilterResizer.PointerCaptureLost += (_, _) => _resizeStartY = null;
+    }
+
+    private void SetFilterHeight(double height)
+    {
+        // Almeno una riga di criteri e i pulsanti; la griglia dei risultati mantiene sempre un po' di spazio.
+        var max = Math.Max(90, Bounds.Height - 180);
+        s_filterHeight = Math.Clamp(height, 90, max);
+        FilterPanel.Height = s_filterHeight;
+    }
+
     public TablePageView()
     {
         InitializeComponent();
+        SetupFilterResizer();
         Services.ImportFileDrop.Attach(this, _ => _viewModel is { IsView: false, IsBusy: false },
             (_, path) => _viewModel?.RequestImportFileAsync(path) ?? Task.CompletedTask, message => { if (_viewModel is not null) _viewModel.StatusMessage = message; });
         ResultGrid.Sorting += OnSorting;

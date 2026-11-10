@@ -86,8 +86,11 @@
     </Border>
 
     <!-- ───── Barra filtri (stile criteri: ☑ colonna = <?> ＋ (·)＋) ───── -->
-    <Border Grid.Row="1" IsVisible="{Binding IsFilterOpen}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-      <Grid RowDefinitions="Auto,*,Auto" MinHeight="150">
+    <!-- Altezza regolabile trascinando il bordo inferiore (doppio clic: altezza predefinita). -->
+    <Border x:Name="FilterPanel" Grid.Row="1" IsVisible="{Binding IsFilterOpen}" Height="150" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid RowDefinitions="*,Auto,Auto">
+        <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <StackPanel>
         <!-- nessun criterio -->
         <Border Classes="criteria-row selected" IsVisible="{Binding !HasFilters}" Margin="4,4,4,0">
           <StackPanel Orientation="Horizontal" Spacing="4">
@@ -101,7 +104,7 @@
           </StackPanel>
         </Border>
         <!-- criteri -->
-        <ItemsControl Grid.Row="0" ItemsSource="{Binding Filters}" IsVisible="{Binding HasFilters}" Margin="4,4,4,0">
+        <ItemsControl ItemsSource="{Binding Filters}" IsVisible="{Binding HasFilters}" Margin="4,4,4,4">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:FilterConditionViewModel">
               <Border Classes="criteria-row" Classes.selected="{Binding IsSelected}" Tag="{Binding .}" PointerPressed="OnFilterRowPressed">
@@ -130,8 +133,10 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        </StackPanel>
+        </ScrollViewer>
         <!-- ↑ ↓ ✓ Applica -->
-        <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,4">
+        <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,4">
           <StackPanel Orientation="Horizontal" Spacing="2">
             <Button Classes="objbar" Command="{Binding MoveFilterUpCommand}" IsEnabled="{Binding HasFilters}" ToolTip.Tip="Sposta su"><c:NfIcon Kind="arrow-up" Width="14" Height="14" /></Button>
             <Button Classes="objbar" Command="{Binding MoveFilterDownCommand}" IsEnabled="{Binding HasFilters}" ToolTip.Tip="Sposta giù"><c:NfIcon Kind="arrow-down" Width="14" Height="14" /></Button>
@@ -139,6 +144,11 @@
               <StackPanel Orientation="Horizontal" Spacing="6"><c:NfIcon Kind="check" Width="14" Height="14" StrokeWidth="2.6" /><TextBlock Text="Applica" /></StackPanel>
             </Button>
           </StackPanel>
+        </Border>
+        <!-- maniglia: trascina su e giù per ridimensionare filtro e risultati -->
+        <Border x:Name="FilterResizer" Grid.Row="2" Height="7" Background="Transparent" Cursor="SizeNorthSouth"
+                ToolTip.Tip="Trascina per ridimensionare · doppio clic: altezza predefinita">
+          <Border Width="36" Height="3" CornerRadius="2" Background="{DynamicResource BorderBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
       </Grid>
     </Border>
