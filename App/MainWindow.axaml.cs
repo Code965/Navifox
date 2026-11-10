@@ -124,9 +124,23 @@ public partial class MainWindow : Window
         };
         ConnectionTree.Tapped += (_, args) =>
         {
-            if (args.Source is Avalonia.Visual source && source.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel node)
-                viewModel.ReactivateNode(node);
+            if (args.Source is not Avalonia.Visual source || source.FindAncestorOfType<TreeViewItem>(includeSelf: true) is not { DataContext: TreeNodeViewModel node } item) return;
+            viewModel.ReactivateNode(node);
+            // Un clic in qualsiasi punto della riga apre o chiude connessioni, database, categorie e cartelle
+            // (la freccina continua a funzionare da sola: lì non si inverte una seconda volta).
+            if (IsExpandable(node) && source.FindAncestorOfType<Avalonia.Controls.Primitives.ToggleButton>(includeSelf: true) is null)
+            {
+                item.IsExpanded = !item.IsExpanded;
+                _lastToggled = (item, item.IsExpanded);
+            }
         };
+        // Doppio clic: il TreeViewItem inverte di nuovo l'apertura appena fatta dal clic singolo.
+        // Dopo tutti i gestori si rimette lo stato scelto dal primo clic (doppio clic = un solo cambio).
+        ConnectionTree.AddHandler(DoubleTappedEvent, (_, args) =>
+        {
+            if (_lastToggled is not { } last || (args.Source as Avalonia.Visual)?.FindAncestorOfType<TreeViewItem>(includeSelf: true) != last.Item) return;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (last.Item.IsExpanded != last.Expanded) last.Item.IsExpanded = last.Expanded; });
+        }, Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
         ConnectionTree.DoubleTapped += (_, args) =>
         {
             if (args.Source is Avalonia.Visual source && source.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel node)
@@ -134,6 +148,12 @@ public partial class MainWindow : Window
         };
         StartScreenshotIfRequested();
     }
+
+    private (TreeViewItem Item, bool Expanded)? _lastToggled;
+
+    /// <summary>Nodi che si aprono e chiudono con un clic sulla riga: tutto tranne tabelle, oggetti, query salvate e backup.</summary>
+    private static bool IsExpandable(TreeNodeViewModel node) =>
+        node.Kind is TreeNodeKind.Group or TreeNodeKind.Connection or TreeNodeKind.Database or TreeNodeKind.Schema or TreeNodeKind.Category or TreeNodeKind.TableGroup;
 
     /// <summary>Barra comandi: focus sulla ricerca, frecce/Invio/Esc, clic fuori per chiudere.</summary>
     private void SetupPalette(MainWindowViewModel viewModel)
