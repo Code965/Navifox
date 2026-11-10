@@ -73,6 +73,9 @@ public sealed class TransferProgress(long?[] expected, bool byRows)
     private static string Format(TimeSpan time) => time.TotalHours >= 1 ? $"{(int)time.TotalHours}h {time.Minutes:00}m" : time.TotalMinutes >= 1 ? $"{(int)time.TotalMinutes}m {time.Seconds:00}s" : $"{time.Seconds}s";
 }
 
+/// <summary>Riga del riepilogo: oggetto di origine → oggetto di destinazione, modalità.</summary>
+public sealed record TransferSummaryRow(string Source, string Target, string Mode, string Glyph);
+
 public partial class TransferTable(string name, bool isView) : ObservableObject
 {
     public string Name { get; } = name;
@@ -118,22 +121,125 @@ public partial class DataTransferViewModel : ObservableObject
 
     public event Action? CloseRequested;
 
-    // ───────────── Passi: 1 origine/destinazione · 2 tabelle · 3 riepilogo ─────────────
+    // ───────────── Passi: 1 origine/destinazione · 2 oggetti · 3 riepilogo · 4 avvio ─────────────
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(StepTitle), nameof(CanGoBack), nameof(IsLastStep))]
+    [NotifyPropertyChangedFor(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4), nameof(StepTitle), nameof(CanGoBack), nameof(IsLastStep), nameof(CanStart))]
     private int _step = 1;
     public bool IsStep1 => Step == 1;
     public bool IsStep2 => Step == 2;
     public bool IsStep3 => Step == 3;
-    public bool IsLastStep => Step == 3;
+    public bool IsStep4 => Step == 4;
+    /// <summary>Dal riepilogo in poi si avvia (non c'è più «Avanti»).</summary>
+    public bool IsLastStep => Step >= 3;
+    public bool CanStart => Step >= 3 && !IsRunning;
     public bool CanGoBack => Step > 1 && !IsRunning;
     public string StepTitle => Step switch
     {
         1 => "1 · Origine e destinazione",
-        2 => "2 · Tabelle e opzioni",
-        _ => "3 · Riepilogo e avvio"
+        2 => "2 · Oggetti del database",
+        3 => "3 · Riepilogo",
+        _ => "4 · Avvio"
     };
+
+    // ───────────── Passo 2: oggetti del database ─────────────
+
+    /// <summary>«Tutte le tabelle al momento dell'esecuzione (*)»: l'elenco si rilegge all'avvio, comprese le tabelle create nel frattempo.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPickTables), nameof(TablesHeader))]
+    private bool _allTablesAtRun;
+    public bool CanPickTables => !AllTablesAtRun;
+    [ObservableProperty] private bool _tablesExpanded = true;
+    [ObservableProperty] private bool _customExpanded = true;
+    [ObservableProperty] private bool _viewsExpanded = true;
+
+    private int TableTotal => Tables.Count(t => !t.IsView);
+    private int TableSelected => Tables.Count(t => t.IsSelected && !t.IsView);
+    public string TablesHeader => AllTablesAtRun ? $"Tabelle (*/{TableTotal})" : $"Tabelle ({TableSelected}/{TableTotal})";
+    public string CustomHeader => $"Personalizzate ({TableSelected}/{TableTotal})";
+    public string ViewsHeader => $"Viste (0/{Tables.Count(t => t.IsView)})";
+    public IEnumerable<TransferTable> VisibleViews => VisibleTables.Where(t => t.IsView).ToArray();
+    public IEnumerable<TransferTable> VisibleBaseTables => VisibleTables.Where(t => !t.IsView).ToArray();
+    public bool HasViews => Tables.Any(t => t.IsView);
+
+    /// <summary>Casella di «Personalizzate»: tutte, nessuna o alcune (indeterminata).</summary>
+    public bool? CustomSelection
+    {
+        get
+        {
+            var selected = TableSelected;
+            return selected == 0 ? false : selected == TableTotal ? true : null;
+        }
+        set
+        {
+            // Clic sulla casella indeterminata: si selezionano tutte.
+            var select = value ?? true;
+            if (value is null && TableSelected == TableTotal) select = false;
+            _bulkSelecting = true;
+            try { foreach (var table in Tables.Where(t => !t.IsView)) table.IsSelected = select; }
+            finally { _bulkSelecting = false; }
+            OnSelectionChanged();
+        }
+    }
+
+    private bool _bulkSelecting;
+
+    private void OnSelectionChanged()
+    {
+        if (_bulkSelecting) return;
+        OnPropertyChanged(nameof(SelectionLabel));
+        OnPropertyChanged(nameof(TablesHeader));
+        OnPropertyChanged(nameof(CustomHeader));
+        OnPropertyChanged(nameof(CustomSelection));
+    }
+
+    // ───────────── Passo 3: riepilogo ─────────────
+
+    public ObservableCollection<TransferSummaryRow> SummaryRows { get; } = [];
+    public string SummaryCount => AllTablesAtRun
+        ? $"Tutte le tabelle al momento dell'esecuzione (ora {SummaryRows.Count})"
+        : $"{SummaryRows.Count} {(SummaryRows.Count == 1 ? "tabella" : "tabelle")}";
+    public string SummaryOptions => "Opzioni: " + string.Join(", ", OptionLabels());
+
+    private string TransferMode() => TargetIsFile
+        ? (CreateTables && CopyData ? "Struttura e dati (script)" : CreateTables ? "Solo struttura (script)" : "Solo dati (script)")
+        : CreateTables && CopyData ? "Ricrea e copia i dati"
+        : CreateTables ? "Ricrea solo la struttura"
+        : CopyData && EmptyTarget ? "Svuota e copia i dati"
+        : "Aggiungi i dati";
+
+    private void BuildSummaryRows()
+    {
+        SummaryRows.Clear();
+        var mode = TransferMode();
+        var targets = AllTablesAtRun ? Tables.Where(t => !t.IsView) : Tables.Where(t => t.IsSelected && !t.IsView);
+        foreach (var table in targets)
+            SummaryRows.Add(new TransferSummaryRow(table.Name, TargetIsFile ? $"{Path.GetFileName(TargetFile)} · {table.Name}" : table.Name, mode, table.Glyph));
+        OnPropertyChanged(nameof(SummaryCount));
+        OnPropertyChanged(nameof(SummaryOptions));
+    }
+
+    private List<string> OptionLabels()
+    {
+        var options = new List<string>();
+        if (CreateTables) options.Add(TargetIsFile ? "struttura (DROP + CREATE)" : "ricrea le tabelle");
+        if (CopyData) options.Add("dati");
+        if (CopyData && AnonymizeData) options.Add("maschera i campi personali riconosciuti (chiavi invariate)");
+        if (!CreateTables && EmptyTarget && !TargetIsFile) options.Add("svuota prima");
+        if (ContinueOnError) options.Add("continua in caso di errore");
+        return options;
+    }
+
+    /// <summary>Con «tutte le tabelle al momento dell'esecuzione» si rilegge l'elenco e si selezionano tutte.</summary>
+    private async Task RefreshTablesForRunAsync()
+    {
+        if (!AllTablesAtRun || SourceDatabase is not { } database) return;
+        await LoadTablesAsync(database);
+        _bulkSelecting = true;
+        try { foreach (var table in Tables.Where(t => !t.IsView)) table.IsSelected = true; }
+        finally { _bulkSelecting = false; }
+        OnSelectionChanged();
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TargetIsConnection), nameof(TargetTitle), nameof(TargetSubtitle))]
@@ -157,7 +263,8 @@ public partial class DataTransferViewModel : ObservableObject
 
     partial void OnStepChanged(int value)
     {
-        if (value == 3) OnPropertyChanged(nameof(Summary));
+        if (value >= 3) OnPropertyChanged(nameof(Summary));
+        if (value == 3) BuildSummaryRows();
     }
 
     partial void OnSourceDatabaseChanged(string? value)
@@ -178,12 +285,12 @@ public partial class DataTransferViewModel : ObservableObject
             if (!TargetIsFile && (TargetProfile is null || TargetDatabase is null)) { StatusMessage = "Scegli la connessione e il database di destinazione."; return; }
             if (!TargetIsFile && TargetProfile!.Id == SourceProfile.Id && TargetDatabase == SourceDatabase) { StatusMessage = "Origine e destinazione coincidono."; return; }
         }
-        if (Step == 2 && !Tables.Any(t => t.IsSelected && !t.IsView)) { StatusMessage = "Seleziona almeno una tabella."; return; }
+        if (Step == 2 && !AllTablesAtRun && !Tables.Any(t => t.IsSelected && !t.IsView)) { StatusMessage = "Seleziona almeno una tabella."; return; }
         Step = Math.Min(3, Step + 1);
     }
 
     [RelayCommand]
-    private void Back() => Step = Math.Max(1, Step - 1);
+    private void Back() => Step = Step == 4 ? 3 : Math.Max(1, Step - 1);
 
     /// <summary>Scambia origine e destinazione (solo se la destinazione è una connessione).</summary>
     [RelayCommand]
@@ -236,19 +343,12 @@ public partial class DataTransferViewModel : ObservableObject
     {
         var selected = Tables.Where(t => t.IsSelected && !t.IsView).Select(t => t.Name).ToArray();
         var target = TargetIsFile ? $"File SQL: {TargetFile}" : $"{TargetProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(TargetProfile)}) · database {TargetDatabase}";
-        var options = new List<string>();
-        if (CreateTables) options.Add(TargetIsFile ? "struttura (DROP + CREATE)" : "ricrea le tabelle");
-        if (CopyData) options.Add("dati");
-        if (CopyData && AnonymizeData) options.Add("maschera i campi personali riconosciuti (chiavi invariate)");
-        if (!CreateTables && EmptyTarget && !TargetIsFile) options.Add("svuota prima");
-        if (ContinueOnError) options.Add("continua in caso di errore");
+        var options = OptionLabels();
         return $"""
             Origine:       {SourceProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(SourceProfile)}) · database {SourceDatabase}
             Destinazione:  {target}
-            Tabelle:       {selected.Length}
+            Tabelle:       {(AllTablesAtRun ? "tutte al momento dell'esecuzione" : selected.Length.ToString())}
             Opzioni:       {string.Join(", ", options)}
-
-            {string.Join(Environment.NewLine, selected.Select(name => "  • " + name))}
             """;
     }
     public IReadOnlyList<ConnectionProfile> Profiles { get; }
@@ -259,7 +359,7 @@ public partial class DataTransferViewModel : ObservableObject
     /// <summary>Destinazioni possibili: solo connessioni dello stesso tipo dell'origine.</summary>
     public ObservableCollection<ConnectionProfile> TargetProfiles { get; } = [];
     [ObservableProperty] private string _tableFilter = string.Empty;
-    public string SelectionLabel => $"{Tables.Count(t => t.IsSelected)} di {Tables.Count(t => !t.IsView)} tabelle selezionate";
+    public string SelectionLabel => $"{TableSelected} di {TableTotal} tabelle selezionate";
 
     partial void OnTableFilterChanged(string value) => ApplyTableFilter();
 
@@ -268,7 +368,11 @@ public partial class DataTransferViewModel : ObservableObject
         var query = TableFilter.Trim();
         VisibleTables.Clear();
         foreach (var table in Tables.Where(t => query.Length == 0 || t.Name.Contains(query, StringComparison.OrdinalIgnoreCase))) VisibleTables.Add(table);
-        OnPropertyChanged(nameof(SelectionLabel));
+        OnPropertyChanged(nameof(VisibleBaseTables));
+        OnPropertyChanged(nameof(VisibleViews));
+        OnPropertyChanged(nameof(HasViews));
+        OnPropertyChanged(nameof(ViewsHeader));
+        OnSelectionChanged();
     }
 
     private void RefreshTargets()
@@ -299,7 +403,7 @@ public partial class DataTransferViewModel : ObservableObject
     [ObservableProperty] private bool _emptyTarget;
     [ObservableProperty] private bool _continueOnError;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanGoBack))]
+    [NotifyPropertyChangedFor(nameof(CanGoBack), nameof(CanStart))]
     private bool _isRunning;
     [ObservableProperty] private double _progress;
     [ObservableProperty] private string _progressText = string.Empty;
@@ -364,7 +468,7 @@ public partial class DataTransferViewModel : ObservableObject
                 var table = new TransferTable(item.Name, item.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase));
                 table.PropertyChanged += (_, args) =>
                 {
-                    if (args.PropertyName == nameof(TransferTable.IsSelected)) OnPropertyChanged(nameof(SelectionLabel));
+                    if (args.PropertyName == nameof(TransferTable.IsSelected)) OnSelectionChanged();
                 };
                 Tables.Add(table);
             }
@@ -381,7 +485,6 @@ public partial class DataTransferViewModel : ObservableObject
                 // attende il database di destinazione prima di mostrare il riepilogo
                 for (var i = 0; i < 50 && TargetDatabase is null && !TargetIsFile; i++) await Task.Delay(100);
                 Step = 3;
-                OnPropertyChanged(nameof(Summary));
             }
         }
         catch (Exception exception) { StatusMessage = exception.Message; }
@@ -407,6 +510,9 @@ public partial class DataTransferViewModel : ObservableObject
     [RelayCommand]
     private async Task StartAsync()
     {
+        if (IsRunning) return;
+        Step = 4;
+        await RefreshTablesForRunAsync();
         if (TargetIsFile)
         {
             await ExportToFileAsync();

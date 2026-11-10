@@ -33,6 +33,28 @@
     <Style Selector="Border.step-dot.on TextBlock">
       <Setter Property="Foreground" Value="White" />
     </Style>
+    <Style Selector="ToggleButton.obj-expander">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="RenderTransform" Value="rotate(-90deg)" />
+    </Style>
+    <Style Selector="ToggleButton.obj-expander:checked">
+      <Setter Property="RenderTransform" Value="rotate(0deg)" />
+    </Style>
+    <Style Selector="ToggleButton.obj-expander:checked /template/ ContentPresenter, ToggleButton.obj-expander:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+    </Style>
+    <Style Selector=":is(Panel).obj-node">
+      <Setter Property="MinHeight" Value="24" />
+    </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="Auto,*,Auto">
@@ -43,6 +65,7 @@
           <Border Classes="step-dot" Classes.on="{Binding IsStep1}"><TextBlock Text="1" /></Border>
           <Border Classes="step-dot" Classes.on="{Binding IsStep2}"><TextBlock Text="2" /></Border>
           <Border Classes="step-dot" Classes.on="{Binding IsStep3}"><TextBlock Text="3" /></Border>
+          <Border Classes="step-dot" Classes.on="{Binding IsStep4}"><TextBlock Text="4" /></Border>
           <TextBlock Text="{Binding StepTitle}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0" />
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
@@ -146,52 +169,135 @@
         </StackPanel>
       </Grid>
 
-      <!-- ═══ PASSO 2: tabelle e opzioni ═══ -->
-      <Grid IsVisible="{Binding IsStep2}" ColumnDefinitions="*,280" ColumnSpacing="12" Margin="16,12,16,10">
-        <Border Classes="card">
-          <Grid RowDefinitions="Auto,*">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,240" ColumnSpacing="4" Margin="8,6">
-              <TextBlock Text="Tabelle" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
-              <Button Grid.Column="1" Classes="objbar" Content="Tutte" Command="{Binding SelectAllCommand}" CommandParameter="all" ToolTip.Tip="Seleziona le tabelle visibili" />
-              <Button Grid.Column="2" Classes="objbar" Content="Nessuna" Command="{Binding SelectAllCommand}" CommandParameter="none" ToolTip.Tip="Deseleziona le tabelle visibili" />
-              <TextBlock Grid.Column="3" Text="{Binding SelectionLabel}" FontSize="12" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" Margin="8,0" />
-              <Grid Grid.Column="4">
-                <TextBox Text="{Binding TableFilter, Mode=TwoWay}" Watermark="Filtra tabelle…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
-                <c:NfIcon Kind="search" Width="13" Height="13" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
-              </Grid>
+      <!-- ═══ PASSO 2: oggetti del database ═══ -->
+      <Grid IsVisible="{Binding IsStep2}" ColumnDefinitions="*,Auto,320" Margin="16,12,16,10">
+        <Grid RowDefinitions="Auto,Auto,*" Margin="0,0,10,0">
+          <TextBlock Text="Oggetti del database" Classes="section" />
+          <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*,240" ColumnSpacing="4" Margin="0,0,0,6">
+            <Button Classes="objbar" Content="Tutte" Command="{Binding SelectAllCommand}" CommandParameter="all" IsEnabled="{Binding CanPickTables}" ToolTip.Tip="Seleziona le tabelle visibili" />
+            <Button Grid.Column="1" Classes="objbar" Content="Nessuna" Command="{Binding SelectAllCommand}" CommandParameter="none" IsEnabled="{Binding CanPickTables}" ToolTip.Tip="Deseleziona le tabelle visibili" />
+            <TextBlock Grid.Column="2" Text="{Binding SelectionLabel}" FontSize="12" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" Margin="8,0" />
+            <Grid Grid.Column="3">
+              <TextBox Text="{Binding TableFilter, Mode=TwoWay}" Watermark="Filtra tabelle…" Padding="28,4,8,4" MinHeight="26" FontSize="12" />
+              <c:NfIcon Kind="search" Width="13" Height="13" HorizontalAlignment="Left" Margin="9,0,0,0" Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
             </Grid>
-            <ListBox Grid.Row="1" ItemsSource="{Binding VisibleTables}" Background="Transparent" Classes="dense">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:TransferTable">
-                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="7">
-                    <CheckBox Classes="crit-check" IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding !IsView}" />
-                    <c:NfIcon Grid.Column="1" Kind="{Binding Glyph}" Width="14" Height="14" Foreground="{DynamicResource SecondaryTextBrush}" />
-                    <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="3" Text="{Binding State}" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                  </Grid>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
           </Grid>
-        </Border>
-        <Border Grid.Column="1" Classes="card" Padding="12" VerticalAlignment="Top">
-          <StackPanel Spacing="8">
-            <TextBlock Text="OPZIONI" Classes="field-label" />
-            <CheckBox Classes="crit-check" Content="Crea le tabelle (elimina se esistono)" IsChecked="{Binding CreateTables, Mode=TwoWay}" />
-            <CheckBox Classes="crit-check" Content="Copia i dati" IsChecked="{Binding CopyData, Mode=TwoWay}" />
-            <CheckBox Classes="crit-check" Content="Maschera i dati personali riconosciuti" IsChecked="{Binding AnonymizeData, Mode=TwoWay}" IsEnabled="{Binding CopyData}" />
-            <TextBlock Text="Nomi, email, telefoni e altri campi riconosciuti vengono sostituiti. Chiavi, relazioni e campi non riconosciuti restano invariati: controlla l’elenco prima di copiare o distribuire i dati. Non garantisce l’anonimizzazione completa."
-                       IsVisible="{Binding AnonymizeData}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
-            <CheckBox Classes="crit-check" Content="Svuota le tabelle di destinazione" IsChecked="{Binding EmptyTarget, Mode=TwoWay}" IsEnabled="{Binding !CreateTables}" IsVisible="{Binding TargetIsConnection}" />
-            <CheckBox Classes="crit-check" Content="Continua in caso di errore" IsChecked="{Binding ContinueOnError, Mode=TwoWay}" IsVisible="{Binding TargetIsConnection}" />
-          </StackPanel>
-        </Border>
+          <Border Grid.Row="2" Classes="card" Padding="6,6">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+              <StackPanel Spacing="1">
+                <!-- Tabelle (n/N) -->
+                <StackPanel Orientation="Horizontal" Spacing="6" Classes="obj-node">
+                  <ToggleButton Classes="obj-expander" IsChecked="{Binding TablesExpanded, Mode=TwoWay}"><c:NfIcon Kind="chevron-down" Width="12" Height="12" StrokeWidth="2.6" /></ToggleButton>
+                  <c:NfIcon Kind="table" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" />
+                  <TextBlock Text="{Binding TablesHeader}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel IsVisible="{Binding TablesExpanded}" Margin="22,0,0,0" Spacing="1">
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="20,0,0,0" Classes="obj-node">
+                    <CheckBox Classes="crit-check" IsChecked="{Binding AllTablesAtRun, Mode=TwoWay}" VerticalAlignment="Center" />
+                    <c:NfIcon Kind="table" Width="14" Height="14" Foreground="{DynamicResource SecondaryTextBrush}" />
+                    <TextBlock Text="Tutte le tabelle al momento dell’esecuzione ( * )" VerticalAlignment="Center"
+                               ToolTip.Tip="All’avvio si rilegge l’elenco: vengono trasferite tutte le tabelle presenti in quel momento, anche quelle create dopo" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6" Classes="obj-node" IsEnabled="{Binding CanPickTables}">
+                    <ToggleButton Classes="obj-expander" IsChecked="{Binding CustomExpanded, Mode=TwoWay}"><c:NfIcon Kind="chevron-down" Width="12" Height="12" StrokeWidth="2.6" /></ToggleButton>
+                    <CheckBox Classes="crit-check" IsThreeState="True" IsChecked="{Binding CustomSelection, Mode=TwoWay}" VerticalAlignment="Center" />
+                    <c:NfIcon Kind="table" Width="14" Height="14" Foreground="{DynamicResource SecondaryTextBrush}" />
+                    <TextBlock Text="{Binding CustomHeader}" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <ItemsControl ItemsSource="{Binding VisibleBaseTables}" IsVisible="{Binding CustomExpanded}" IsEnabled="{Binding CanPickTables}" Margin="42,0,0,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TransferTable">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="6" Classes="obj-node">
+                          <CheckBox Classes="crit-check" IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center" />
+                          <c:NfIcon Grid.Column="1" Kind="{Binding Glyph}" Width="14" Height="14" Foreground="{DynamicResource SecondaryTextBrush}" />
+                          <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" Classes="no-tr" />
+                          <TextBlock Grid.Column="3" Text="{Binding State}" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+                <!-- Viste (0/N): non vengono trasferite -->
+                <StackPanel Orientation="Horizontal" Spacing="6" Classes="obj-node" Margin="0,4,0,0">
+                  <ToggleButton Classes="obj-expander" IsChecked="{Binding ViewsExpanded, Mode=TwoWay}"><c:NfIcon Kind="chevron-down" Width="12" Height="12" StrokeWidth="2.6" /></ToggleButton>
+                  <c:NfIcon Kind="eye" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" />
+                  <TextBlock Text="{Binding ViewsHeader}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel IsVisible="{Binding ViewsExpanded}" Margin="42,0,0,0" Spacing="1">
+                  <TextBlock Text="Le viste non vengono trasferite: ricreale dalla destinazione con il loro SQL." FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" Margin="0,2,0,2" TextWrapping="Wrap" />
+                  <ItemsControl ItemsSource="{Binding VisibleViews}" IsEnabled="False">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TransferTable">
+                        <StackPanel Orientation="Horizontal" Spacing="6" Classes="obj-node">
+                          <CheckBox Classes="crit-check" IsChecked="False" VerticalAlignment="Center" />
+                          <c:NfIcon Kind="eye" Width="14" Height="14" Foreground="{DynamicResource MutedTextBrush}" />
+                          <TextBlock Text="{Binding Name}" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" Classes="no-tr" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+        <Border Grid.Column="1" Width="1" Background="{DynamicResource BorderBrush}" Margin="0,30,0,0" />
+        <StackPanel Grid.Column="2" Spacing="10" Margin="16,30,0,0">
+          <TextBlock Text="Seleziona gli oggetti da trasferire. Con «Tutte le tabelle al momento dell’esecuzione» l’elenco si rilegge all’avvio, comprese le tabelle create nel frattempo."
+                     TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <Border Classes="card" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock Text="OPZIONI" Classes="field-label" />
+              <CheckBox Classes="crit-check" Content="Crea le tabelle (elimina se esistono)" IsChecked="{Binding CreateTables, Mode=TwoWay}" />
+              <CheckBox Classes="crit-check" Content="Copia i dati" IsChecked="{Binding CopyData, Mode=TwoWay}" />
+              <CheckBox Classes="crit-check" Content="Maschera i dati personali riconosciuti" IsChecked="{Binding AnonymizeData, Mode=TwoWay}" IsEnabled="{Binding CopyData}" />
+              <TextBlock Text="Nomi, email, telefoni e altri campi riconosciuti vengono sostituiti. Chiavi, relazioni e campi non riconosciuti restano invariati: controlla l’elenco prima di copiare o distribuire i dati. Non garantisce l’anonimizzazione completa."
+                         IsVisible="{Binding AnonymizeData}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedTextBrush}" />
+              <CheckBox Classes="crit-check" Content="Svuota le tabelle di destinazione" IsChecked="{Binding EmptyTarget, Mode=TwoWay}" IsEnabled="{Binding !CreateTables}" IsVisible="{Binding TargetIsConnection}" />
+              <CheckBox Classes="crit-check" Content="Continua in caso di errore" IsChecked="{Binding ContinueOnError, Mode=TwoWay}" IsVisible="{Binding TargetIsConnection}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
       </Grid>
 
-      <!-- ═══ PASSO 3: riepilogo e avvio ═══ -->
-      <Grid IsVisible="{Binding IsStep3}" RowDefinitions="Auto,Auto,*" RowSpacing="10" Margin="16,12,16,10">
-        <Border Classes="card" Padding="14,12" MaxHeight="260">
-          <ScrollViewer><SelectableTextBlock Text="{Binding Summary}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" /></ScrollViewer>
+      <!-- ═══ PASSO 3: riepilogo (oggetto di origine → destinazione, modalità) ═══ -->
+      <Grid IsVisible="{Binding IsStep3}" RowDefinitions="Auto,Auto,*,Auto" Margin="28,18,28,10">
+        <TextBlock Text="Riepilogo" Classes="section" />
+        <TextBlock Grid.Row="1" Text="{Binding SummaryCount}" Margin="0,0,0,12" />
+        <Border Grid.Row="2" Classes="card" HorizontalAlignment="Left" MinWidth="640" VerticalAlignment="Stretch">
+          <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="240,240,*" Margin="10,6">
+              <TextBlock Text="Oggetto di origine" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" />
+              <TextBlock Grid.Column="1" Text="Oggetto di destinazione" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" />
+              <TextBlock Grid.Column="2" Text="Modalità" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" MinWidth="160" />
+            </Grid>
+            <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding SummaryRows}" Margin="0,2">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TransferSummaryRow">
+                      <Grid ColumnDefinitions="240,240,*" Margin="10,3">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <c:NfIcon Kind="{Binding Glyph}" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" />
+                          <TextBlock Text="{Binding Source}" Classes="no-tr" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Target}" Classes="no-tr" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding Mode}" VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+          </Grid>
+        </Border>
+        <TextBlock Grid.Row="3" Text="{Binding SummaryOptions}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,10,0,0" TextWrapping="Wrap" />
+      </Grid>
+
+      <!-- ═══ PASSO 4: avvio (avanzamento e registro) ═══ -->
+      <Grid IsVisible="{Binding IsStep4}" RowDefinitions="Auto,Auto,*" RowSpacing="10" Margin="16,12,16,10">
+        <Border Classes="card" Padding="14,10">
+          <SelectableTextBlock Text="{Binding Summary}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5" />
         </Border>
         <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="5">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
@@ -240,8 +346,8 @@
         <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         <Button Grid.Column="1" Content="‹ Indietro" Classes="small-muted" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" />
         <Button Grid.Column="2" Content="Avanti ›" Classes="dialog-primary" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" />
-        <Button Grid.Column="3" Content="Interrompi" Classes="small-muted" Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}" IsVisible="{Binding IsLastStep}" />
-        <Button Grid.Column="4" Content="Avvia" Classes="dialog-primary" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding StartCommand}" IsEnabled="{Binding !IsRunning}" IsVisible="{Binding IsLastStep}" />
+        <Button Grid.Column="3" Content="Interrompi" Classes="small-muted" Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}" IsVisible="{Binding IsStep4}" />
+        <Button Grid.Column="4" Content="Avvia" Classes="dialog-primary" MinWidth="90" HorizontalContentAlignment="Center" Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" IsVisible="{Binding IsLastStep}" />
         <Button Grid.Column="5" Content="Chiudi" Classes="small-muted" MinWidth="80" HorizontalContentAlignment="Center" Command="{Binding CloseCommand}" />
       </Grid>
     </Border>
