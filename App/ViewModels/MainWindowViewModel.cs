@@ -39,6 +39,13 @@ public partial class MainWindowViewModel : ObservableObject
     private CancellationTokenSource? _activeOperation;
     private int _pendingTreeLoads;
 
+    /// <summary>
+    /// Caricamenti avviati dalla selezione (elenco tabelle del database scelto): si annullano quando l'utente passa
+    /// a un altro database, così la query pesante del database precedente non continua a occupare server e interfaccia.
+    /// </summary>
+    private CancellationTokenSource _selectionLoads = new();
+    private string? _selectionScope;
+
     public MainWindowViewModel(IConnectionProfileStore profileStore, IDatabaseAccessService databaseAccess, ConnectionDialogService connectionDialog, IThemeService themeService, IDialogService dialogs, AutomationService automation)
     {
         _dialogs = dialogs;
@@ -135,7 +142,21 @@ public partial class MainWindowViewModel : ObservableObject
         if (value is null || value.IsPlaceholder || _restoringSelection) return;
         _hiddenSelection = null;
         UpdateInfoTarget();
-        _ = ActivateAndRefreshInfoAsync(value);
+        _ = ActivateAndRefreshInfoAsync(value, SelectionToken(value));
+    }
+
+    /// <summary>Token dei caricamenti della selezione: cambia (annullando i precedenti) solo quando si passa a un altro database o connessione.</summary>
+    private CancellationToken SelectionToken(TreeNodeViewModel node)
+    {
+        var scope = $"{node.Profile?.Id}|{node.Database}";
+        if (scope != _selectionScope)
+        {
+            _selectionScope = scope;
+            _selectionLoads.Cancel();
+            _selectionLoads.Dispose();
+            _selectionLoads = new CancellationTokenSource();
+        }
+        return _selectionLoads.Token;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -358,28 +379,31 @@ public partial class MainWindowViewModel : ObservableObject
     // ───────────────────────── Albero ─────────────────────────
 
     /// <summary>Selezione di un nodo: carica ciò che serve e aggiorna la scheda Oggetti.</summary>
-    private async Task ActivateNodeAsync(TreeNodeViewModel node)
+    private async Task ActivateNodeAsync(TreeNodeViewModel node, CancellationToken token = default)
     {
         UpdateActiveContext(node);
         switch (node.Kind)
         {
             case TreeNodeKind.Connection:
-                await EnsureLoadedAsync(node);
+                await EnsureLoadedAsync(node, token);
+                if (SelectedNode != node) return;
                 node.IsExpanded = node.IsLoaded;
                 break;
             case TreeNodeKind.Database:
             case TreeNodeKind.Schema:
-                await EnsureLoadedAsync(node);
+                await EnsureLoadedAsync(node, token);
+                // Nel frattempo l'utente è passato ad altro: non si riapre né si mostra questo database.
+                if (SelectedNode != node) return;
                 node.IsExpanded = node.IsLoaded;
                 if (FindTablesCategory(node) is { } tables)
                 {
                     ActiveCategory = "Tabelle";
-                    await ShowCategoryAsync(tables);
+                    await ShowCategoryAsync(tables, node, token);
                 }
                 break;
             case TreeNodeKind.Category when node.IsObjectCategory:
                 ActiveCategory = node.Category!;
-                await ShowCategoryAsync(node);
+                await ShowCategoryAsync(node, node, token);
                 break;
             case TreeNodeKind.Category:
                 ActiveCategory = node.Category!;
@@ -397,18 +421,26 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private async Task ActivateAndRefreshInfoAsync(TreeNodeViewModel node)
+    private async Task ActivateAndRefreshInfoAsync(TreeNodeViewModel node, CancellationToken token)
     {
-        await ActivateNodeAsync(node);
+        await ActivateNodeAsync(node, token);
         if (SelectedNode == node) UpdateInfoTarget();
     }
 
-    private async Task ShowCategoryAsync(TreeNodeViewModel category)
+    /// <summary>Ultima categoria richiesta nella scheda Oggetti: un caricamento più vecchio che finisce dopo non la sovrascrive.</summary>
+    private TreeNodeViewModel? _pendingCategory;
+
+    /// <param name="owner">Nodo selezionato che ha chiesto l'elenco: se la selezione cambia nel frattempo, il risultato non si mostra.</param>
+    private async Task ShowCategoryAsync(TreeNodeViewModel category, TreeNodeViewModel? owner = null, CancellationToken token = default)
     {
         SelectedTab = ObjectsTab;
+        _pendingCategory = category;
         ObjectsTab.IsLoading = !category.IsLoaded;
-        await EnsureLoadedAsync(category);
+        await EnsureLoadedAsync(category, token);
+        if (_pendingCategory != category) return; // l'indicatore appartiene ormai alla richiesta più recente
+        _pendingCategory = null;
         ObjectsTab.IsLoading = false;
+        if (owner is not null && SelectedNode != owner) return;
         // Se nel frattempo l'utente ha aperto un'altra scheda (query, tabella…) non lo si riporta su «Oggetti».
         if (category.IsLoaded) ShowCategoryObjects(category, bringToFront: SelectedTab == ObjectsTab);
     }
@@ -428,16 +460,18 @@ public partial class MainWindowViewModel : ObservableObject
     private void OnNodeExpandRequested(TreeNodeViewModel node) => _ = EnsureLoadedAsync(node);
 
     /// <summary>Carica pigramente i figli di un nodo (connessione, database, schema, categoria).</summary>
-    private async Task EnsureLoadedAsync(TreeNodeViewModel node)
+    private async Task EnsureLoadedAsync(TreeNodeViewModel node, CancellationToken selectionToken = default)
     {
         if (node.IsLoaded || node.Profile is null) return;
         if (node.IsLoading)
         {
-            while (node.IsLoading) await Task.Delay(50);
+            while (node.IsLoading && !selectionToken.IsCancellationRequested) await Task.Delay(50);
             return;
         }
+        if (selectionToken.IsCancellationRequested) return;
         var profile = node.Profile;
-        var token = _treeOperations.Token;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_treeOperations.Token, selectionToken);
+        var token = linked.Token;
         node.IsLoading = true;
         BeginTreeLoad();
         var timer = Stopwatch.StartNew();
@@ -498,7 +532,8 @@ public partial class MainWindowViewModel : ObservableObject
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             node.Reset();
-            StatusMessage = "Operazione annullata.";
+            // Annullato perché si è scelto un altro database: nessun messaggio, si ricarica alla prossima apertura.
+            if (!selectionToken.IsCancellationRequested) StatusMessage = "Operazione annullata.";
         }
         catch (Exception exception)
         {

@@ -53,6 +53,17 @@ public partial class InfoPanelViewModel(IDatabaseAccessService databaseAccess) :
     public async Task ShowAsync(InfoTarget? target)
     {
         if (target == _target) return;
+        // Stesso oggetto, cambia solo il numero di tabelle (arrivato dopo il caricamento dell'elenco):
+        // si aggiorna il sottotitolo senza rilanciare la query delle proprietà, pesante sui database grandi.
+        if (target is not null && _target is not null && target.Key == _target.Key && target.ObjectCount is { } tableCount)
+        {
+            _target = target;
+            if (target.Kind is InfoKind.Database or InfoKind.Schema)
+                Subtitle = target.Kind == InfoKind.Database
+                    ? $"{tableCount} {(tableCount == 1 ? "tabella" : "tabelle")}"
+                    : $"Schema · {tableCount} {(tableCount == 1 ? "tabella" : "tabelle")}";
+            return;
+        }
         _target = target;
         _loading?.Cancel();
         var source = _loading = new CancellationTokenSource();

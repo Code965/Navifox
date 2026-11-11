@@ -133,6 +133,7 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
     {
         if (_initializing) return;
         _schemaCache.Clear();
+        _schemaLoads.Clear();
         _ = LoadDatabasesAsync(null);
         RefreshTitle();
     }
@@ -187,20 +188,40 @@ public partial class QueryTabViewModel : WorkspaceTabViewModel, Navifox.App.Cont
 
     private async Task LoadSchemaAsync()
     {
-        Schema = SelectedDatabase is null ? null : await GetSchemaForAsync(SelectedDatabase);
+        var database = SelectedDatabase;
+        var schema = database is null ? null : await GetSchemaForAsync(database);
+        // Cambiando database più volte, uno schema grande può arrivare dopo quello scelto per ultimo: si scarta.
+        if (string.Equals(SelectedDatabase, database, StringComparison.OrdinalIgnoreCase)) Schema = schema;
     }
 
     public async Task<SchemaModel?> GetSchemaForAsync(string database)
     {
         if (_schemaCache.TryGetValue(database, out var cached)) return cached;
+        // Più richieste per lo stesso database (cambio database, autocompletamento) condividono un solo caricamento.
+        if (!_schemaLoads.TryGetValue(database, out var load))
+            _schemaLoads[database] = load = LoadSchemaModelAsync(database);
+        return await load;
+    }
+
+    private readonly Dictionary<string, Task<SchemaModel?>> _schemaLoads = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task<SchemaModel?> LoadSchemaModelAsync(string database)
+    {
+        var profile = _profile;
+        SchemaModel? model;
         try
         {
-            var schema = _profile.Kind.DefaultSchema(database);
-            cached = await _databaseAccess.GetSchemaModelAsync(_profile, database, schema, CancellationToken.None);
+            var schema = profile.Kind.DefaultSchema(database);
+            model = await _databaseAccess.GetSchemaModelAsync(profile, database, schema, CancellationToken.None);
         }
-        catch { cached = null; }
-        _schemaCache[database] = cached;
-        return cached;
+        catch { model = null; }
+        // Se nel frattempo è cambiata la connessione della scheda, lo schema appartiene a un altro server: non si memorizza.
+        if (ReferenceEquals(profile, _profile))
+        {
+            _schemaCache[database] = model;
+            _schemaLoads.Remove(database);
+        }
+        return model;
     }
 
     private readonly StringBuilder _transcript = new();
