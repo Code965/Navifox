@@ -20,6 +20,16 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
     public Task<System.Data.Common.DbConnection> OpenAsync(ConnectionProfile profile, string? database, CancellationToken cancellationToken) =>
         ConnectAsync(profile, database, cancellationToken);
 
+    private Task<System.Data.Common.DbConnection> ConnectForCatalogAsync(ConnectionProfile profile, CancellationToken cancellationToken)
+    {
+        // PostgreSQL richiede un database anche per leggere il catalogo. Senza nome Npgsql usa
+        // l'utente, che sui pooler Supabase include il progetto e non identifica un database valido.
+        var database = profile.Kind == DatabaseKind.PostgreSql
+            ? string.IsNullOrWhiteSpace(profile.DefaultDatabase) ? Provider(profile).MaintenanceDatabase : profile.DefaultDatabase
+            : string.Empty;
+        return ConnectAsync(profile, database, cancellationToken);
+    }
+
     public async Task TestConnectionAsync(ConnectionProfile profile, CancellationToken cancellationToken)
     {
         await using var connection = await ConnectAsync(profile, null, cancellationToken);
@@ -28,7 +38,7 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
     public async Task<IReadOnlyList<string>> ListDatabasesAsync(ConnectionProfile profile, CancellationToken cancellationToken)
     {
         var provider = Provider(profile);
-        await using var connection = await ConnectAsync(profile, string.Empty, cancellationToken);
+        await using var connection = await ConnectForCatalogAsync(profile, cancellationToken);
         return await provider.ListDatabasesAsync(connection, cancellationToken);
     }
 
@@ -272,13 +282,13 @@ public sealed class DatabaseAccessService(IEnumerable<IDialectProvider> provider
 
     public async Task<IReadOnlyList<CharsetInfo>> ListCharsetsAsync(ConnectionProfile profile, CancellationToken cancellationToken)
     {
-        await using var connection = await ConnectAsync(profile, string.Empty, cancellationToken);
+        await using var connection = await ConnectForCatalogAsync(profile, cancellationToken);
         return await Provider(profile).ListCharsetsAsync(connection, cancellationToken);
     }
 
     public async Task<DatabaseOptions> GetDatabaseOptionsAsync(ConnectionProfile profile, string database, CancellationToken cancellationToken)
     {
-        await using var connection = await ConnectAsync(profile, string.Empty, cancellationToken);
+        await using var connection = await ConnectForCatalogAsync(profile, cancellationToken);
         return await Provider(profile).GetDatabaseOptionsAsync(connection, database, cancellationToken);
     }
 
