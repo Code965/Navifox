@@ -387,14 +387,14 @@ public partial class MainWindowViewModel : ObservableObject
             case TreeNodeKind.Connection:
                 await EnsureLoadedAsync(node, token);
                 if (SelectedNode != node) return;
-                node.IsExpanded = node.IsLoaded;
+                if (node.IsLoaded) node.IsExpanded = true;
                 break;
             case TreeNodeKind.Database:
             case TreeNodeKind.Schema:
                 await EnsureLoadedAsync(node, token);
                 // Nel frattempo l'utente è passato ad altro: non si riapre né si mostra questo database.
                 if (SelectedNode != node) return;
-                node.IsExpanded = node.IsLoaded;
+                if (node.IsLoaded) node.IsExpanded = true;
                 if (FindTablesCategory(node) is { } tables)
                 {
                     ActiveCategory = "Tabelle";
@@ -443,6 +443,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (owner is not null && SelectedNode != owner) return;
         // Se nel frattempo l'utente ha aperto un'altra scheda (query, tabella…) non lo si riporta su «Oggetti».
         if (category.IsLoaded) ShowCategoryObjects(category, bringToFront: SelectedTab == ObjectsTab);
+        else if (category.LoadError is not null) ObjectsTab.Clear();
     }
 
     private void ShowCategoryObjects(TreeNodeViewModel category, string? selectName = null, bool bringToFront = true)
@@ -472,7 +473,7 @@ public partial class MainWindowViewModel : ObservableObject
         var profile = node.Profile;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(_treeOperations.Token, selectionToken);
         var token = linked.Token;
-        node.IsLoading = true;
+        node.BeginLoad();
         BeginTreeLoad();
         var timer = Stopwatch.StartNew();
         try
@@ -529,7 +530,7 @@ public partial class MainWindowViewModel : ObservableObject
             ElapsedTime = $"{timer.Elapsed.TotalSeconds:0.00} s";
             if (HasTreeFilter) ApplyTreeFilter();
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        catch (Exception) when (token.IsCancellationRequested)
         {
             node.Reset();
             // Annullato perché si è scelto un altro database: nessun messaggio, si ricarica alla prossima apertura.
@@ -537,7 +538,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            node.Reset();
+            node.SetLoadError(exception.Message);
             StatusMessage = $"Operazione non riuscita su «{node.Name}»: {exception.Message}";
         }
         finally

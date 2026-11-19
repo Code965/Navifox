@@ -97,16 +97,23 @@ public partial class MainWindowViewModel
     [RelayCommand]
     private async Task RefreshNodeAsync(TreeNodeViewModel? node)
     {
+        if (node is { IsPlaceholder: true }) node = node.Parent;
         if (node is null || node.Profile is null) return;
         var showObjects = ObjectsTab.Source is { } source && IsUnder(source, node);
         var selectedName = ObjectsTab.SelectedObject?.Name;
         node.Reset();
         node.IsExpanded = true;
         await EnsureLoadedAsync(node);
+        if (!node.IsLoaded)
+        {
+            if (showObjects) ObjectsTab.Clear();
+            return;
+        }
         if (!showObjects) return;
         var category = node.IsObjectCategory ? node : node.Kind is TreeNodeKind.Database or TreeNodeKind.Schema ? FindTablesCategory(node) : null;
         if (category is null) return;
         await EnsureLoadedAsync(category);
+        if (!category.IsLoaded) { ObjectsTab.Clear(); return; }
         ShowCategoryObjects(category, selectedName);
     }
 

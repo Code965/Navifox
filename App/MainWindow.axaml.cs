@@ -75,8 +75,8 @@ public partial class MainWindow : Window
                 if (args.Key == Avalonia.Input.Key.F5)
                 {
                     // F5 aggiorna il nodo selezionato (connessione aperta, database, categoria); sulle tabelle la loro categoria.
-                    var target = selected.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject ? selected.Parent : selected;
-                    if (target is { Kind: not TreeNodeKind.Group } && (target.Kind != TreeNodeKind.Connection || target.IsLoaded)) viewModel.RefreshNodeCommand.Execute(target);
+                    var target = selected.Kind is TreeNodeKind.Table or TreeNodeKind.DbObject or TreeNodeKind.Placeholder ? selected.Parent : selected;
+                    if (target is { Kind: not TreeNodeKind.Group } && (target.Kind != TreeNodeKind.Connection || target.IsLoaded || target.LoadError is not null)) viewModel.RefreshNodeCommand.Execute(target);
                     args.Handled = true;
                 }
                 else if (args.Key == Avalonia.Input.Key.Delete && selected.Kind == TreeNodeKind.Connection) { viewModel.DeleteSelectedConnectionCommand.Execute(null); args.Handled = true; }

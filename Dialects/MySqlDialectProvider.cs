@@ -6,6 +6,9 @@ namespace Navifox.Dialects;
 
 public sealed partial class MySqlDialectProvider : AdoDialectProvider
 {
+    // Su MySQL 5.7 leggere le statistiche di migliaia di tabelle può aprire ogni tabella e andare in timeout.
+    private const int DetailedCatalogTableLimit = 1000;
+
     public override DatabaseKind Kind => DatabaseKind.MySql;
 
     public override async Task<DbConnection> ConnectAsync(ConnectionProfile profile, CancellationToken cancellationToken)
@@ -52,6 +55,19 @@ public sealed partial class MySqlDialectProvider : AdoDialectProvider
 
     public override string QuoteIdentifier(string identifier) => $"`{identifier.Replace("`", "``", StringComparison.Ordinal)}`";
 
+    private Task<List<string[]>> ReadTableNamesAsync(DbConnection connection, string schema, CancellationToken cancellationToken) =>
+        ReadStringsAsync(connection, $"SHOW FULL TABLES FROM {QuoteIdentifier(schema)}", new Dictionary<string, object>(), cancellationToken);
+
+    public override async Task<IReadOnlyList<DatabaseObjectInfo>> ListTablesAsync(DbConnection connection, string database, string schema, CancellationToken cancellationToken)
+    {
+        var tables = await ReadTableNamesAsync(connection, schema, cancellationToken);
+        if (tables.Count <= DetailedCatalogTableLimit)
+            return await base.ListTablesAsync(connection, database, schema, cancellationToken);
+
+        // Le proprietà complete restano disponibili sulla singola tabella, senza bloccare la navigazione.
+        return tables.Select(row => new DatabaseObjectInfo(row[0], row[1])).ToArray();
+    }
+
     public override string MapDataType(string genericType) => genericType.ToLowerInvariant() switch
     {
         "boolean" => "TINYINT(1)", "integer" => "INT", "bigint" => "BIGINT", "decimal" => "DECIMAL(18,2)", "text" => "TEXT", "datetime" => "DATETIME", "binary" => "BLOB", _ => genericType
@@ -79,6 +95,21 @@ public sealed partial class MySqlDialectProvider : AdoDialectProvider
         var parameters = new Dictionary<string, object> { ["@database"] = database };
         var schema = await ReadStringsAsync(connection,
             "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = @database", parameters, cancellationToken);
+        var tables = await ReadTableNamesAsync(connection, database, cancellationToken);
+        if (tables.Count > DetailedCatalogTableLimit)
+        {
+            return
+            [
+                new("Set di caratteri", schema.Count == 0 ? "—" : OrDash(schema[0][0])),
+                new("Collation", schema.Count == 0 ? "—" : OrDash(schema[0][1])),
+                new("Tabelle", tables.Count(row => row[1].Contains("TABLE", StringComparison.OrdinalIgnoreCase)).ToString("N0")),
+                new("Viste", tables.Count(row => row[1].Contains("VIEW", StringComparison.OrdinalIgnoreCase)).ToString("N0")),
+                new("Righe (stima)", "—"),
+                new("Dimensione dati", "—"),
+                new("Dimensione indici", "—"),
+                new("Statistiche", "Disponibili selezionando una tabella"),
+            ];
+        }
         var totals = await ReadStringsAsync(connection, """
             SELECT SUM(TABLE_TYPE = 'BASE TABLE'), SUM(TABLE_TYPE = 'VIEW'), COALESCE(SUM(DATA_LENGTH), 0), COALESCE(SUM(INDEX_LENGTH), 0), COALESCE(SUM(TABLE_ROWS), 0)
             FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @database

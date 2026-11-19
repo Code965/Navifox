@@ -91,6 +91,7 @@ public partial class TreeNodeViewModel : ObservableObject
 
     [ObservableProperty] private bool _isLoaded;
     [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private string? _loadError;
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private bool _isVisible = true;
 
@@ -138,7 +139,24 @@ public partial class TreeNodeViewModel : ObservableObject
         }
         // Un solo aggiornamento per tutto l'elenco (non uno per tabella).
         Children.ReplaceAll(list);
+        LoadError = null;
         IsLoaded = true;
+    }
+
+    /// <summary>Un errore termina il caricamento senza richiudere il nodo né mostrare ancora «Caricamento…».</summary>
+    public void SetLoadError(string message)
+    {
+        LoadError = message;
+        Objects = null;
+        IsLoaded = false;
+        Children.ReplaceAll([new TreeNodeViewModel("Caricamento non riuscito. Premi F5 per riprovare.", "", TreeNodeKind.Placeholder) { Parent = this, LoadError = message }]);
+    }
+
+    public void BeginLoad()
+    {
+        if (LoadError is not null) Children.ReplaceAll([CreatePlaceholder()]);
+        LoadError = null;
+        IsLoading = true;
     }
 
     /// <summary>Riporta il nodo allo stato "non caricato" (es. dopo un errore o una disconnessione).</summary>
@@ -147,6 +165,7 @@ public partial class TreeNodeViewModel : ObservableObject
         Children.Clear();
         if (IsLazy) Children.Add(CreatePlaceholder());
         Objects = null;
+        LoadError = null;
         IsLoaded = false;
         IsExpanded = false;
     }
