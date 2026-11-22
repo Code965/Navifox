@@ -143,6 +143,7 @@ public sealed partial class WorkflowTests(WorkflowFixture fixture) : IClassFixtu
         public string LastConfirmation { get; private set; } = "";
         public int PromptCount { get; private set; }
         public List<string> Errors { get; } = [];
+        public DataTransferViewModel? LastTransfer { get; private set; }
         public Task<string?> PromptAsync(string title, string message, string value, string confirmText = "OK", bool isPassword = false) { PromptCount++; return Task.FromResult<string?>(NextName); }
         public Task<bool> ConfirmAsync(string title, string message, string confirmText = "OK", bool danger = false) { ConfirmCount++; LastConfirmation = message; return Task.FromResult(Confirm); }
         public Task ShowMessageAsync(string title, string message, bool isError = false) { if (isError) Errors.Add(message); return Task.CompletedTask; }
@@ -153,7 +154,7 @@ public sealed partial class WorkflowTests(WorkflowFixture fixture) : IClassFixtu
         public Task ShowExportWizardAsync(ExportWizardViewModel viewModel) => throw new NotSupportedException();
         public Task<string?> PickFolderAsync(string title) => throw new NotSupportedException();
         public Task<bool> ShowQueryBuilderAsync(QueryBuilderViewModel viewModel) => throw new NotSupportedException();
-        public Task ShowDataTransferAsync(DataTransferViewModel viewModel) => throw new NotSupportedException();
+        public Task ShowDataTransferAsync(DataTransferViewModel viewModel) { LastTransfer = viewModel; return Task.CompletedTask; }
         public Task<bool> ShowOptionsAsync(OptionsViewModel viewModel) => throw new NotSupportedException();
         public Task<bool> ShowImportWizardAsync(ImportWizardViewModel viewModel) => throw new NotSupportedException();
     }

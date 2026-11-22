@@ -91,7 +91,8 @@
 
     <Grid Grid.Row="1">
       <!-- ═══ PASSO 1: origine e destinazione ═══ -->
-      <Grid IsVisible="{Binding IsStep1}" ColumnDefinitions="*,Auto,*" Margin="34,26,34,10">
+      <ScrollViewer IsVisible="{Binding IsStep1}" HorizontalScrollBarVisibility="Disabled">
+      <Grid ColumnDefinitions="*,Auto,*" Margin="34,26,34,10">
         <StackPanel Spacing="8">
           <TextBlock Text="Origine" Classes="section" />
           <TextBlock Text="Connessione" Classes="field-label" />
@@ -112,7 +113,16 @@
               <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="database" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" /></StackPanel>
             </DataTemplate></ComboBox.ItemTemplate>
           </ComboBox>
-          <TextBlock Text="Informazioni" Classes="section" Margin="0,26,0,4" />
+          <StackPanel Spacing="8" IsVisible="{Binding SourceHasSchemas}">
+            <TextBlock Text="Schema di origine" Classes="field-label" />
+            <ComboBox ItemsSource="{Binding SourceSchemas}" SelectedItem="{Binding SourceSchema, Mode=TwoWay}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSourceSchemasLoading}">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="x:String">
+                <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="layers" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" Classes="no-tr" /></StackPanel>
+              </DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSourceLoading}" Height="2" MinWidth="0" />
+          <TextBlock Text="Informazioni" Classes="section" Margin="0,18,0,4" />
           <ItemsControl ItemsSource="{Binding SourceInfo}">
             <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:PropertyItem">
               <Grid ColumnDefinitions="160,*" Margin="0,2"><TextBlock Text="{Binding Label}" Foreground="{DynamicResource SecondaryTextBrush}" /><SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" /></Grid>
@@ -151,6 +161,15 @@
                 <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="database" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" /></StackPanel>
               </DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
+            <StackPanel Spacing="8" IsVisible="{Binding TargetHasSchemas}">
+              <TextBlock Text="Schema di destinazione" Classes="field-label" />
+              <ComboBox ItemsSource="{Binding TargetSchemas}" SelectedItem="{Binding TargetSchema, Mode=TwoWay}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsTargetSchemasLoading}">
+                <ComboBox.ItemTemplate><DataTemplate x:DataType="x:String">
+                  <StackPanel Orientation="Horizontal" Spacing="7"><c:NfIcon Kind="layers" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding .}" Classes="no-tr" /></StackPanel>
+                </DataTemplate></ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsTargetLoading}" Height="2" MinWidth="0" />
           </StackPanel>
           <StackPanel Spacing="6" IsVisible="{Binding TargetIsFile}">
             <TextBlock Text="File di destinazione" Classes="field-label" />
@@ -160,7 +179,7 @@
             </Grid>
             <TextBlock Text="Viene creato uno script SQL con struttura e/o dati delle tabelle scelte." FontSize="11.5" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
           </StackPanel>
-          <TextBlock Text="Informazioni" Classes="section" Margin="0,26,0,4" IsVisible="{Binding TargetIsConnection}" />
+          <TextBlock Text="Informazioni" Classes="section" Margin="0,18,0,4" IsVisible="{Binding TargetIsConnection}" />
           <ItemsControl ItemsSource="{Binding TargetInfo}" IsVisible="{Binding TargetIsConnection}">
             <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:PropertyItem">
               <Grid ColumnDefinitions="160,*" Margin="0,2"><TextBlock Text="{Binding Label}" Foreground="{DynamicResource SecondaryTextBrush}" /><SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" /></Grid>
@@ -168,6 +187,7 @@
           </ItemsControl>
         </StackPanel>
       </Grid>
+      </ScrollViewer>
 
       <!-- ═══ PASSO 2: oggetti del database ═══ -->
       <Grid IsVisible="{Binding IsStep2}" ColumnDefinitions="*,Auto,320" Margin="16,12,16,10">

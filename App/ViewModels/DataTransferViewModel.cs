@@ -101,7 +101,8 @@ public partial class DataTransferViewModel : ObservableObject
     /// (es. dopo «Incolla» su un altro database); con <paramref name="jumpToSummary"/> si apre direttamente il riepilogo.
     /// </summary>
     public DataTransferViewModel(IDatabaseAccessService databaseAccess, IReadOnlyList<ConnectionProfile> profiles, ConnectionProfile? source, string? sourceDatabase,
-        IDialogService? dialogs = null, ConnectionProfile? target = null, string? targetDatabase = null, IReadOnlyCollection<string>? preselect = null, bool jumpToSummary = false)
+        IDialogService? dialogs = null, ConnectionProfile? target = null, string? targetDatabase = null, IReadOnlyCollection<string>? preselect = null, bool jumpToSummary = false,
+        string? sourceSchema = null, string? targetSchema = null)
     {
         _databaseAccess = databaseAccess;
         _dialogs = dialogs;
@@ -109,7 +110,10 @@ public partial class DataTransferViewModel : ObservableObject
         _preselect = preselect;
         _jumpToSummary = jumpToSummary;
         _pendingTargetDatabase = targetDatabase;
+        _pendingSourceSchema = sourceSchema;
+        _pendingTargetSchema = targetSchema;
         _sourceProfile = source ?? profiles.FirstOrDefault();
+        _targetProfile = target ?? _sourceProfile;
         RefreshTargets();
         _targetProfile = target is not null && TargetProfiles.Contains(target) ? target : _sourceProfile;
         _pendingSourceDatabase = sourceDatabase;
@@ -132,7 +136,7 @@ public partial class DataTransferViewModel : ObservableObject
     public bool IsStep4 => Step == 4;
     /// <summary>Dal riepilogo in poi si avvia (non c'è più «Avanti»).</summary>
     public bool IsLastStep => Step >= 3;
-    public bool CanStart => Step >= 3 && !IsRunning;
+    public bool CanStart => Step >= 3 && !IsRunning && !IsSourceLoading && (TargetIsFile || !IsTargetLoading) && _loadedTableScope == TableScope();
     public bool CanGoBack => Step > 1 && !IsRunning;
     public string StepTitle => Step switch
     {
@@ -214,7 +218,7 @@ public partial class DataTransferViewModel : ObservableObject
         var mode = TransferMode();
         var targets = AllTablesAtRun ? Tables.Where(t => !t.IsView) : Tables.Where(t => t.IsSelected && !t.IsView);
         foreach (var table in targets)
-            SummaryRows.Add(new TransferSummaryRow(table.Name, TargetIsFile ? $"{Path.GetFileName(TargetFile)} · {table.Name}" : table.Name, mode, table.Glyph));
+            SummaryRows.Add(new TransferSummaryRow(ObjectLabel(SourceProfile, SourceSchema, table.Name), TargetIsFile ? $"{Path.GetFileName(TargetFile)} · {table.Name}" : ObjectLabel(TargetProfile, TargetSchema, table.Name), mode, table.Glyph));
         OnPropertyChanged(nameof(SummaryCount));
         OnPropertyChanged(nameof(SummaryOptions));
     }
@@ -242,7 +246,7 @@ public partial class DataTransferViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TargetIsConnection), nameof(TargetTitle), nameof(TargetSubtitle))]
+    [NotifyPropertyChangedFor(nameof(TargetIsConnection), nameof(TargetTitle), nameof(TargetSubtitle), nameof(CanStart))]
     private bool _targetIsFile;
     public bool TargetIsConnection
     {
@@ -256,9 +260,9 @@ public partial class DataTransferViewModel : ObservableObject
     public ObservableCollection<PropertyItem> SourceInfo { get; } = [];
     public ObservableCollection<PropertyItem> TargetInfo { get; } = [];
     public string SourceTitle => SourceProfile?.Name ?? "Origine";
-    public string SourceSubtitle => SourceDatabase ?? "Database";
+    public string SourceSubtitle => DatabaseLabel(SourceProfile, SourceDatabase, SourceSchema);
     public string TargetTitle => TargetIsFile ? "File SQL" : TargetProfile?.Name ?? "Destinazione";
-    public string TargetSubtitle => TargetIsFile ? (TargetFile.Length == 0 ? "Scegli il file" : Path.GetFileName(TargetFile)) : TargetDatabase ?? "Database";
+    public string TargetSubtitle => TargetIsFile ? (TargetFile.Length == 0 ? "Scegli il file" : Path.GetFileName(TargetFile)) : DatabaseLabel(TargetProfile, TargetDatabase, TargetSchema);
     public string Summary => BuildSummary();
 
     partial void OnStepChanged(int value)
@@ -270,9 +274,13 @@ public partial class DataTransferViewModel : ObservableObject
     partial void OnSourceDatabaseChanged(string? value)
     {
         OnPropertyChanged(nameof(SourceSubtitle));
-        _ = LoadTablesAsync(value);
+        _ = LoadSchemasAsync(true);
     }
-    partial void OnTargetDatabaseChanged(string? value) => OnPropertyChanged(nameof(TargetSubtitle));
+    partial void OnTargetDatabaseChanged(string? value)
+    {
+        OnPropertyChanged(nameof(TargetSubtitle));
+        _ = LoadSchemasAsync(false);
+    }
 
     [RelayCommand]
     private void Next()
@@ -280,11 +288,9 @@ public partial class DataTransferViewModel : ObservableObject
         StatusMessage = string.Empty;
         if (Step == 1)
         {
-            if (SourceProfile is null || SourceDatabase is null) { StatusMessage = "Scegli la connessione e il database di origine."; return; }
-            if (TargetIsFile && string.IsNullOrWhiteSpace(TargetFile)) { StatusMessage = "Scegli il file di destinazione."; return; }
-            if (!TargetIsFile && (TargetProfile is null || TargetDatabase is null)) { StatusMessage = "Scegli la connessione e il database di destinazione."; return; }
-            if (!TargetIsFile && TargetProfile!.Id == SourceProfile.Id && TargetDatabase == SourceDatabase) { StatusMessage = "Origine e destinazione coincidono."; return; }
+            if (!ValidateEndpoints()) return;
         }
+        if (Step == 2 && (IsSourceLoading || _loadedTableScope != TableScope())) { StatusMessage = "Attendi il caricamento delle tabelle dello schema scelto."; return; }
         if (Step == 2 && !AllTablesAtRun && !Tables.Any(t => t.IsSelected && !t.IsView)) { StatusMessage = "Seleziona almeno una tabella."; return; }
         Step = Math.Min(3, Step + 1);
     }
@@ -299,8 +305,11 @@ public partial class DataTransferViewModel : ObservableObject
         if (TargetIsFile || TargetProfile is null || TargetDatabase is null) return;
         var (profile, database) = (TargetProfile, TargetDatabase);
         var (oldProfile, oldDatabase) = (SourceProfile, SourceDatabase);
+        var (schema, oldSchema) = (TargetSchema, SourceSchema);
         _pendingSourceDatabase = database;
         _pendingTargetDatabase = oldDatabase;
+        _pendingSourceSchema = schema;
+        _pendingTargetSchema = oldSchema;
         SourceProfile = profile;
         if (SourceProfile == oldProfile) _ = LoadDatabasesAsync(true);
         TargetProfile = oldProfile;
@@ -342,10 +351,10 @@ public partial class DataTransferViewModel : ObservableObject
     private string BuildSummary()
     {
         var selected = Tables.Where(t => t.IsSelected && !t.IsView).Select(t => t.Name).ToArray();
-        var target = TargetIsFile ? $"File SQL: {TargetFile}" : $"{TargetProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(TargetProfile)}) · database {TargetDatabase}";
+        var target = TargetIsFile ? $"File SQL: {TargetFile}" : $"{TargetProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(TargetProfile)}) · database {TargetSubtitle}";
         var options = OptionLabels();
         return $"""
-            Origine:       {SourceProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(SourceProfile)}) · database {SourceDatabase}
+            Origine:       {SourceProfile?.Name} ({Navifox.App.Controls.DialectVisuals.Summary(SourceProfile)}) · database {SourceSubtitle}
             Destinazione:  {target}
             Tabelle:       {(AllTablesAtRun ? "tutte al momento dell'esecuzione" : selected.Length.ToString())}
             Opzioni:       {string.Join(", ", options)}
@@ -413,17 +422,17 @@ public partial class DataTransferViewModel : ObservableObject
     {
         RefreshTargets();
         OnPropertyChanged(nameof(SourceTitle));
+        OnPropertyChanged(nameof(SourceHasSchemas));
         _ = LoadDatabasesAsync(true);
         _ = LoadInfoAsync(true);
     }
     partial void OnTargetProfileChanged(ConnectionProfile? value)
     {
         OnPropertyChanged(nameof(TargetTitle));
+        OnPropertyChanged(nameof(TargetHasSchemas));
         _ = LoadDatabasesAsync(false);
         _ = LoadInfoAsync(false);
     }
-
-    private static string SchemaFor(ConnectionProfile profile, string database) => profile.Kind.DefaultSchema(database);
 
     private async Task LoadDatabasesAsync(bool source)
     {
@@ -432,10 +441,12 @@ public partial class DataTransferViewModel : ObservableObject
         // Valore da mantenere: preimpostato oppure quello già scelto (più caricamenti possono sovrapporsi).
         var keep = source ? _pendingSourceDatabase ?? SourceDatabase : _pendingTargetDatabase ?? TargetDatabase;
         var generation = source ? ++_sourceLoads : ++_targetLoads;
+        if (source) { IsSourceDatabasesLoading = true; SourceDatabase = null; }
+        else { IsTargetDatabasesLoading = true; TargetDatabase = null; }
         list.Clear();
-        if (profile is null) return;
         try
         {
+            if (profile is null) return;
             var names = await _databaseAccess.ListDatabasesAsync(profile, CancellationToken.None);
             if (generation != (source ? _sourceLoads : _targetLoads)) return; // superato da un caricamento più recente
             list.Clear();
@@ -447,22 +458,41 @@ public partial class DataTransferViewModel : ObservableObject
             }
             else
             {
-                TargetDatabase = keep is not null && list.Contains(keep) ? keep : list.FirstOrDefault(d => d != SourceDatabase) ?? list.FirstOrDefault();
+                var preferred = profile.Kind == DatabaseKind.PostgreSql && profile.Id == SourceProfile?.Id
+                    ? _pendingSourceDatabase ?? SourceDatabase ?? profile.DefaultDatabase : null;
+                TargetDatabase = keep is not null && list.Contains(keep) ? keep
+                    : preferred is not null && list.Contains(preferred) ? preferred : list.FirstOrDefault(d => d != SourceDatabase) ?? list.FirstOrDefault();
                 _pendingTargetDatabase = null;
             }
         }
-        catch (Exception exception) { StatusMessage = $"{profile.Name}: {exception.Message}"; }
+        catch (Exception exception)
+        {
+            if (generation == (source ? _sourceLoads : _targetLoads)) StatusMessage = $"{profile?.Name}: {exception.Message}";
+        }
+        finally
+        {
+            if (generation == (source ? _sourceLoads : _targetLoads))
+            {
+                if (source) IsSourceDatabasesLoading = false; else IsTargetDatabasesLoading = false;
+                TryJumpToSummary();
+            }
+        }
     }
 
     private async Task LoadTablesAsync(string? database)
     {
+        var profile = SourceProfile;
+        var schema = SourceSchema;
+        var generation = ++_tableLoads;
+        _loadedTableScope = null;
+        IsTablesLoading = true;
         Tables.Clear();
         ApplyTableFilter();
-        if (SourceProfile is null || database is null) return;
         try
         {
-            var objects = await _databaseAccess.ListTablesAsync(SourceProfile, database, SchemaFor(SourceProfile, database), CancellationToken.None);
-            if (database != SourceDatabase) return;
+            if (profile is null || database is null || schema is null) return;
+            var objects = await _databaseAccess.ListTablesAsync(profile, database, schema, CancellationToken.None);
+            if (generation != _tableLoads || profile != SourceProfile || database != SourceDatabase || schema != SourceSchema) return;
             foreach (var item in objects)
             {
                 var table = new TransferTable(item.Name, item.Kind.Contains("VIEW", StringComparison.OrdinalIgnoreCase));
@@ -478,16 +508,14 @@ public partial class DataTransferViewModel : ObservableObject
                 _preselect = null;
             }
             ApplyTableFilter();
-            StatusMessage = $"{Tables.Count(t => !t.IsView)} tabelle in {database}";
-            if (_jumpToSummary)
-            {
-                _jumpToSummary = false;
-                // attende il database di destinazione prima di mostrare il riepilogo
-                for (var i = 0; i < 50 && TargetDatabase is null && !TargetIsFile; i++) await Task.Delay(100);
-                Step = 3;
-            }
+            _loadedTableScope = TableScope();
+            StatusMessage = $"{Tables.Count(t => !t.IsView)} tabelle in {SourceSubtitle}";
         }
-        catch (Exception exception) { StatusMessage = exception.Message; }
+        catch (Exception exception) { if (generation == _tableLoads) StatusMessage = exception.Message; }
+        finally
+        {
+            if (generation == _tableLoads) { IsTablesLoading = false; TryJumpToSummary(); }
+        }
     }
 
     [RelayCommand]
@@ -510,9 +538,11 @@ public partial class DataTransferViewModel : ObservableObject
     [RelayCommand]
     private async Task StartAsync()
     {
-        if (IsRunning) return;
+        if (IsRunning || !ValidateEndpoints()) return;
         Step = 4;
         await RefreshTablesForRunAsync();
+        if (!ValidateEndpoints()) return;
+        if (_loadedTableScope != TableScope()) { StatusMessage = "Attendi il caricamento delle tabelle dello schema scelto."; return; }
         if (TargetIsFile)
         {
             await ExportToFileAsync();
@@ -524,19 +554,6 @@ public partial class DataTransferViewModel : ObservableObject
             StatusMessage = "Origine e destinazione devono essere dello stesso tipo di database.";
             return;
         }
-        if (source.Id == target.Id && sourceDb == targetDb)
-        {
-            StatusMessage = "Origine e destinazione coincidono.";
-            return;
-        }
-        // Due connessioni diverse verso lo stesso database: ricreare le tabelle cancellerebbe quelle di origine.
-        if (source.IsSameDatabase(sourceDb, null, target, targetDb, null))
-        {
-            await _dialogs.ShowMessageAsync("Origine e destinazione coincidono",
-                $"«{source.Name}» e «{target.Name}» puntano allo stesso database «{targetDb}» ({target.Endpoint}).\n\n" +
-                "Il trasferimento eliminerebbe e ricreerebbe le tabelle di origine. Per duplicare una tabella usa Copia e Incolla nello stesso database: Navifox crea una copia «_copy».", isError: true);
-            return;
-        }
         var selected = Tables.Where(t => t.IsSelected && !t.IsView).ToArray();
         if (selected.Length == 0)
         {
@@ -544,7 +561,7 @@ public partial class DataTransferViewModel : ObservableObject
             return;
         }
         if (!await SqlGuard.ConfirmProductionAsync(_dialogs, target,
-                $"Il trasferimento scriverà {selected.Length} tabelle nel database «{targetDb}»{(CreateTables ? " eliminando e ricreando quelle esistenti" : string.Empty)}.")) return;
+                $"Il trasferimento scriverà {selected.Length} tabelle nel database «{targetDb}» · schema «{TargetSchema}»{(CreateTables ? " eliminando e ricreando quelle esistenti" : string.Empty)}.")) return;
         IsRunning = true;
         Log.Clear();
         Progress = 0;
@@ -553,17 +570,17 @@ public partial class DataTransferViewModel : ObservableObject
         var token = _running.Token;
         var provider = _databaseAccess.Provider(source);
         var mysql = provider.UsesMySqlScriptSyntax;
-        var sourceSchema = SchemaFor(source, sourceDb);
-        var targetSchema = SchemaFor(target, targetDb);
+        var sourceSchema = SourceSchema!;
+        var targetSchema = TargetSchema!;
         var errors = 0;
         var tableErrors = 0;
         var postData = new List<string>();
-        AddLog($"Trasferimento {source.Name}/{sourceDb} → {target.Name}/{targetDb}: {selected.Length} tabelle");
+        AddLog($"Trasferimento {source.Name}/{sourceDb}/{sourceSchema} → {target.Name}/{targetDb}/{targetSchema}: {selected.Length} tabelle");
         ActivityRecording.ActivityOperation? activity = null;
         try
         {
             activity = ActivityRecording.BeginOperation(target, targetDb, "Trasferimento dati",
-                $"{source.Name}/{sourceDb} → {target.Name}/{targetDb}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nCrea struttura: {CreateTables}; copia dati: {CopyData}; mascheramento: {AnonymizeData}; continua con errori: {ContinueOnError}");
+                $"{source.Name}/{sourceDb}/{sourceSchema} → {target.Name}/{targetDb}/{targetSchema}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nCrea struttura: {CreateTables}; copia dati: {CopyData}; mascheramento: {AnonymizeData}; continua con errori: {ContinueOnError}");
             await using var from = await _databaseAccess.OpenAsync(source, sourceDb, token);
             await using var to = await _databaseAccess.OpenAsync(target, targetDb, token);
             var maskers = await PrepareMaskersAsync(provider, from, sourceDb, sourceSchema, selected, token);
@@ -592,7 +609,7 @@ public partial class DataTransferViewModel : ObservableObject
                     var name = mysql ? provider.QuoteIdentifier(table.Name) : $"{provider.QuoteIdentifier(targetSchema)}.{provider.QuoteIdentifier(table.Name)}";
                     if (CreateTables)
                     {
-                        var ddl = await provider.GetDdlAsync(from, sourceDb, sourceSchema, table.Name, false, token);
+                        var ddl = await provider.GetTransferDdlAsync(from, sourceDb, sourceSchema, targetSchema, table.Name, token);
                         await Run($"DROP TABLE IF EXISTS {name}{(source.Kind == DatabaseKind.PostgreSql ? " CASCADE" : string.Empty)}");
                         foreach (var statement in provider.SplitScript(ddl.Create)) await Run(statement);
                         postData.AddRange(ddl.PostData);
@@ -720,18 +737,20 @@ public partial class DataTransferViewModel : ObservableObject
         var token = _running.Token;
         var provider = _databaseAccess.Provider(source);
         var mysql = provider.UsesMySqlScriptSyntax;
-        var schema = SchemaFor(source, sourceDb);
+        var schema = SourceSchema!;
         AddLog($"Esportazione di {selected.Length} tabelle in {TargetFile}");
         ActivityRecording.ActivityOperation? activity = null;
         try
         {
-            activity = ActivityRecording.BeginOperation(source, sourceDb, "Esportazione dati", $"{source.Name}/{sourceDb} → {TargetFile}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nStruttura: {CreateTables}; dati: {CopyData}; mascheramento: {AnonymizeData}");
+            activity = ActivityRecording.BeginOperation(source, sourceDb, "Esportazione dati", $"{source.Name}/{sourceDb}/{schema} → {TargetFile}\nTabelle: {string.Join(", ", selected.Select(t => t.Name))}\nStruttura: {CreateTables}; dati: {CopyData}; mascheramento: {AnonymizeData}");
             await using var connection = await _databaseAccess.OpenAsync(source, sourceDb, token);
             var maskers = await PrepareMaskersAsync(provider, connection, sourceDb, schema, selected, token);
             if (!await ConfirmMaskingAsync(maskers)) { activity?.Fail(new OperationCanceledException("Mascheramento non confermato.")); StatusMessage = "Esportazione annullata."; return; }
             var tracker = await PrepareProgressAsync(provider, connection, schema, selected, token);
             await using var writer = new StreamWriter(TargetFile, false, new System.Text.UTF8Encoding(false));
             await ActivityRecording.WriteScriptAsync(writer, provider.DumpHeader(sourceDb));
+            if (source.Kind == DatabaseKind.PostgreSql)
+                await ActivityRecording.WriteScriptAsync(writer, $"CREATE SCHEMA IF NOT EXISTS {provider.QuoteIdentifier(schema)};\n");
             var postData = new List<string>();
             for (var i = 0; i < selected.Length; i++)
             {

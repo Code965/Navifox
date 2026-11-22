@@ -30,6 +30,9 @@ public interface IDialectProvider
 
     Task<TableDdl> GetDdlAsync(DbConnection connection, string database, string schema, string table, bool isView, CancellationToken cancellationToken);
 
+    /// <summary>Struttura di una tabella destinata a un altro schema, con riferimenti e sequenze coerenti.</summary>
+    Task<TableDdl> GetTransferDdlAsync(DbConnection connection, string database, string sourceSchema, string targetSchema, string table, CancellationToken cancellationToken);
+
     /// <summary>Oggetti di schema gestiti dal dialetto oltre a tabelle e viste (es. MySQL: funzioni, trigger, eventi).</summary>
     IReadOnlyList<SchemaObjectKind> SchemaObjectKinds { get; }
     Task<IReadOnlyList<DatabaseObjectInfo>> ListSchemaObjectsAsync(DbConnection connection, string database, string schema, SchemaObjectKind kind, CancellationToken cancellationToken);

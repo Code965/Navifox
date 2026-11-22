@@ -298,7 +298,7 @@ public partial class MainWindowViewModel
         var path = await _dialogs.PickSaveFileAsync(includeData ? "Dump tabella (struttura e dati)" : "Dump tabella (solo struttura)",
             $"{node.Name}_{DateTime.Now:yyyyMMdd_HHmm}.sql", "sql", new FileFilter("Script SQL", "*.sql"));
         if (path is null) return;
-        var transfer = new DataTransferViewModel(_databaseAccess, Profiles.ToArray(), profile, node.Database, _dialogs, preselect: [node.Name])
+        var transfer = new DataTransferViewModel(_databaseAccess, Profiles.ToArray(), profile, node.Database, _dialogs, preselect: [node.Name], sourceSchema: node.Schema)
         {
             TargetIsFile = true,
             TargetFile = path,

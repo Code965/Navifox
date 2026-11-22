@@ -283,7 +283,8 @@ public abstract class AdoDialectProvider : IDialectProvider
     {
         var builder = new System.Text.StringBuilder();
         builder.Append("INSERT INTO ").Append(DumpName(schema, table)).Append(" (")
-            .AppendJoin(", ", columns.Select(QuoteIdentifier)).Append(") VALUES\n");
+            .AppendJoin(", ", columns.Select(QuoteIdentifier)).Append(')')
+            .Append(Kind == DatabaseKind.PostgreSql ? " OVERRIDING SYSTEM VALUE" : string.Empty).Append(" VALUES\n");
         for (var r = 0; r < rows.Count; r++)
         {
             builder.Append("  (").AppendJoin(", ", rows[r].Select(FormatLiteral)).Append(')');
@@ -296,6 +297,9 @@ public abstract class AdoDialectProvider : IDialectProvider
     public virtual string DumpName(string schema, string table) => QuoteIdentifier(table);
 
     public abstract Task<TableDdl> GetDdlAsync(DbConnection connection, string database, string schema, string table, bool isView, CancellationToken cancellationToken);
+
+    public virtual Task<TableDdl> GetTransferDdlAsync(DbConnection connection, string database, string sourceSchema, string targetSchema, string table, CancellationToken cancellationToken) =>
+        GetDdlAsync(connection, database, sourceSchema, table, false, cancellationToken);
     public abstract Task<IReadOnlyList<CharsetInfo>> ListCharsetsAsync(DbConnection connection, CancellationToken cancellationToken);
     public abstract Task<DatabaseOptions> GetDatabaseOptionsAsync(DbConnection connection, string database, CancellationToken cancellationToken);
     public abstract string BuildCreateDatabaseSql(DatabaseOptions options);

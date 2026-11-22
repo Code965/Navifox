@@ -1,4 +1,12 @@
 {
+ "Schema di origine": "Source schema",
+ "Schema di destinazione": "Target schema",
+ "Attendi il caricamento di database, schemi e tabelle.": "Wait for databases, schemas and tables to finish loading.",
+ "Attendi il caricamento delle tabelle dello schema scelto.": "Wait for the selected schema's tables to finish loading.",
+ "Scegli lo schema di origine.": "Choose the source schema.",
+ "Scegli lo schema di destinazione.": "Choose the target schema.",
+ "Nessuno schema disponibile nel database scelto.": "No schemas are available in the selected database.",
+ "Origine e destinazione coincidono. Scegli un altro database o schema.": "Source and target are the same. Choose a different database or schema.",
  "Caricamento non riuscito. Premi F5 per riprovare.": "Loading failed. Press F5 to retry.",
  "Disponibili selezionando una tabella": "Available when selecting a table",
  "Statistiche": "Statistics",

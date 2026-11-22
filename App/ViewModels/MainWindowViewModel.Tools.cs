@@ -99,7 +99,7 @@ public partial class MainWindowViewModel
     {
         if (Profiles.Count == 0) return;
         var context = CurrentDatabaseContext(node);
-        await _dialogs.ShowDataTransferAsync(new DataTransferViewModel(_databaseAccess, Profiles.ToArray(), context?.Profile, context?.Database, _dialogs));
+        await _dialogs.ShowDataTransferAsync(new DataTransferViewModel(_databaseAccess, Profiles.ToArray(), context?.Profile, context?.Database, _dialogs, sourceSchema: context?.Schema));
     }
 
     [RelayCommand]

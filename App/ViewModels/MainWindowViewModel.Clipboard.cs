@@ -80,7 +80,7 @@ public partial class MainWindowViewModel
         {
             // Trasferimento già impostato (origine, destinazione e tabelle), ma si parte sempre dal primo passo per rivederlo.
             await _dialogs.ShowDataTransferAsync(new DataTransferViewModel(_databaseAccess, Profiles.ToArray(), clip.Profile, clip.Database, _dialogs,
-                target.Profile, target.Database, clip.Tables));
+                target.Profile, target.Database, clip.Tables, sourceSchema: clip.Schema, targetSchema: target.Schema));
             await RefreshTablesOfAsync(target.Profile, target.Database, target.Schema);
             return;
         }
